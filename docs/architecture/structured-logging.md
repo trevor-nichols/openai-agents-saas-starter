@@ -2,7 +2,7 @@
 
 **Last Updated:** 2025-11-17  
 **Owner:** Platform Foundations – Observability  
-**Status:** Approved – implementation in progress
+**Status:** Implemented
 
 ## 1. Goals & Non-Goals
 
@@ -14,7 +14,7 @@
 
 ### Non-Goals
 - Replacing Prometheus metrics (logs complement metrics, not replace them).
-- Shipping end-to-end distributed tracing. We scope this milestone to logs; OTLP traces remain a future project.
+- Shipping end-to-end distributed tracing. This release emits structured logs only; traces are not enabled.
 - Implementing log sampling/retention policies (left to the sink/back-end).
 
 ## 2. Canonical Log Schema
@@ -59,7 +59,7 @@ Context + event-specific keys are flattened at the top level except for `fields`
   - `datadog`: custom HTTP handler posts batches to `https://http-intake.logs.<site>/api/v2/logs` using `LOGGING_DATADOG_API_KEY`.
   - `otlp`: OTLP/HTTP handler posts JSON payloads to `LOGGING_OTLP_ENDPOINT` with optional headers JSON.
   - `none`: attaches a `NullHandler` (mutually exclusive; cannot be combined with other sinks).
-- Future sinks (Kafka, S3) would plug into the same factory without changing callers.
+- Additional sinks (e.g., Kafka, S3) can plug into the same factory without changing callers.
 
 ## 5. Failure Handling
 
@@ -67,13 +67,13 @@ Context + event-specific keys are flattened at the top level except for `fields`
 - When sink misconfiguration is detected (e.g., `logging_sink="datadog"` without API key), `configure_logging` raises during startup to fail fast rather than silently downgrade to stdout.
 - JSON serialization falls back to `_serialize` helper that formats datetimes and sets while leaving other objects to Python’s default repr for transparency.
 
-## 6. Implementation Checklist
+## 6. Implementation Summary
 
 1. Add context helpers + JSON formatter + sink factory in `app/observability/logging.py`.
 2. Wire `configure_logging(settings)` inside `api-service/src/main.py` before the FastAPI app instantiates middleware; expose the same helper for worker entry points.
 3. Update `app/middleware/logging.py` to rely on `log_event` and scoped log context rather than string formatting.
-4. Expand rate-limit + Stripe worker instrumentation to include `correlation_id`, `tenant_id`, and worker metadata (covered by follow-up tests once sinks are live).
-5. Document operational guidance here and reference it from `docs/trackers/ISSUE_TRACKER.md`.
+4. Rate-limit + Stripe worker instrumentation include `correlation_id`, `tenant_id`, and worker metadata.
+5. Operational guidance is documented here and referenced from `docs/trackers/ISSUE_TRACKER.md`.
 
 ## 7. Testing Strategy
 

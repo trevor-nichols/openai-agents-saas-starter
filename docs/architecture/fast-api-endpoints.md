@@ -1,5 +1,9 @@
 # API Service
 
+> Source of truth: the generated OpenAPI schema. Regenerate with
+> `starter-console api export-openapi --output apps/api-service/.artifacts/openapi.json`
+> and consult that artifact (or `/docs` in a running server) for the current list.
+
 # API Endpoints
 
 ## health

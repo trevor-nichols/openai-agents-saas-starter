@@ -10,6 +10,7 @@ keeps the feature disabled.
 
 | Provider | Feature Toggle | Required Env Vars | Dev (`ENVIRONMENT=development`) | Hardened envs (`ENVIRONMENT!=development` & `DEBUG=false`) |
 | --- | --- | --- | --- | --- |
+| OpenAI | n/a (agent runtime) | `OPENAI_API_KEY` | Warning only | Startup fails with `RuntimeError` until configured |
 | Stripe | `ENABLE_BILLING=true` | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRODUCT_PRICE_MAP` | CLI still exits non-zero (see below), FastAPI logs warnings only when billing is disabled | Startup fails with `RuntimeError` until every variable is present |
 | Resend | `RESEND_EMAIL_ENABLED=true` | `RESEND_API_KEY`, `RESEND_DEFAULT_FROM` | Warning only | Startup fails with actionable `RuntimeError` |
 
@@ -31,6 +32,7 @@ violations halt the process immediately so health probes never turn green with a
 The validator surfaces structured log output similar to:
 
 ```
+[WARN][providers] [OPENAI] OPENAI_API_KEY is required for the agent runtime.
 [WARN][providers] [RESEND] RESEND_EMAIL_ENABLED=true requires RESEND_API_KEY.
 [ERROR][providers] [STRIPE] ENABLE_BILLING=true requires STRIPE_SECRET_KEY.
 ```
@@ -44,12 +46,12 @@ The validator surfaces structured log output similar to:
 
 ### Provider-specific notes
 
+- **OpenAI:** `OPENAI_API_KEY` is required for agent execution. Missing keys surface as warnings in local dev and fatal errors in hardened environments.
 - **Stripe:** `docs/billing/stripe-setup.md` covers the provisioning workflow, plan map formats, and
   troubleshooting steps. The validator piggybacks on `Settings.required_stripe_envs_missing()` so
   a single `RuntimeError` lists every missing variable.
 - **Resend:** Configure the API key and default From address in `apps/api-service/.env.local`. Template IDs remain
-  optional, but start populating them once you move beyond local testing so transactional email
-  matches production copy.
+  optional, but populate them before production so transactional email matches approved copy.
 
 ## Tracking & reporting
 

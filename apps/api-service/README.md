@@ -1,568 +1,219 @@
-# Acme - Extensible AI Agent System
+# API Service (FastAPI + OpenAI Agents SDK)
 
-A FastAPI-based AI agent system built with the OpenAI Agents SDK, designed for easy extension from single agent to multiagent systems.
+Production-ready FastAPI backend for the OpenAI Agents SaaS starter. This service hosts the AI runtime (agents, workflows, tools, guardrails, streaming), plus the SaaS platform surface (auth, tenants, billing, usage, storage, and observability).
 
-## 🚀 Features
+## What this service includes
+- OpenAI Agents SDK runtime (openai-agents 0.6.x) with declarative agent specs, tools, handoffs, and structured outputs.
+- Deterministic workflows over agents (sequential or parallel with reducers).
+- Guardrails for inputs/outputs and tool calls, configurable via presets.
+- Tool registry covering OpenAI hosted tools, MCP tools, and custom function tools.
+- Vector store + file search orchestration and bindings per tenant/agent.
+- Code interpreter container management (auto or explicit containers).
+- Multi-tenant auth (Ed25519 JWTs, refresh tokens, MFA, signup policies).
+- Stripe billing, usage metering, and rate limits.
+- Structured logging, metrics, and activity/run event streams.
 
-- **Extensible Triage Pattern**: Start with a single main agent, easily add specialized agents
-- **Conversation Management**: Persistent conversation history with context awareness
-- **Streaming Support**: Real-time streaming responses for better UX
-- **Multiple Agent Types**: Ready-to-activate specialized agents (code, data analysis, etc.)
-- **RESTful API**: Clean, documented API endpoints
-- **Type Safety**: Full Pydantic validation and type hints
+## Quick start (local)
 
-## 🏗️ Architecture
-
-### Current Implementation: Single Agent with Extension Points
-
-```
-User → Triage Agent (Main Chatbot)
-         ↓
-    [Future: Specialized Agents]
-```
-
-### Future Multiagent Capabilities
-
-```
-User → Triage Agent → Code Assistant
-                   → Data Analyst  
-                   → Research Agent
-                   → Custom Agents
-```
-
-## 📁 Project Structure
-
-```
-api-service/
-├── app/
-│   ├── api/
-│   │   ├── models/     # Public request/response schemas
-│   │   ├── dependencies/ # Shared FastAPI dependencies
-│   │   ├── errors.py   # Global exception handlers
-│   │   └── v1/         # Versioned REST surface (`/api/v1/...`)
-│   ├── core/           # Configuration and security
-│   ├── domain/         # Domain objects and repository contracts
-│   ├── infrastructure/ # External adapters (OpenAI runner, persistence)
-│   ├── services/       # Business logic (Agent orchestration)
-│   ├── middleware/     # Custom middleware
-│   └── utils/          # Utility functions
-├── tests/              # Test suite
-└── main.py            # FastAPI application
-```
-
-## 🛠️ Setup
-
-### 1. Install Tooling
-
-We use [Hatch](https://hatch.pypa.io/) to manage virtual environments and scripts.
+Recommended path (generates env files and runs audits):
 
 ```bash
-# Recommended (fast, reproducible):
-uv python install 3.11
-uv tool install --python 3.11 hatch
-
-# Alternative:
-pipx install hatch
+# From repo root
+just python-bootstrap        # install Python 3.11 + Hatch via uv
+just dev-install             # editable installs for shared packages
+starter-console setup wizard --profile demo
+just api                     # starts FastAPI with env files loaded
 ```
 
-### 2. Create the Development Environment
+Manual path:
 
+```bash
+cp apps/api-service/.env.local.example apps/api-service/.env.local
+just dev-up                  # docker compose: Postgres + Redis (+ optional OTel collector)
+just migrate                 # Alembic upgrade heads
+just api
+```
+
+Once running:
+- OpenAPI docs: `http://localhost:8000/docs`
+- Health: `GET /health/ready`
+
+## Architecture at a glance
+
+```
+apps/api-service/src/app/
+├── agents/          # Agent specs + prompts
+├── workflows/       # Workflow specs
+├── api/             # FastAPI routers + schemas + dependencies
+├── services/        # Application services / orchestration
+├── infrastructure/  # Providers, persistence, external adapters
+├── guardrails/      # Guardrail configs + checks
+├── observability/   # Logging + metrics
+├── core/            # Settings, security, shared utilities
+└── domain/          # Domain models + repository ports
+```
+
+Layering rules:
+- **API** → **services** → **infrastructure** (no API → infra shortcuts).
+- **agents/workflows** are declarative specs; runtime wiring lives under **services** and **infrastructure**.
+- Shared contracts live in `packages/starter_contracts`; provider SDK clients live in `packages/starter_providers`.
+
+## AI runtime: agents, tools, guardrails, streaming
+
+### Agents
+- Agent specs live in `app/agents/<key>/spec.py` with prompts in `prompt.md.j2`.
+- Specs are loaded at startup by the agent registry (see `app/agents/_shared/*`).
+- Each agent explicitly declares `tool_keys`; there are no implicit tools.
+- Handoffs are controlled via `handoff_keys` + per-target `handoff_context` / overrides.
+- Structured outputs use `OutputSpec` with Pydantic schemas or custom validators.
+- Model selection resolves `model` → `model_key` → `AGENT_MODEL_DEFAULT` (default `gpt-5.1`).
+
+References:
+- `apps/api-service/src/app/agents/README.md`
+- `apps/api-service/src/app/agents/CREATING_AGENTS.md`
+
+### Bundled agents
+- `triage` (default entrypoint)
+- `code_assistant`
+- `researcher`
+- `retriever`
+- `company_intel`
+- `compliance_reviewer`
+- `director`
+- `image_studio`
+- `pdf_designer`
+
+### Tools
+- Registry: `app/utils/tools/registry.py`.
+- Hosted OpenAI tools: `web_search`, `file_search`, `code_interpreter`, `image_generation` (require `OPENAI_API_KEY`).
+- Built-ins: `get_current_time`, `search_conversations` (registered by the agent registry).
+- MCP tools: configured via `MCP_TOOLS` settings; approval policies enforce allow/deny lists.
+
+### Guardrails
+- Guardrails are configured per agent or tool using presets or explicit configs.
+- Runtime options (`guardrails_runtime`) control streaming vs blocking behavior and tripwire handling.
+- Source of truth: `app/guardrails/README.md` and `docs/integrations/openai-agents-sdk/guardrails/`.
+
+### Streaming
+- Raw SDK events are normalized into `AgentStreamEvent` and projected into the public SSE contract.
+- Public SSE schema: `docs/contracts/public-sse-streaming/v1.md`.
+- Projector: `app/api/v1/shared/public_stream_projector/*`.
+
+## Workflows (deterministic chains over agents)
+- Workflow specs live in `app/workflows/<key>/spec.py`.
+- Stages can be `sequential` or `parallel`; reducers merge parallel outputs.
+- Workflow steps always call existing agents; prompts/tools/guardrails live in the agent spec.
+
+References:
+- `apps/api-service/src/app/workflows/README.md`
+- `apps/api-service/src/app/workflows/CREATING_WORKFLOWS.md`
+
+### Bundled workflows
+- `analysis_code` (sequential)
+- `analysis_parallel` (parallel fan-out + reducer)
+- `research_report_pdf` (research → PDF synthesis)
+
+## Containers (code interpreter)
+- API routes: `app/api/v1/containers`.
+- Service: `app/services/containers/service.py`.
+- Code interpreter tool can run in **auto** mode (OpenAI-managed) or **explicit** mode (tenant-bound containers).
+- Defaults and guardrails live in `app/core/settings/ai.py` (memory tiers, limits, fallback behavior).
+
+Runbook: `docs/runbooks/agents/containers-and-code-interpreter.md`.
+
+## Vector stores & file search
+- Vector store service: `app/services/vector_stores/*`.
+- API routes: `app/api/v1/vector_stores`.
+- Agents opt in via `vector_store_binding` and `file_search_options`.
+- Resolution order: request override → agent binding → spec defaults (see `services/vector_stores/README.md`).
+
+Runbook: `docs/runbooks/agents/vector-stores-and-file-search.md`.
+
+## Storage & assets
+- Storage service: `app/services/storage/service.py` (S3, GCS, MinIO, Azure Blob via `starter_providers`).
+- Asset service: `app/services/assets/service.py` manages uploaded/generated assets.
+- API routes: `app/api/v1/storage`, `app/api/v1/uploads`, `app/api/v1/assets`.
+
+## SaaS platform features
+
+### Authentication & tenants
+- Access tokens are EdDSA/Ed25519 JWTs; JWKS served from `/.well-known/jwks.json`.
+- Refresh tokens are hashed and stored in Postgres with a Redis cache for fast lookup.
+- MFA is supported for login flows.
+- Signup policies: `public`, `invite_only`, or `approval` (see `signup_access_policy`).
+- Tenant context enforced via JWT claims and API dependencies (`X-Tenant-Id` is validated against token claims).
+
+Key files:
+- `app/core/security.py` (JWT signing/verification)
+- `app/services/auth/*`, `app/services/users/*`, `app/api/v1/auth/*`
+- `docs/security/auth-review-brief.md`
+
+### Service accounts
+- Service account tokens are issued via the auth service and audited.
+- Browser-initiated issuance uses Vault/secret-provider signing (`ServiceAccountIssuanceBridge`).
+- Console helpers live under `starter-console auth ...`.
+
+### Billing & usage
+- Stripe integration: plans, webhooks, event replay, retry worker.
+- Usage metering and entitlement enforcement with plan-aware limits.
+- API routes: `app/api/v1/billing`, `app/api/v1/usage`.
+
+Runbooks:
+- `docs/billing/stripe-setup.md`
+- `docs/ops/db-release-playbook.md`
+- `docs/ops/usage-guardrails-runbook.md`
+
+## Observability
+- Structured JSON logging with configurable sinks (`stdout`, `file`, `otlp`, `datadog`).
+- Log context automatically binds correlation/tenant/user IDs.
+- Metrics exposed for Prometheus.
+
+References:
+- `docs/observability/README.md`
+- `docs/architecture/structured-logging.md`
+
+## Developer workflows
+
+### Migrations
+Use Just recipes (they wire env loading and handle multi-heads):
+
+```bash
+just migrate
+just migration-revision message="add widget table"
+```
+
+### Tests
 ```bash
 cd apps/api-service
-hatch env create
-```
-
-This provisions a local virtualenv with all runtime and developer dependencies defined in `pyproject.toml`.
-
-#### Always use the project virtualenv
-- Prefer `hatch shell` or `hatch run <cmd>`; they pin PATH to `.venv/bin`.
-- If you use direnv, run `direnv allow` once in `apps/api-service` to pick up `.envrc` (it refuses to load if `.venv` is missing or not active).
-- Without hatch/direnv, run commands through `./scripts/enter.sh <cmd>` to guarantee they execute inside `.venv` (or start a subshell if no command is provided).
-These guardrails prevent Homebrew/pyenv Pythons from shadowing the repo’s virtualenv— the common cause of missing packages like `fakeredis`.
-
-### 3. Environment Configuration
-
-Copy `apps/api-service/.env.local.example` to `apps/api-service/.env.local` and configure every secret (do **not** reuse the sample values outside local dev). Sections are labeled to indicate what is **required** vs **optional** in production; the console setup wizard will surface the same groupings. Highlights:
-
-```bash
-# Core application (required)
-ENVIRONMENT=development
-DEBUG=true
-PORT=8000
-APP_PUBLIC_URL=http://localhost:3000
-ALLOWED_HOSTS=localhost,localhost:8000,127.0.0.1,testserver,testclient
-ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8000
-
-# Secrets (replace before production)
-SECRET_KEY=change-me
-AUTH_PASSWORD_PEPPER=change-me-too
-AUTH_REFRESH_TOKEN_PEPPER=change-me-again
-AUTH_EMAIL_VERIFICATION_TOKEN_PEPPER=change-me-email
-AUTH_PASSWORD_RESET_TOKEN_PEPPER=change-me-reset
-AUTH_SESSION_ENCRYPTION_KEY=   # required for encrypted session metadata in prod
-AUTH_SESSION_IP_HASH_SALT=
-
-# Persistence / Redis
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/saas_starter_db
-REDIS_URL=redis://localhost:6379/0
-BILLING_EVENTS_REDIS_URL=
-ACTIVITY_EVENTS_REDIS_URL=
-ENABLE_ACTIVITY_STREAM=false
-ACTIVITY_STREAM_MAX_LENGTH=2048
-ACTIVITY_STREAM_TTL_SECONDS=86400
-ACTIVITY_EVENTS_TTL_DAYS=365
-ACTIVITY_EVENTS_CLEANUP_BATCH=10000
-ACTIVITY_EVENTS_CLEANUP_SLEEP_MS=0
-AUTO_RUN_MIGRATIONS=false      # dev convenience only
-
-# Rate limits & auth policies (tune per env)
-REQUIRE_EMAIL_VERIFICATION=true
-CHAT_RATE_LIMIT_PER_MINUTE=60
-CHAT_STREAM_RATE_LIMIT_PER_MINUTE=30
-CHAT_STREAM_CONCURRENT_LIMIT=5
-BILLING_STREAM_RATE_LIMIT_PER_MINUTE=20
-BILLING_STREAM_CONCURRENT_LIMIT=3
-PASSWORD_RESET_TOKEN_TTL_MINUTES=30
-PASSWORD_RESET_EMAIL_RATE_LIMIT_PER_HOUR=5
-PASSWORD_RESET_IP_RATE_LIMIT_PER_HOUR=20
-EMAIL_VERIFICATION_TOKEN_TTL_MINUTES=60
-EMAIL_VERIFICATION_EMAIL_RATE_LIMIT_PER_HOUR=3
-EMAIL_VERIFICATION_IP_RATE_LIMIT_PER_HOUR=10
-AUTH_PASSWORD_HISTORY_COUNT=5
-AUTH_LOCKOUT_THRESHOLD=5
-AUTH_LOCKOUT_WINDOW_MINUTES=60
-AUTH_LOCKOUT_DURATION_MINUTES=60
-AUTH_IP_LOCKOUT_THRESHOLD=50
-AUTH_IP_LOCKOUT_WINDOW_MINUTES=10
-AUTH_IP_LOCKOUT_DURATION_MINUTES=10
-AUTH_JWKS_CACHE_SECONDS=300
-AUTH_JWKS_MAX_AGE_SECONDS=300
-AUTH_JWKS_ETAG_SALT=local-jwks-salt
-
-# Billing (set when ENABLE_BILLING=true)
-ENABLE_BILLING=false
-ENABLE_BILLING_STREAM=false
-ENABLE_BILLING_RETRY_WORKER=true
-ENABLE_BILLING_STREAM_REPLAY=true
-STRIPE_SECRET_KEY=
-STRIPE_WEBHOOK_SECRET=
-STRIPE_PRODUCT_PRICE_MAP={"starter":"price_xxx"}
-
-# Providers
-OPENAI_API_KEY=
-ANTHROPIC_API_KEY=
-GEMINI_API_KEY=
-XAI_API_KEY=
-
-# Email Delivery (Resend)
-RESEND_EMAIL_ENABLED=false
-RESEND_API_KEY=
-RESEND_DEFAULT_FROM=support@example.com
-RESEND_BASE_URL=https://api.resend.com
-RESEND_EMAIL_VERIFICATION_TEMPLATE_ID=
-RESEND_PASSWORD_RESET_TEMPLATE_ID=
-
-# Vault Transit (Starter Console sets true for staging/production)
-VAULT_VERIFY_ENABLED=false
-VAULT_ADDR=
-VAULT_TOKEN=
-VAULT_TRANSIT_KEY=auth-service
-```
-
-Flip `RESEND_EMAIL_ENABLED=true` only after you have verified the sender domain inside Resend and populated both `RESEND_API_KEY` and `RESEND_DEFAULT_FROM`. Leave the template ID and Vault fields empty for local development—the backend uses safe defaults until you enable those features—but treat every pepper/secret as mandatory before staging or production. As of November 2025 the API refuses to boot with `ENVIRONMENT` other than `development/dev/demo/test` (or with `DEBUG=false`) unless `VAULT_VERIFY_ENABLED=true` **and** the Vault fields are populated. The Starter Console wizard enforces this automatically for `--profile staging|production` runs, prompting for Vault Transit connectivity and writing the necessary env vars.
-
-### Unified Console (backend + frontend tooling)
-
-Prefer not to edit env files manually? Run the consolidated operator console:
-
-```bash
-starter-console setup wizard        # full interactive flow
-just cli cmd="setup wizard --profile=production"  # helper wrapper
-starter-console infra deps          # check Docker/Hatch/Node/pnpm availability
-starter-console infra compose up    # start Postgres + Redis via docker compose
-starter-console infra vault up      # run the Vault dev signer helper
-```
-
-The wizard now walks through profiles (demo/staging/production), captures required vs. optional secrets, verifies Vault Transit connectivity before enabling service-account issuance, validates Stripe/Redis/Resend inputs (with optional migration + seeding helpers), and records tenant/logging/GeoIP/signup policies so auditors can trace every decision. It writes `apps/api-service/.env.local` + `web-app/.env.local`, then emits a milestone-aligned report. Stripe provisioning and auth tooling now live exclusively under the consolidated console (`starter-console stripe …`, `starter-console auth …`).
-
-After the wizard, use the new `infra` command group instead of raw Just recipes:
-
-- `starter-console infra compose up|down|logs|ps` – wraps `just dev-*` helpers for Docker Compose.
-- `starter-console infra vault up|down|logs|verify` – manages the Vault dev signer lifecycle.
-- `starter-console config dump-schema --format table` – lists every backend env var, its default, and whether the wizard collected it. The full inventory also lives in `docs/trackers/CONSOLE_ENV_INVENTORY.md`.
-- `just cli-verify-env` – runs the inventory verification script to ensure the markdown table stays in sync with the runtime schema (useful in CI or before merging infra changes).
-- Every wizard run writes a JSON audit report (default `var/reports/setup-summary.json`; override via `--summary-path`) so you can archive the collected inputs alongside deployment artifacts.
-
-### 4. Run the Application
-
-```bash
-cd apps/api-service && hatch run serve
-```
-
-The API will be available at `http://localhost:8000`
-
-> **Compose vs. application env files**
-> - `.env.compose` (gitignored; copy from `.env.compose.example`) holds non-sensitive defaults that Docker Compose and local helpers consume (ports, default credentials, feature toggles). It is safe to edit locally.
-> - `apps/api-service/.env.local` (gitignored) contains your secrets and any overrides. The Make targets below source **both** files, so you never have to `export` variables manually.
-> - For demo development, `starter-console setup wizard --profile demo` keeps the Docker Postgres settings (`POSTGRES_*`) and `DATABASE_URL` consistent, and `just dev-up` respects `STARTER_LOCAL_DATABASE_MODE` (defaults to `compose`).
-
-### 5. Database & Migrations
-
-1. Start the infrastructure stack (Postgres + Redis) via the helper, which automatically sources `.env.compose` and your `apps/api-service/.env.local`:
-   ```bash
-   just dev-up
-   ```
-   *(Stop later with `just dev-down`. Data persists inside the `postgres-data` / `redis-data` volumes.)*
-2. Apply the baseline migration:
-   ```bash
-   just migrate
-   ```
-3. Generate new migrations as the schema evolves:
-   ```bash
-   # Autogenerate from model diffs; review the file before committing.
-   just migration-revision message="add widget table"
-
-   # If you truly need a hand-written migration, use Alembic directly:
-   cd apps/api-service && hatch run alembic revision -m "manual step"
-
-   # When concurrent work creates multiple heads, add a merge revision:
-   cd apps/api-service && hatch run alembic revision -m "merge heads" --head <head1> --splice --branch-label merge --from-version <head2>
-   ```
-4. Migration guardrails:
-   - `just migrate` now checks `alembic_version` for multiple rows before running; fix duplicates (or recreate the DB) if it fails.
-   - Always run `alembic upgrade heads` (already wrapped by the Just/Hatch scripts); avoid manual `alembic_version` edits or `stamp`.
-   - Use `depends_on` in a revision when a change must wait on another branch, and prefer merge revisions over deleting history.
-
-### 6. Seed a Local Admin User
-
-Once Postgres is running and the new auth tables are migrated, create a bootstrap user via the console (the Just recipes automatically load both `.env.compose` and `apps/api-service/.env.local`):
-
-```bash
-starter-console users seed --email admin@example.com --tenant-slug default --role admin
-```
-
-You will be prompted for the password unless you pass `--password`. The command ensures the tenant exists, hashes the password with the configured pepper, stores password history, and prints the resulting credentials for quick testing.
-
-### 7. Quality Checks
-
-Run the standard backend quality gates before opening a PR:
-
-```bash
-cd api-service
-python ../tools/check_secrets.py
 hatch run lint
 hatch run typecheck
-hatch run pyright
 hatch run test
 ```
 
-Targeted suites (faster, scoped runs):
-
+Targeted suites:
 ```bash
-cd api-service
-hatch run test:contract
+cd apps/api-service
+hatch run test:unit
 hatch run test:integration
 hatch run test:smoke
-hatch run test:manual
-hatch run test:unit-storage
-hatch run test:unit-storage-file tests/unit/storage/test_storage_azure_blob_provider.py
 ```
 
-### 8. Postgres Integration Smoke Tests
-
-Provision a Postgres instance (see step 5), then run:
+### OpenAPI export
+Use the console so the schema matches billing + fixtures:
 
 ```bash
-cd api-service
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/saas_starter_db \
-hatch run pytest tests/integration -m postgres
+cd packages/starter_console
+starter-console api export-openapi \
+  --output apps/api-service/.artifacts/openapi-fixtures.json \
+  --enable-billing \
+  --enable-test-fixtures
 ```
 
-The test suite creates a throwaway database, applies Alembic migrations, and verifies the Postgres conversation and billing repositories.
-
-> **Note:** Billing endpoints require Postgres. Configure `DATABASE_URL`, then flip `ENABLE_BILLING=true`; the app fails fast if durable storage or Stripe secrets are missing.
-
-### 9. Billing API (Postgres Only)
-
-Billing routes derive tenant identity/role from the JWT payload. Optional headers are still accepted for backwards compatibility, but they must **match or down-scope** the token claims:
-
-- `X-Tenant-Id` (optional): must match the `tenant_id` embedded in the access token if supplied.
-- `X-Tenant-Role` (optional): may request a lower role (`owner` > `admin` > `viewer`) but cannot elevate beyond what the token grants.
-
-Example: start a subscription (requires role `owner` or `admin`):
-
-```bash
-curl -X POST "http://localhost:8000/api/v1/billing/tenants/tenant-123/subscription" \
-     -H "Authorization: Bearer <token>" \
-     -H "X-Tenant-Id: tenant-123" \
-     -H "X-Tenant-Role: owner" \
-     -H "Content-Type: application/json" \
-     -d '{"plan_code": "starter", "billing_email": "owner@example.com", "auto_renew": true}'
-```
-
-Report usage (idempotent when `idempotency_key` repeated):
-
-```bash
-curl -X POST "http://localhost:8000/api/v1/billing/tenants/tenant-123/usage" \
-     -H "Authorization: Bearer <token>" \
-     -H "X-Tenant-Id: tenant-123" \
-     -H "X-Tenant-Role: admin" \
-     -H "Content-Type: application/json" \
-     -d '{"feature_key": "messages", "quantity": 120, "idempotency_key": "messages-2025-11-06"}'
-```
-
-#### Stripe configuration
-
-Billing routes now require Stripe credentials whenever `ENABLE_BILLING=true`. The quickest path is to run the consolidated operator console via `starter-console stripe setup` (aliased by `pnpm stripe:setup`), which prompts for your Stripe secret/webhook secrets, asks how much to charge for the Starter + Pro plans, and then creates/reuses the corresponding Stripe products/prices (7-day trial included). The console writes `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PRODUCT_PRICE_MAP` into `apps/api-service/.env.local` and flips `ENABLE_BILLING=true` for you. Prefer manual edits? You can still populate those keys yourself—just keep the JSON map in sync with your real Stripe price IDs. See `docs/billing/stripe-setup.md` for the full checklist.
-
-## 📈 Observability & Logging
-
-- FastAPI + worker entrypoints call `app.observability.logging.configure_logging(get_settings())`, which wires the JSON formatter and sinks declared via `LOGGING_SINKS` (comma-separated). Supported sinks: `stdout`, `file`, `datadog`, `otlp`, `none` (mutually exclusive). When the Starter Console flips `ENABLE_OTEL_COLLECTOR=true`, `LOGGING_OTLP_ENDPOINT` defaults to `http://otel-collector:4318/v1/logs`, so the app streams logs into the bundled OpenTelemetry Collector automatically. Set `LOGGING_DATADOG_API_KEY`/`LOGGING_DATADOG_SITE` or `LOGGING_OTLP_ENDPOINT` (+ optional `LOGGING_OTLP_HEADERS` JSON) before switching sinks; startup fails fast when configuration is incomplete.
-- Request middleware seeds a scoped `log_context`, so every `log_event(...)` down-stack inherits `correlation_id`, `tenant_id`, and `user_id` automatically. Background workers bind their own `worker_id`, ensuring Stripe replay jobs, Resend adapters, etc., land in the same pipeline. See `docs/architecture/structured-logging.md` for the canonical schema.
-- The bundled collector + exporter workflow is documented in `docs/observability/README.md`, including the env vars that control the collector container (`ENABLE_OTEL_COLLECTOR`, `OTEL_EXPORTER_SENTRY_*`, `OTEL_EXPORTER_DATADOG_*`, etc.) and how to forward logs to Sentry/Datadog in a few clicks.
-- Sample stdout entry:
-
-```json
-{
-  "ts": "2025-11-17T09:00:00.123Z",
-  "event": "http.response",
-  "level": "info",
-  "correlation_id": "3c6c72f0-3af7-4a40-b655-a1859d4373af",
-  "tenant_id": "tenant-42",
-  "user_id": "5f1a",
-  "status_code": 200,
-  "duration_ms": 42.1,
-  "fields": {
-    "status_code": 200,
-    "duration_ms": 42.1
-  }
-}
-```
-
-Every sink receives the same schema, so Datadog and OTLP collectors ingest identical payloads when enabled.
-
-## 🤖 Agent Types
-
-### Current Agents
-
-1. **Triage Agent** (Active)
-   - Main conversational interface
-   - Handles general queries
-   - Routes to specialized agents (future)
-   - Tools: time, conversation search
-
-2. **Code Assistant** (Ready to activate)
-   - Code review and debugging
-   - Architecture suggestions
-   - Best practices guidance
-
-3. **Data Analyst** (Ready to activate)
-   - Data interpretation
-   - Statistical analysis
-   - Visualization suggestions
-
-## 📡 API Endpoints
-
-### Chat with Agents
-
-```bash
-# Basic chat
-POST /api/v1/chat
-{
-  "message": "Hello, how can you help me?",
-  "agent_type": "triage",
-  "conversation_id": "optional-uuid"
-}
-
-# Streaming chat
-POST /api/v1/chat/stream
-# Returns Server-Sent Events stream
-
-> **Rate limits:** Chat and streaming endpoints enforce per-user quotas (`CHAT_RATE_LIMIT_PER_MINUTE`, `CHAT_STREAM_RATE_LIMIT_PER_MINUTE`) plus concurrent stream caps (`CHAT_STREAM_CONCURRENT_LIMIT`). Adjust these environment variables (see `apps/api-service/.env.local.example`) to tune throughput per environment and watch for HTTP 429 responses if callers exceed the limits.
-```
-
-### Conversation Management
-
-```bash
-# List conversations
-GET /api/v1/conversations
-
-# Get conversation history
-GET /api/v1/conversations/{conversation_id}
-
-# Clear conversation
-DELETE /api/v1/conversations/{conversation_id}
-```
-
-### Agent Management
-
-```bash
-# List available agents
-GET /api/v1/agents
-
-# Get agent status
-GET /api/v1/agents/{agent_name}/status
-```
-
-## 🔧 Extending to Multiagent System
-
-### Option 1: Activate Existing Specialized Agents
-
-Simply modify the triage agent's instructions to include handoffs:
-
-```python
-# In app/agents/triage/spec.py
-return AgentSpec(
-    key="triage",
-    display_name="Triage Assistant",
-    description="Primary triage assistant orchestrating handoffs.",
-    model_key="triage",
-    capabilities=("general", "search", "handoff"),
-    tool_keys=("get_current_time", "search_conversations"),
-    prompt_path=base_dir / "prompt.md.j2",
-    handoff_keys=("code_assistant", "researcher"),
-    # Optional per-target context policy.
-    handoff_context={"code_assistant": "last_turn", "researcher": "fresh"},
-)
-```
-
-### Option 2: Add New Specialized Agents
-
-```python
-# Add to AgentFactory._initialize_agents()
-self._agents["research_agent"] = Agent(
-    name="Research Specialist",
-    instructions="You specialize in research and fact-checking...",
-    tools=[web_search_tool, citation_tool]
-)
-```
-
-### Option 3: Agents as Tools Pattern
-
-```python
-# Use agents as tools instead of handoffs
-orchestrator = Agent(
-    name="Orchestrator",
-    tools=[
-        code_agent.as_tool("code_help", "Get coding assistance"),
-        data_agent.as_tool("data_analysis", "Analyze data")
-    ]
-)
-```
-
-## 🧪 Testing
-
-```bash
-# Run all tests
-pytest
-
-# Run agent-specific tests
-pytest tests/test_agents.py
-
-# Run with coverage
-pytest --cov=app tests/
-
-# Replay Stripe fixtures through the webhook + SSE stack
-just test-stripe
-
-# Validate and replay stored Stripe events (examples)
-just lint-stripe-fixtures
-just stripe-replay args="list --handler billing_sync --status failed"
-just stripe-replay args="replay --dispatch-id 7ad7c7bc-..."
-```
-
-## 🔄 Migration Path: Single → Multiagent
-
-### Phase 1: Single Agent (Current)
-- ✅ Triage agent handles all requests
-- ✅ Conversation management
-- ✅ Extensible architecture in place
-
-### Phase 2: Selective Handoffs
-- Activate specific specialized agents
-- Add handoff logic to triage agent
-- Minimal code changes required
-
-### Phase 3: Full Multiagent System
-- Multiple active agents
-- Complex routing logic
-- Agent-to-agent communication
-
-### Phase 4: Advanced Features
-- Dynamic agent creation
-- Agent learning and adaptation
-- Custom tool integration
-
-## 🎯 Example Usage
-
-### Simple Chat
-
-```python
-import requests
-
-response = requests.post("http://localhost:8000/api/v1/agents/chat", json={
-    "message": "Explain quantum computing in simple terms"
-})
-
-print(response.json()["response"])
-```
-
-### Conversation with Context
-
-```python
-# First message
-response1 = requests.post("http://localhost:8000/api/v1/agents/chat", json={
-    "message": "I'm working on a Python web app"
-})
-
-conversation_id = response1.json()["conversation_id"]
-
-# Follow-up with context
-response2 = requests.post("http://localhost:8000/api/v1/agents/chat", json={
-    "message": "What framework should I use?",
-    "conversation_id": conversation_id
-})
-```
-
-## 🚀 Deployment
-
-### Docker (Recommended)
-
-Use the production Dockerfile at `apps/api-service/Dockerfile`:
-
-```bash
-docker build -f apps/api-service/Dockerfile -t openai-agent-api .
-docker run --rm \
-  --env-file .env.compose \
-  --env-file apps/api-service/.env.local \
-  -v ./var/keys:/app/var/keys \
-  -p 8000:8000 \
-  openai-agent-api
-```
-
-See `docs/ops/container-deployments.md` for full-stack compose instructions.
-
-### Production Considerations
-
-- Use Redis for conversation storage
-- Implement proper authentication
-- Add rate limiting
-- Monitor agent performance
-- Set up logging and tracing
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Ensure all tests pass
-5. Submit a pull request
-
-## 📄 License
-
-MIT License - see LICENSE file for details.
+## Deployment
+- Dockerfile: `apps/api-service/Dockerfile`.
+- Production runbooks: `docs/ops/runbook-release.md`, `docs/ops/container-deployments.md`.
+- Migrations must be run as a one-off job (`just migrate` or `starter-console release db`).
 
 ---
 
-**Ready to build something amazing with AI agents? Start with the single agent and scale to multiagent systems as your needs grow!** 🚀 
-Run `python tools/check_secrets.py` (or add it to CI) to verify you replaced every placeholder secret before deploying. Production/staging boots will now fail fast if `ENVIRONMENT` isn’t a dev value and the defaults remain.
+If you’re extending the AI runtime, start with the agent and workflow guides above; if you’re changing SaaS platform behavior, use the runbooks to keep auth/billing/usage consistent across environments.

@@ -125,4 +125,4 @@ The test renders a one-off collector config, starts `otel/opentelemetry-collecto
 
 - You can keep using the bundled collector in production (deploy it alongside FastAPI) or point `LOGGING_OTLP_ENDPOINT` at your managed OpenTelemetry Collector / SaaS endpoint.
 - For production secrets, use the existing secrets-provider workflow (Vault, AWS Secrets Manager, Infisical, etc.) to template `.env` before rendering the collector config—never commit the generated file.
-- If you disable the bundled collector later, rerun the wizard (or edit `apps/api-service/.env.local`) to set `ENABLE_OTEL_COLLECTOR=false`. FastAPI can still log to any external OTLP endpoint—only the docker compose automation is tied to this flag.
+- If you disable the bundled collector, rerun the wizard (or edit `apps/api-service/.env.local`) to set `ENABLE_OTEL_COLLECTOR=false`. FastAPI can still log to any external OTLP endpoint—only the docker compose automation is tied to this flag.

@@ -140,11 +140,13 @@ If you need per-agent rollouts without code changes, prefer introducing a new `m
 ### Standard Tools
 These keys can be added to `tool_keys`:
 *   **`web_search`**: OpenAI hosted web search (requires `OPENAI_API_KEY`).
-*   **`file_search`**: RAG (Retrieval Augmented Generation) over vector stores.
-*   **`code_interpreter`**: Sandboxed Python execution environment.
-*   **`image_generation`**: DALL-E 3 image generation.
+*   **`file_search`**: RAG (Retrieval Augmented Generation) over vector stores (requires `OPENAI_API_KEY`).
+*   **`code_interpreter`**: Sandboxed Python execution environment (requires `OPENAI_API_KEY`).
+*   **`image_generation`**: OpenAI hosted image generation (requires `OPENAI_API_KEY`).
 *   **`get_current_time`**: Returns current UTC timestamp.
 *   **`search_conversations`**: Semantically search past chat history.
+
+Hosted OpenAI tools are only registered when `OPENAI_API_KEY` is set; if the key is missing, agents that list those tools will fail to start.
 
 ### Hosted MCP Tools
 You can add tools defined via the **Model Context Protocol** (MCP) without writing Python code. Configure the `MCP_TOOLS` environment variable (JSON), and the tools will automatically appear in the registry. **Note:** hosted MCP tools are only registered when `OPENAI_API_KEY` is set; without it they are skipped.

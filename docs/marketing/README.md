@@ -2,7 +2,7 @@
 
 _Last updated: November 14, 2025_
 
-Platform Foundations owns every marketing route (`/`, `/features`, `/pricing`, `/docs`, `/status`). This guide keeps copy, CTA wiring, and analytics consistent so future changes stay aligned with the code we just shipped.
+Platform Foundations owns every marketing route (`/`, `/features`, `/pricing`, `/docs`, `/status`). This guide keeps copy, CTA wiring, and analytics consistent so ongoing changes stay aligned with the shipped code.
 
 ## 1. Voice & Positioning
 - **Tone:** confident, operator-friendly, and action-oriented. Emphasize production readiness (GPT-5.1 agents, Ed25519 auth, billing automation) without hype.

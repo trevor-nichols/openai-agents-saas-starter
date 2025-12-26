@@ -1,14 +1,15 @@
 # OpenAI Agent Starter
 
-Production-ready starter kit for building AI Agent SaaS products. The repo bundles a FastAPI backend (OpenAI Agents SDK v0.6.1) and a Next.js 16 frontend, plus an operator-focused Starter Console that wires secrets, infrastructure, and env files in one flow.
+Production-ready starter kit for building AI Agent SaaS products. The repo bundles a FastAPI backend (OpenAI Agents SDK v0.6.4) and a Next.js 16 frontend, plus an operator-focused Starter Console that wires secrets, infrastructure, and env files in one flow.
 
 <img src="docs/assets/media/web-app.png" alt="OpenAI Agent Starter screenshots" width="1200" />
 
 ## Architecture At A Glance
-- **Backend** (`apps/api-service/`): FastAPI, async SQLAlchemy, Postgres + Redis (refresh tokens & billing), JWT auth, Alembic migrations, Ed25519 keys in `var/keys/`, OpenAI Agents SDK integrations, Stripe billing services.
-- **Frontend** (`apps/web-app/`): Next.js 16, TanStack Query, Shadcn UI, HeyAPI-generated client under `lib/api/client`.
+- **Backend** (`apps/api-service/`): FastAPI, async SQLAlchemy, Postgres + Redis (refresh-token cache, rate limits, billing streams), Ed25519 JWT auth, Alembic migrations, OpenAI Agents SDK integrations, Stripe billing services.
+- **Frontend** (`apps/web-app/`): Next.js 16 App Router with BFF routes under `app/api/v1`, TanStack Query, Shadcn UI, HeyAPI-generated client under `lib/api/client`, Storybook, Playwright/Vitest tests.
 - **Starter Console** (`packages/starter_console/`): Operator workflows (setup wizard, secrets onboarding, Stripe provisioning, auth tooling, infra helpers) with side-effect-free imports so CI/CD can run `starter-console`.
-- **Shared Contracts** (`packages/starter_contracts/`): Versioned provider/storage/secret contracts shared by the backend and Starter Console.
+- **Shared Contracts** (`packages/starter_contracts/`): Import-safe contracts for settings, secrets, storage, key management, provider validation, and structured logging shared by the backend and Starter Console.
+- **Starter Providers** (`packages/starter_providers/`): Concrete SDK clients (AWS Secrets Manager, Azure Key Vault, Infisical) used by backend + console while keeping contracts dependency-light.
 - **Docs & Trackers** (`docs/`): SDK references, frontend UI/data-access guides, console milestones, and project trackers.
 
 ## API Service Capabilities (FastAPI)
@@ -20,6 +21,7 @@ Production-ready starter kit for building AI Agent SaaS products. The repo bundl
 - **Containers (Code Interpreter)** — Per-tenant container management and agent bindings for OpenAI Code Interpreter. Supports explicit container IDs or auto-managed containers with configurable memory tiers and quotas.
 - **Storage + assets** — Tenant-scoped object storage with presigned uploads/downloads, Postgres metadata, and guardrails for MIME/size. Generated assets are tracked separately and linked to conversations/messages.
 - **Streaming** — Normalized SSE contract (`public_sse_v1`) for chat + workflow streams, including tool events, reasoning parts, and lifecycle markers for frontend rendering.
+- **Auth + SaaS controls** — Ed25519 JWTs, refresh-token rotation, MFA, tenant context enforcement, signup policy (public/invite/approval), Stripe billing + usage guardrails.
 
 ## Hosting & Infrastructure Options
 - **Compute/runtime** — FastAPI ASGI service + optional worker process. Supports single-instance or multi-replica deployments; billing retry/stream workers can run inline or as a dedicated deployment to avoid double-processing.
@@ -46,6 +48,7 @@ apps/
 packages/
   starter_console/          # operator console
   starter_contracts/    # shared contracts
+  starter_providers/    # shared cloud SDK clients
 tools/                  # shared scripts (typecheck, smoke, moduleviz, vault helpers)
 var/                    # runtime artifacts (keys, logs, reports) — gitignored
 .env.compose(.example)  # docker compose defaults
@@ -56,7 +59,7 @@ tsconfig.scripts.json   # TS config for repo scripts
 See `docs/architecture/repo-layout.md` for rules and ownership. Hosting reference docs live in `docs/ops/hosting-overview.md`.
 
 ## Quick Command Map (Just)
-- `just api` / `just migrate` / `just migration-revision "msg"` – backend serve + migrations (delegates to `api-service/justfile`).
+- `just api` / `just migrate` / `just migration-revision "msg"` – backend serve + migrations (delegates to `apps/api-service/justfile`).
 - `just backend-lint | backend-typecheck | backend-test` – backend quality gates.
 - `just cli-lint | cli-typecheck | cli-test` – Starter Console quality gates.
 - `just contracts-lint | contracts-typecheck | contracts-test` – contracts package gates.
@@ -71,7 +74,7 @@ See `docs/architecture/repo-layout.md` for rules and ownership. Hosting referenc
 | Python | 3.11+ | Recommended: install via `uv python install 3.11`. |
 | Hatch | 1.16+ | Recommended: `uv tool install --python 3.11 hatch` (or `pipx install hatch`). |
 | Node.js | 22+ | Paired with `pnpm` for the Next.js app. |
-| pnpm | 8+ | `pnpm install` in `apps/web-app/`. |
+| pnpm | 10+ | `pnpm install` in `apps/web-app/` (repo pins `pnpm@10.15.0`). |
 | just | Latest | Task runner replacing the old Makefile; install via `brew install just` or `sudo apt-get install just`. |
 | Docker & Compose v2 | — | Used by Just recipes for Postgres/Redis/Vault. |
 | Terraform | 1.14.x | Required for `ops/infra/*` reference blueprints (pinned in `.tool-versions`). |
@@ -128,6 +131,13 @@ See `docs/architecture/repo-layout.md` for rules and ownership. Hosting referenc
   ```
   Env is pulled from `apps/web-app/.env.local`. Follow `docs/frontend/data-access.md` and `docs/frontend/ui/components.md` for feature architecture and Shadcn usage.
 
+## Web App Notes
+- **BFF boundary:** Browser code only calls `/api/...` routes in the Next.js app. Never call the FastAPI base URL directly from the browser.
+- **OpenAPI client:** `pnpm generate` refreshes `lib/api/client` from `apps/api-service/.artifacts/openapi.json`. Use `pnpm generate:fixtures` when you need test-fixture endpoints.
+- **Storybook:** `pnpm storybook` (dev) or `pnpm storybook:build` (static bundle).
+- **Tests:** `pnpm lint`, `pnpm type-check`, `pnpm test` (Vitest), `pnpm test:e2e` (Playwright). Seed Playwright fixtures with `pnpm test:seed`.
+- **Logs:** Frontend dev logs are written to `var/log/current/frontend/all.log` and `var/log/current/frontend/error.log`.
+
 ## Starter Console Highlights
 All commands run via `cd packages/starter_console && starter-console …` or repo-root `just cli cmd='…'`.
 - `setup wizard` – milestone-based env bootstrap (Secrets → Providers → Observability → Signup → Frontend).
@@ -139,7 +149,17 @@ All commands run via `cd packages/starter_console && starter-console …` or rep
 - `config dump-schema` – audits every FastAPI setting with env alias, default, type, and wizard coverage.
 - `home` / `doctor` – probe-driven health with TUI. Probes are grouped by category (core, secrets, billing) and can be suppressed intentionally via `EXPECT_API_DOWN`, `EXPECT_FRONTEND_DOWN`, `EXPECT_DB_DOWN`, `EXPECT_REDIS_DOWN` (logged once at startup, not shown in the TUI). Services panel collapses when it would duplicate backend/frontend probes; probes remain the source of truth in TUI and JSON/Markdown reports.
 
-Refer to `starter_console/README.md` for detailed flags, answers-file formats, and contribution rules (imports must stay side-effect free; new env knobs require inventory + tracker updates).
+## TUI (Starter Console)
+![Starter Console TUI](docs/assets/media/tui.png)
+
+The Textual TUI is the default console experience when you run `starter-console` without arguments. It provides a navigable hub for setup, infra controls, provider onboarding, Stripe flows, status ops, and health probes.
+
+Refer to `packages/starter_console/README.md` for detailed flags, answers-file formats, and contribution rules (imports must stay side-effect free; new env knobs require inventory + tracker updates).
+
+## Shared Packages (Contracts + Providers)
+- `packages/starter_contracts` – protocols and dataclasses for secrets/storage providers, key storage helpers (Ed25519 + JWKS), provider validation, and structured logging primitives. This keeps the backend and console aligned without circular imports.
+- `packages/starter_providers` – concrete SDK clients for secrets providers (AWS Secrets Manager, Azure Key Vault, Infisical). Network calls happen only when methods are invoked, keeping imports side-effect free.
+- When adding a new provider capability, update the contracts + provider validation + docs (`docs/ops/provider-parity.md`) together.
 
 ## Automation & Reporting
 - `setup wizard` now supports automation toggles (`--auto-infra`, `--auto-secrets`, `--auto-stripe`) plus dependency-aware gating so you can spin up Docker/Redis, manage the local Vault dev signer, and run Stripe provisioning directly from the console.
@@ -155,11 +175,17 @@ Refer to `starter_console/README.md` for detailed flags, answers-file formats, a
 - Redis is dual-use: refresh-token cache and billing event transport. Coordinate settings through the wizard or `apps/api-service/.env.local`.
 - Secrets live in `var/keys/`; Vault workflows (`just vault-up`, `just verify-vault`) help issue signed tokens locally.
 - Tests are SQLite + fakeredis by default (`conftest.py`); avoid leaking env mutations between tests.
-- Backend edits → `cd apps/api-service && hatch run lint` & `hatch run pyright`; frontend edits → `cd apps/web-app && pnpm lint` & `pnpm type-check`.
+- Backend edits → `cd apps/api-service && hatch run lint` & `hatch run typecheck`; frontend edits → `cd apps/web-app && pnpm lint` & `pnpm type-check`.
 
 ## Key References
-- `starter_console/README.md` – Starter Console deep dive, command catalog.
-- `SNAPSHOT.md` / `starter_console/SNAPSHOT.md` – architecture overviews for the repo and console.
+- `packages/starter_console/README.md` – Starter Console deep dive, command catalog.
+- `apps/api-service/README.md` – API runtime + SaaS architecture guide.
+- `apps/web-app/README.md` – frontend architecture, data access rules, and test/storybook commands.
+- `apps/api-service/src/app/agents/README.md` – agent spec and tooling reference.
+- `apps/api-service/src/app/workflows/README.md` – workflow spec and execution reference.
+- `packages/starter_contracts/README.md` – shared contracts surface and boundaries.
+- `packages/starter_providers/README.md` – provider SDK clients and usage.
+- `SNAPSHOT.md` / `packages/starter_console/SNAPSHOT.md` – architecture overviews for the repo and console.
 - `docs/openai-agents-sdk/` – SDK reference + integration patterns.
 - `docs/frontend/data-access.md` & `docs/frontend/ui/components.md` – frontend architecture + component inventory.
 - `docs/trackers/CONSOLE_MILESTONE.md` – console roadmap and status.
@@ -168,4 +194,4 @@ Refer to `starter_console/README.md` for detailed flags, answers-file formats, a
 - `starter-console usage sync-entitlements` – console helper that syncs `var/reports/usage-entitlements.json` into `plan_features` so guardrails enforce the latest plan limits.
 - `justfile` – curated commands for API, migrations, infra, Stripe tooling, and CLI invocation.
 
-> Future sections can expand on backend internals, service boundaries, and frontend feature guides as they are reviewed. For now, use this README as the top-level map and follow the linked docs for deeper dives.
+Use this README as the top-level map and follow the linked docs for deeper dives.

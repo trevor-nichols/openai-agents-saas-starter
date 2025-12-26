@@ -21,7 +21,7 @@
 ## How to respond
 - Projection errors/conflicts: check api-service logs around inserts; confirm `response_id`/`sequence_no` inputs; look for IntegrityErrors.
 - Latency: inspect DB load, slow queries, index health; verify `ix_agent_run_events_conv_seq` exists and vacuum/analyze recency.
-- Drift: confirm the conversation is still active; if mismatch persists and backfill is introduced in future, reproject that conversation. For now (greenfield) drift should stay at zero.
+- Drift: confirm the conversation is still active; if mismatch persists, reproject that conversation. In greenfield environments drift should stay at zero.
 
 ## Retention & cleanup
 - TTL defaults: `RUN_EVENTS_TTL_DAYS=180` (prod), `RUN_EVENTS_TTL_DAYS=30` (staging/dev recommended via env files).

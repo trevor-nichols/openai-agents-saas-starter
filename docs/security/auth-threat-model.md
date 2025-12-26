@@ -1,6 +1,6 @@
-# EdDSA Authentication Threat Model (Draft)
+# EdDSA Authentication Threat Model
 
-**Status:** In Review (covers AUTH-001 human login scope)  
+**Status:** Approved  
 **Last Updated:** 2025-11-07  
 **Owners:** Platform Security Guild · Backend Auth Pod
 
@@ -9,27 +9,27 @@
 ## 1. Purpose & Scope
 
 - Replace the demo HS256 authentication implementation with an enterprise-grade Ed25519 JWT stack.  
-- Define trust boundaries, consumers, and required security controls before implementation work (AUTH-002 → AUTH-006).  
+- Define trust boundaries, consumers, and required security controls for the Ed25519 JWT implementation (AUTH-002 → AUTH-006).  
 - Capture human login threat considerations outlined in `docs/auth/idp.md` while still excluding long-term external IdP procurement and broader secret-storage infrastructure.
 
 ## 2. System Context
 
 ### 2.1 Current Token Producers
-- `api-service/src/app/api/v1/auth/router.py` issues access tokens from `/auth/token` and `/auth/refresh` using `create_access_token`; both rely on static HS256 secrets today and will migrate to AuthService once EdDSA lands.  
-- `api-service/src/app/core/security.py` holds token creation logic (`create_access_token`) and shared secret configuration via `get_settings()`.  
-- No additional services mint tokens; CLI utilities or background jobs are not yet present.
+- `api-service/src/app/api/v1/auth/router.py` issues access tokens from `/auth/token` and `/auth/refresh` using `create_access_token` with EdDSA signing.  
+- `api-service/src/app/core/security.py` holds token creation logic (`create_access_token`) and Ed25519 keyset configuration via `get_settings()`.  
+- No additional services mint human access tokens; CLI utilities issue service-account tokens only.
 
 ### 2.2 Current Token Consumers
 - `api-service/src/app/core/security.py:get_current_user` verifies incoming bearer tokens and extracts claims for request-scoped context.  
 - `api-service/src/app/api/dependencies/auth.py:require_current_user` exposes `get_current_user` as a FastAPI dependency for routers.  
 - `api-service/src/app/api/v1/auth/router.py` uses `require_current_user` to protect `/auth/refresh` and `/auth/me`.  
-- `api-service/src/app/api/dependencies/tenant.py` imports `require_current_user` to attach tenant context, preparing multi-tenant routing once auth hardening is complete.
+- `api-service/src/app/api/dependencies/tenant.py` imports `require_current_user` to attach tenant context for multi-tenant routing.
 
-### 2.3 Near-Term & External Consumers (Planned)
-- FastAPI routers under `api-service/src/app/api/v1/` (agents, chat, billing, conversations) are expected to depend on `require_current_user` after AUTH-003, enforcing per-tenant authorization.  
-- The Next.js frontend (`web-app`) will consume the access token for API calls and fetch JWKS (`/.well-known/jwks.json`) for client-side introspection as needed.  
-- Internal services (analytics, billing pipelines) will verify tokens against the published JWKS; requirements captured in `docs/architecture/authentication-ed25519.md`.  
-- Operational tooling (key-generation CLI, observability jobs) will call into the forthcoming KeySet and revocation stores to manage key lifecycle.
+### 2.3 External Consumers
+- FastAPI routers under `api-service/src/app/api/v1/` (agents, chat, billing, conversations) depend on `require_current_user` to enforce per-tenant authorization.  
+- The Next.js frontend (`web-app`) calls the BFF routes and relies on JWT session cookies; JWKS (`/.well-known/jwks.json`) is available for internal tooling and service-to-service verification.  
+- Internal services (analytics, billing pipelines) verify tokens against the published JWKS; requirements captured in `docs/architecture/authentication-ed25519.md`.  
+- Operational tooling (key-generation CLI, observability jobs) uses KeySet and revocation stores to manage key lifecycle.
 
 ## 3. Assets & Trust Boundaries
 
@@ -46,7 +46,7 @@
 ### 3.2 Supporting Components
 
 - **FastAPI Application Tier:** Hosts issuance endpoints (`/api/v1/auth/token`, `/auth/refresh`), JWKS responder (`/.well-known/jwks.json`), and verification dependencies (`require_current_user`, tenant context). Runs inside the application VPC with access to secret mounts, Redis, and Postgres.  
-- **Next.js Frontend:** Receives access/refresh tokens, stores access token in memory (or secure cookie once hardened), and invokes backend APIs. Will trigger JWKS refresh through shared client utilities.  
+- **Next.js Frontend:** Receives access/refresh tokens via secure cookies and invokes backend APIs through the BFF. JWKS is consumed by internal services and tooling rather than the browser bundle.  
 - **Internal Services & Jobs:** Billing, analytics, and streaming workers that will validate JWTs using JWKS and call revocation APIs for break-glass operations.  
 - **Secret Manager / Sealed Volume:** Authoritative store for private key material; the key-generation CLI writes here, runtime reads read-only.  
 - **Postgres (Primary DB):** Persists refresh tokens, revocation history, and audit trails requiring durability.  
@@ -83,9 +83,9 @@
 | **Information Disclosure** | Application logs/metrics capture bearer tokens or key material | Access tokens, refresh tokens, Ed25519 keys | Credential leakage enabling replay or offline attacks | Logging middleware scrubs `Authorization` headers and token payloads; observability schema restricts sensitive fields; CI secret-scanning and linting enforce instrumentation hygiene; privacy reviews before shipping telemetry changes. |
 | **Denial of Service** | Redis outage prevents revocation checks | Revocation registry | Refresh token rotation fails open/closed | Implement circuit breaker: fallback to Postgres with timeout; if both unavailable, fail safe (deny refresh) and alert; autoscaling and health probes for cache. |
 | **Denial of Service** | Flood of JWKS requests or token validation attempts | JWKS endpoint, token service | Resource exhaustion, legitimate requests dropped | Rate limiting at edge (≤5 req/sec/IP for JWKS); CDN caching; async verification with bounded worker pool; metrics-based autoscaling triggers. |
-| **Elevation of Privilege** | Tenant header manipulation to escalate privileges | Tenant context, claims | Cross-tenant data exposure | Tenant ID derived from token claim, not headers, once EdDSA flow lands; until then, enforce server-side validation and anomaly alerts; introduce policy checks in AuthService and routers. |
+| **Elevation of Privilege** | Tenant header manipulation to escalate privileges | Tenant context, claims | Cross-tenant data exposure | Tenant ID derived from token claim, not headers; enforce server-side validation and anomaly alerts; policy checks in AuthService and routers. |
 | **Elevation of Privilege** | Compromised pipeline deploys backdoored auth service | Build pipeline, container registry | Silent token minting/backdoor | Signed container images; dependency scanning; CI attestation; runtime admission policy verifying signatures before deploy. |
-| **Spoofing** | Credential stuffing against human login endpoint | User credentials, tenant memberships | Unauthorized access to user accounts | Password policy + bcrypt w/ pepper (per `docs/auth/idp.md`), Redis-backed per-user + per-IP rate limits, automatic lockout after 5 failures/hour, SOC alerts on threshold breach, CAPTCHA/mfa hooks flagged for IDP-005. |
+| **Spoofing** | Credential stuffing against human login endpoint | User credentials, tenant memberships | Unauthorized access to user accounts | Password policy + bcrypt w/ pepper (per `docs/auth/idp.md`), Redis-backed per-user + per-IP rate limits, automatic lockout after 5 failures/hour, SOC alerts on threshold breach, MFA enforcement hooks. |
 | **Spoofing** | Password reuse with leaked credentials from other services | User credentials | Compromised accounts despite unique tenant | Password history + zxcvbn scoring, haveibeenpwned-style breach-check on reset, forced reset + notification, optional external IdP enforcement via SCIM attributes. |
 | **Denial of Service** | Lockout abuse (attacker repeatedly guesses password to freeze account) | User availability, tenant productivity | Legitimate users blocked, support load | Distinguish soft vs hard lockouts, notify user/admin on lock, provide rate-limited unlock API requiring verified email/MFA, SOC monitoring for repeated IP/Subnet abuse, allow break-glass admin override. |
 | **Elevation of Privilege** | Tenant escalation by replaying refresh token from different tenant context | Refresh tokens, tenant claims | Cross-tenant data access after login | Bind refresh tokens to `tenant_id` + device fingerprint; rotation-on-use with mismatch detection; lock account + alert when mismatch occurs; require explicit tenant selection for multi-tenant users. |
@@ -106,7 +106,7 @@
 ### 5.3 Verification & Consumption
 - R7. Verification pipeline (`TokenVerifier`) must enforce `alg=EdDSA` and validate `kid` against cached JWKS; tokens with unknown or retired `kid` fail closed.  
 - R8. Enforce strict claim validation: issuer exact match, audience membership, `nbf`/`exp` skew tolerances, tenant scoping, and `token_use` gating for refresh endpoints.  
-- R9. Tenant context dependencies must derive tenant identity from token claims rather than headers once the new flow ships; headers become hints only.
+- R9. Tenant context dependencies must derive tenant identity from token claims rather than headers; headers are treated as hints only.
 
 ### 5.4 Refresh & Revocation
 - R10. Persist refresh tokens hashed with salted one-way function; store metadata (`jti`, tenant, device hash, expiry) in Postgres and cache in Redis.  
@@ -132,20 +132,13 @@
 - R23. Run periodic fire-drill exercises validating the ability to revoke and replace keys within SLA.  
 - R24. Include auth pipeline in continuous vulnerability scanning (dependencies and base images) and apply patches within defined timelines.
 
-## 6. Open Questions & Next Actions
+## 6. Decisions & Operational Notes
 
-### 6.1 Resolved Decisions
+### Decisions
 - **Multi-region signer policy:** Primary region runs the active signer; secondary regions load the `next` key in standby and promote only via documented failover SOP (`docs/architecture/authentication-ed25519.md`, §9).
-- **Device fingerprint binding:** Refresh tokens persist a hashed device fingerprint; mismatches trigger rejection unless a future trusted-device flow overrides (same doc, §9).
-- **JWKS access posture:** Endpoint remains publicly readable with edge rate limiting and audit logging; mTLS intentionally deferred per current blueprint (§9).
+- **Device fingerprint binding:** Refresh tokens persist a hashed device fingerprint; mismatches trigger rejection. No trusted-device override is enabled in this release.
+- **JWKS access posture:** Endpoint remains publicly readable with edge rate limiting and audit logging; mTLS is not enabled in this release.
 - **Revocation cache strategy:** Redis is the primary revocation cache with TTL aligned to refresh token lifetime and Postgres authoritative fallback (`docs/architecture/authentication-ed25519.md`, §9).
 - **Scope taxonomy:** Scopes standardized to `billing:read`, `billing:manage`, `conversations:read`, `conversations:write`, `conversations:delete`, `tools:read`, `support:*`; read-only surfaces require the relevant `*:read` scope, mutations require `*:write`/`billing:manage`/`conversations:delete`.
 - **Service-account issuance:** Non-interactive consumers receive tenant-scoped refresh tokens through AuthService using Vault-managed service-account credentials and a CLI/CI helper; no STS exchange in v1.
-- **Frontend refresh tokens:** SPA stores access tokens in memory; refresh tokens are delivered solely via secure, HTTP-only, SameSite=Strict cookies with no client-side JWKS introspection in the initial rollout.
-
-### 6.2 Outstanding Actions
-- Finalize `auth_audience` default configuration reflecting approved identifiers (`agent-api`, `analytics-service`, `billing-worker`, `support-console`, `synthetic-monitor`).
-- Define AuthService CLI/CI helper specification and workflow for service-account token issuance ahead of AUTH-002 delivery.
-- Implement scope enforcement hooks in routers during AUTH-003, aligning with the standardized taxonomy.
-
-> **Next Step:** Circulate this document, collect stakeholder sign-off, and baseline controls before committing to implementation tasks.
+- **Frontend refresh tokens:** SPA stores access tokens in memory; refresh tokens are delivered solely via secure, HTTP-only, SameSite=Strict cookies with no client-side JWKS introspection.

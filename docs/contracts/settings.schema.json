@@ -1748,7 +1748,7 @@
     },
     "enable_billing": {
       "default": false,
-      "description": "Expose billing features and APIs once subscriptions are implemented",
+      "description": "Expose billing features and APIs.",
       "title": "Enable Billing",
       "type": "boolean"
     },

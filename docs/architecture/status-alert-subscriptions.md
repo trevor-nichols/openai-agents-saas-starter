@@ -181,31 +181,22 @@ Soft delete (status → `revoked`). Requires email-token auth (link in unsubscri
 ### Status Page CTA
 - `features/marketing/status/StatusExperience.tsx` renders the `StatusAlertsCard`, verification/unsubscribe banners, and CTA instrumentation now that the POST endpoint is live.
 - Component responsibilities:
-  - Email-only lead capture for public visitors (webhook mode deferred to tenant settings).
+  - Email-only lead capture for public visitors; webhook subscriptions are not exposed in the UI.
   - Uses `useStatusSubscriptionMutation` hook (TanStack Query) that wraps `POST /api/v1/status/subscriptions`.
   - Surfaces success toast + inline copy showing next steps (verify email, respond to unsubscribe link).
   - Falls back to linking the RSS feed while the mutation is pending/failed to maintain UX continuity.
 
-### Account Settings (Future)
-- Authenticated tenants can manage subscriptions under `/account/service-accounts` or a new `/account/status` tab using the `GET/DELETE` endpoints.
+### Account Settings
+- Tenant-managed status subscription controls are not exposed in the web app. Use the Starter Console or API endpoints for operator workflows.
 
 ## 7. Security & Compliance Notes
 - **Email Verification**: tokens expire after 24h; subsequent attempts rotate the token and resend email.
 - **Webhook Signing**: each subscription stores `webhook_secret` (32 bytes). Every delivery includes headers `X-Status-Signature` and `X-Status-Timestamp`. Clients verify HMAC and freshness.
 - **PII Handling**: `target` encrypted at rest via existing Vault transit helper; only masked version ever leaves the server.
 - **Rate Limiting**: `POST /` is limited to 5 attempts/hour per IP for public users, 30/hour for authenticated tenants.
-- **RBAC**: `status:manage` scope already exists for platform operators; extend tenant admin role to include it when the feature flag is enabled.
+- **RBAC**: `status:manage` scope exists for platform operators; tenant admin roles are not granted this scope by default.
 
-## 8. Open Questions & Decisions
-1. **Webhook template customization** – Keep the payload standardized for GA. Custom templates introduce extra signing/validation paths and complicate incident triage. Revisit only if enterprise tenants request it at scale.
-2. **Manual resend controls** – Provide a minimal CLI command (`starter-console status incidents resend --incident <id> [--tenant <id>]`) for platform operators. This re-enqueues the last published incident through the dispatcher, giving ops an audited escape hatch without UI work.
-3. **reCAPTCHA / bot mitigation** – Launch without reCAPTCHA. IP rate limits + double opt-in already curb abuse. Keep a feature flag in the POST handler so we can bolt on Cloudflare Turnstile or reCAPTCHA v3 later if marketing sees spam.
-
-## 9. Next Steps
-- ✅ Document contract (this file).  
-- ✅ Record decisions for webhook templates, resend controls, and captcha.  
-- ✅ Align on storage + create `status_subscriptions` table (2025-11-12).  
-- ✅ Scaffold FastAPI endpoints, Pydantic models, and service layer (2025-11-12).  
-- ✅ Implement Postgres repository + rate-limit enforcement (2025-11-12).  
-- ✅ Add `StatusAlertDispatcher` worker + CLI resend/list commands (2025-11-12).  
-- ✅ Update `/status` CTA + TanStack mutation once backend scaffolding landed (2025-11-17).
+## 8. Decisions
+1. **Webhook template customization** – Keep the payload standardized for GA. Custom templates introduce extra signing/validation paths and complicate incident triage.
+2. **Manual resend controls** – Use `starter-console status incidents resend --incident <id> [--tenant <id>]` for operator resend workflows. The command re-enqueues the last published incident through the dispatcher.
+3. **reCAPTCHA / bot mitigation** – reCAPTCHA is not enabled in this release. IP rate limits + double opt-in are the supported protections.

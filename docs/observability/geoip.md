@@ -47,7 +47,7 @@ All providers honor the shared cache knobs: `GEOIP_CACHE_TTL_SECONDS`, `GEOIP_CA
 
 ## 5. Retention & Compliance
 - **Retention target:** 90 days of session history. Use the existing session retention job (tracked separately) to prune records beyond the SLA.
-- **Opt-out:** set `GEOIP_PROVIDER=none` or (future) `GEOIP_STORE_LOCATION=false` per tenant if regulators require zero storage.
+- **Opt-out:** set `GEOIP_PROVIDER=none` if regulators require zero storage. Per-tenant storage disabling is not supported in this release.
 - **PII handling:** structured logs should not include raw IP addresses once enrichment succeeds; only hashed/masked addresses remain in the repository.
 
 ## 6. Monitoring & Alerting
@@ -60,4 +60,4 @@ All providers honor the shared cache knobs: `GEOIP_CACHE_TTL_SECONDS`, `GEOIP_CA
 - MaxMind automation reuses the supplied license key to pull `GeoLite2-City` bundles—rerun the wizard (or call the helper module) during cron-based refreshes.
 - Audit output (`var/reports/setup-summary.json`) captures the provider + path decisions so infra reviews can trace who enabled GeoIP enrichment per environment.
 
-Refer back to this playbook whenever you add new providers or adjust retention policies; keep the table and guidance in sync with future OBS issues.
+Refer back to this playbook whenever you add new providers or adjust retention policies; keep the table and guidance in sync with OBS updates.

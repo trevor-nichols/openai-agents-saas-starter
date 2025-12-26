@@ -2,7 +2,7 @@
 
 **Last Updated:** 2025-11-06  
 **Owner:** Platform Security Guild  
-**Status:** Draft (awaiting AUTH-001 threat-model review)
+**Status:** Approved
 
 ## 1. Goals & Non-Goals
 
@@ -13,16 +13,16 @@
 - Provide predictable, auditable behaviour with first-class observability and testing.
 
 ### Non-Goals
-- Implementing a user identity provider or UI flows (assume upstream IdP or local user store already exists/arrives later).
+- Implementing a user identity provider or UI flows (assume upstream IdP or local user store already exists).
 - Adding OAuth/OIDC flows beyond JWT issuance and verification.
 - Building secret-storage infrastructure; we integrate with an existing sealed volume or secret manager abstraction.
 
 ## 2. Current Context
 
-- `api-service/src/app/core/security.py` currently issues HS256 tokens with static `secret_key` and bcrypt password helpers.
-- No dedicated key lifecycle, no JWKS publication, and no revocation/rotation support.
-- Tests live under `api-service/tests` with mixed unit/integration coverage, minimal fixtures for auth.
-- Milestone tracker `MILESTONE_AUTH_EDDSA_TRACKER.md` defines high-level work items AUTH-001…AUTH-006 that this document elaborates.
+- `api-service/src/app/core/security.py` issues EdDSA tokens with Ed25519 keysets and exposes JWT helpers for access/refresh flows.
+- JWKS is published at `/.well-known/jwks.json` and key rotation is managed via the CLI.
+- Tests live under `api-service/tests` with unit/contract coverage for auth primitives and repositories.
+- The milestone tracker `MILESTONE_AUTH_EDDSA_TRACKER.md` records historical rollout work for AUTH-001…AUTH-006.
 
 ## 3. Architectural Overview
 
@@ -52,7 +52,7 @@
 
 ### Key Components
 
-- **AuthService (new)**: Lives under `app/services/auth_service.py`. Coordinates token issuance, refresh, revocation, and introspection. Depends on domain abstractions, not concrete crypto.
+- **AuthService**: Lives under `app/services/auth_service.py`. Coordinates token issuance, refresh, revocation, and introspection. Depends on domain abstractions, not concrete crypto.
 - **Key Management Module (`app/core/keys.py`)**: Loads the single active Ed25519 key, materializes JWK payloads, and persists material to either the filesystem or the Vault KV-backed secret manager adapter (`app/infrastructure/security/vault_kv.py`).
 - **Refresh Token Store (`app/infrastructure/persistence/auth/`)**: Postgres + Redis repository for refresh-token reuse and revocation. `ServiceAccountToken` rows capture tenant/account/scope tuples, while `RedisRefreshTokenCache` accelerates lookups for `force=False` reuse from `AuthService`.
 - **Signer/Verifier Interfaces**: `app/core/security.py` exposes `TokenSigner`/`TokenVerifier` abstractions backed by Ed25519 key material from `KeySet`, enforcing `alg=EdDSA` while always using the lone active signing key.
@@ -64,7 +64,7 @@
 
 ## 4. Data & Configuration
 
-### Claims Schema (draft)
+### Claims Schema
 - `iss` (string) — issuer, defaults to `settings.auth_issuer`.
 - `aud` (array|string) — consumers; enforce per-client values.
 - `sub` (uuid|string) — principal identifier.
@@ -86,7 +86,7 @@
 - `signup_rate_limit_per_hour` / `_per_ip_day` / `_per_email_day` / `_per_domain_day` — layered quotas enforced before touching the database. Defaults (20/hr, 100/day, 3/email-day, 20/domain-day) can be tuned via the CLI wizard.
 - `signup_concurrent_requests_limit` — caps outstanding approval requests per IP (default 3) by counting pending rows before inserting another submission.
 - Honeypot + UA fingerprinting — `/auth/request-access` accepts a hidden honeypot input and stores a SHA-256 hash of the user agent so operators can correlate noisy bots without keeping raw fingerprints.
-- Additional knobs (`auth_issuer`, TTLs) will land with the AUTH-003 service refactor.
+- Additional knobs (`auth_issuer`, TTLs) are managed in the security settings module.
 
 ### Persistence Schema (AUTH-002/AUTH-003)
 - `service_account_tokens` — captures issued refresh tokens for service-account tuples with columns `(account, tenant_id, scope_key, scopes JSON, refresh_token_hash, refresh_jti, signing_kid, fingerprint, issued_at, expires_at, revoked_at, revoked_reason)`. `refresh_token_hash` stores the bcrypt(+pepper) digest; `signing_kid` records which Ed25519 key produced the token so reuse logic can deterministically reconstruct the same JWS even after rotations. The partial unique index enforces a single active token per `(account, tenant_id, scope_key)` tuple, while Redis (`auth:refresh:*`) mirrors the latest active row (plaintext, TTL-scoped) for low-latency reuse.
@@ -112,11 +112,11 @@
 
 ## 6. Testing & Quality Strategy
 
-- **Directory Layout** (restructure as part of AUTH-003 prerequisite):
+- **Directory Layout**:
   - `tests/unit/` — pure unit tests (e.g., TokenClaims validation, KeySet rotation logic).
   - `tests/integration/` — existing DB-backed suites (rename/migrate current integration suite here).
   - `tests/contract/` — FastAPI endpoint tests using TestClient with Redis/Postgres doubles (fakeredis + sqlite).
-  - `tests/e2e/` (optional later) — docker-compose driven smoke tests.
+  - `tests/e2e/` (optional) — docker-compose driven smoke tests.
 - **Fixtures**: Create shared fixtures under `tests/conftest.py` for fake key storage, Redis-backed revocation store (fakeredis), and token factories.
 - **Coverage**: Enable `pytest --cov=app --cov-report=xml` in CI; fail if coverage for `app/core/security.py`, `app/core/keys.py`, and `app/services/auth_service.py` < 90%.
 - **Static Analysis**: Update Ruff profile to flag insecure JWT usage (`flake8-bandit` rule S320 equivalent) and ensure `algorithms` arg enforced.
@@ -159,23 +159,22 @@ Any other exception bubbles up as a 500 and emits the `signup.*` structured log 
 
 | Milestone Item | Key Deliverables Here |
 | -------------- | --------------------- |
-| AUTH-001 | Sections 1–5 inform threat-model workshop; update after review. |
+| AUTH-001 | Sections 1–5 align with threat-model workshop outcomes. |
 | AUTH-002 | Sections 3 & 4 define KeySet and storage interfaces. |
 | AUTH-003 | Sections 3, 5, and 6 detail service refactor and required tests. |
 | AUTH-004 | Section 3 (JWKS) + Section 7 (caching/logging). |
 | AUTH-005 | Section 7 enumerates observability requirements. |
 | AUTH-006 | Sections 5 (rotation) and 7 (runbooks) guide rollout. |
 
-## 9. Open Questions
+## 9. Operational Considerations
 - **Multi-region replication**: Keys replicate across regions via existing secret manager; single active signer per region with documented failover to promote the standby region's "next" key.
-- **Refresh token/device binding**: Refresh tokens store a device fingerprint hash; mismatched fingerprints trigger rejection unless a future trusted-device flow overrides.
+- **Refresh token/device binding**: Refresh tokens store a device fingerprint hash; mismatched fingerprints trigger rejection. No trusted-device override is enabled in this release.
 - **JWKS access control**: JWKS remains publicly readable with edge rate limiting (5 req/sec/IP) and audit logging rather than mTLS.
 - **Revocation cache backend**: Redis serves as primary revocation cache with TTL equal to refresh token lifetime; Postgres fallback if Redis unavailable.
-- **Test suite layout**: Restructure tests into `tests/unit`, `tests/contract`, and `tests/integration` prior to auth implementation; enforce coverage gates in CI accordingly.
+- **Test suite layout**: Tests follow `tests/unit`, `tests/contract`, and `tests/integration`; enforce coverage gates in CI.
 - **Scope taxonomy**: Version 1 scopes standardized to `billing:read`, `billing:manage`, `conversations:read`, `conversations:write`, `conversations:delete`, `tools:read`, `support:*`; read-only endpoints gate on `* :read` scopes, mutations on `* :write`/`billing:manage` and `conversations:delete`.
 - **Service-account issuance**: Non-interactive consumers obtain tenant-scoped refresh tokens via AuthService using managed Vault credentials and a CLI/CI helper; no STS exchange required in v1.
 
-> **Next Action:** Review in AUTH-001 workshop, assign owners to answer open questions, and update this blueprint before implementation sprints begin.
 
 ## 10. Service Wiring & Testing Guidelines
 

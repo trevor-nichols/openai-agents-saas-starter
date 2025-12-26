@@ -5,7 +5,8 @@ Owner: Frontend Platform (Account & Security workstream)
 
 ## 1. Context & Goals
 
-- Route: `app/(app)/account/sessions/page.tsx`
+- Route: `app/(app)/(shell)/account/page.tsx` (tab `sessions`)
+- Panel: `features/account/components/SessionsPanel.tsx`
 - Objective: provide a transparent, actionable list of active sessions/devices with revoke controls that mirror backend capabilities.
 - Success signals:
   - Users can see device/location metadata, last activity, and whether a session is the current one.
@@ -24,16 +25,16 @@ Owner: Frontend Platform (Account & Security workstream)
 
 | Need | Source | Hook/Action | Notes |
 | ---- | ------ | ----------- | ----- |
-| Session list | `/api/auth/sessions` (GET) | `useUserSessionsQuery` (new) | Accepts pagination params (offset/limit) + optional include_revoked toggle; default limit 10. |
-| Revoke session | `/api/auth/sessions/{id}` (DELETE) | `useRevokeSessionMutation` | Takes session ID, optimistic update removes row. |
-| Logout all | `/api/auth/logout/all` (POST) | `useLogoutAllSessionsMutation` | After success, table refetches. |
+| Session list | `/api/v1/auth/sessions` (GET) | `useUserSessionsQuery` | Accepts pagination params (offset/limit) + optional include_revoked toggle; Sessions UI uses `limit=50`. |
+| Revoke session | `/api/v1/auth/sessions/{id}` (DELETE) | `useRevokeSessionMutation` | Takes session ID and invalidates the query cache. |
+| Logout all | `/api/v1/auth/logout/all` (POST) | `useLogoutAllSessionsMutation` | After success, table refetches. |
 | Current session ID | `useAccountProfileQuery` / session payload | `useAccountProfileQuery` | Highlight current session row. |
 
 Implementation notes:
 - API helper under `lib/api/accountSessions.ts` to wrap the above endpoints.
 - Query helpers in `lib/queries/accountSessions.ts` using TanStack Query.
 - Data-table columns: device (fallback from user agent), IP/geo, last active, created, status, actions.
-- Pagination: simple `limit=10`, `offset` via data-table pagination controls; start with client-side state since API already supports limit/offset.
+- Pagination: the UI uses a fixed limit and does not render pagination controls. Limit/offset are available if paging is required.
 
 ## 4. Component Layout
 
@@ -42,7 +43,7 @@ Implementation notes:
 | Sessions summary (cards: active count, last logout-all) |
 |--------------------------------------------------------|
 | Sessions Data Table (GlassPanel + DataTable kit)       |
-|  - Toolbar (search/filter placeholder, logout-all btn) |
+|  - Toolbar (tenant filter + logout-all btn) |
 ———————————————————————————————————————————
 ```
 
@@ -61,8 +62,8 @@ Implementation notes:
   - Status (Active / Revoked with `InlineTag` tone).
   - Actions (revoke button, disabled on current session).
 - Toolbar:
+  - Tenant filter: All tenants / Current tenant / Specific tenant ID.
   - `Button` variant `destructive` labeled “Sign out everywhere”, triggers logout-all mutation (with confirm dialog).
-  - Search box placeholder (wired later once API supports filtering).
 
 ### 4.3 Empty/Error States
 - If no sessions, show `EmptyState` with copy “No active sessions—sign in from another device to see it here.”
@@ -70,12 +71,12 @@ Implementation notes:
 
 ## 5. Interaction & State Handling
 
-- `useUserSessionsQuery` manages pagination state (`page`, `pageSize`).
-- Revoking a row triggers optimistic update: remove the session locally, then refetch on success.
+- `useUserSessionsQuery` uses limit/offset parameters; the Sessions UI passes a fixed limit.
+- Revoking a row invalidates the sessions query and refetches.
 - Logout-all clears the table via refetch; show success toast (“Signed out of X sessions” using response payload).
-- Current session row uses `profile.raw.session?.session_id` for highlighting and disables revoke action.
+- Current session rows are marked by the backend `current` flag and disable revoke.
 - Confirmations: show `AlertDialog` before calling logout-all.
-- Analytics stub (`account_sessions_action`) for revoke/logout-all events (future).
+- Analytics events for revoke/logout-all are not emitted in this release.
 
 ## 6. Acceptance & Test Plan
 
@@ -92,9 +93,9 @@ Implementation notes:
 
 ## 7. Decisions & Follow-Ups
 
-1. **Filtering/search** – Deferred. Keep toolbar hooks ready but don’t ship client-side filtering until the API exposes first-party query params.
-2. **Revoked sessions** – Hide them for v1 (keep `include_revoked=false`). We’ll add a toggle + grayed-out rows when audit mode is prioritized.
+1. **Tenant scope** – The toolbar allows filtering by all tenants, the current tenant, or a specific tenant ID. Session queries pass `tenantId` accordingly.
+2. **Revoked sessions** – Hidden in this release (`include_revoked=false`). Audit-mode visibility is intentionally not exposed in the UI.
 3. **Single-session confirmation** – No modal; a direct click + toast is sufficient. Logout-all retains the confirmation dialog.
-4. **Logout-all feedback** – Use the `{ revoked: number }` payload from `/auth/logout/all` to show the exact count in the success toast.
+4. **Logout-all feedback** – Use the `{ revoked: number }` payload from `/api/v1/auth/logout/all` to show the exact count in the success toast.
 
-> Update tracker/spec if these assumptions change once backend capabilities expand.
+Keep this spec aligned with backend capabilities.

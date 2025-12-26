@@ -235,7 +235,6 @@ Dashboards should chart:
 3. Redis SSE freshness – bookmark timestamp vs. `now()`, plus consumer error logs.
 4. Billing stream payload schema (subscription/invoice panels) so operators can visually confirm normalized snapshots per tenant during incidents.
 
-## TODOs / Open Items
+## Dashboard Notes
 
-- Build Grafana dashboard panels for the billing stream payload (subscription vs. invoice vs. usage) to visualize tenant activity.
-- Evaluate dedicated worker process vs. in-app task once STRIPE-05 streaming load tests complete.
+- The dashboards described above are part of the production monitoring baseline and should ship alongside any billing-enabled deployment.

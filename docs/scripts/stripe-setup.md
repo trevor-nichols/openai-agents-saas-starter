@@ -4,8 +4,8 @@
 
 ## Prerequisites
 
-- Python 3.11+ with access to the repository’s virtual environment (install with `pip install '.[dev]'` or `pip install stripe` at minimum).
-- Stripe CLI installed (`stripe --version`). The assistant can open the guided auth page and run `stripe login --interactive` for you.
+- Python 3.11+ with the repo console environment (`just python-bootstrap` + `cd packages/starter_console && hatch env create` or `just dev-install`).
+- Stripe CLI installed and authenticated (`stripe --version`, then `stripe login --interactive`).
 - Docker + `just` if you want the helper to launch the local Postgres stack via `just dev-up`.
 - A Stripe account that can create API keys, webhook endpoints, products, and prices.
 
@@ -17,7 +17,7 @@ pnpm stripe:setup   # invokes starter-console stripe setup
 
 ### What happens during the run?
 
-1. **Stripe CLI check** – Verifies installation/auth. If auth is missing it can open <https://dashboard.stripe.com/stripe-cli/auth> and run `stripe login --interactive` inline.
+1. **Stripe CLI check** – Verifies installation/auth. If auth is missing, it can open the guided auth page and run `stripe login --interactive`.
 2. **Postgres helper** – Offers to run `just dev-up` and (optionally) executes a `psql` smoke test against your `DATABASE_URL` (discovered from `apps/api-service/.env.local`, `apps/api-service/.env`, `.env.compose`, or manual input).
 3. **Stripe provisioning** – Prompts for `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and the monthly price for each plan. Using the official Stripe SDK it:
    - creates (or updates) the `starter` and `pro` products,
@@ -52,8 +52,7 @@ If a step fails (missing CLI, Docker unavailable, `psql` not installed, or Strip
 
 The FastAPI startup guard (STRIPE-01) still requires `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PRODUCT_PRICE_MAP` whenever `ENABLE_BILLING=true`. Running `pnpm stripe:setup` guarantees those values are present, validated, and tied to real Stripe products/prices.
 
-## Extending the helper
+## Operational notes
 
+- The helper is idempotent: rerunning it reuses products/prices tagged with `metadata["starter_console_plan_code"]` so you don’t accumulate duplicates.
 - STRIPE-03/04/05 build on the same configuration; no additional Stripe setup is required once this script completes successfully.
-- The script is intentionally idempotent: rerunning it reuses products/prices tagged with `metadata["starter_console_plan_code"]` so you won’t accumulate duplicates.
-- Contributions welcome—see `starter_console/commands/stripe.py` for implementation details or to add additional plan types in the future.
