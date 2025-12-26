@@ -23,9 +23,22 @@ from .sections import NAV_GROUPS, NavGroupSpec, SectionSpec, iter_sections
 class StarterTUI(App[None]):
     """Textual hub for the Starter Console."""
 
+    TITLE = "Starter Console"
+    SUB_TITLE = ""
+
     CSS: ClassVar[str] = """
     Screen {
         layout: vertical;
+    }
+
+    Header {
+        background: $panel;
+        color: $text;
+    }
+
+    HeaderTitle {
+        text-style: bold;
+        color: $text;
     }
 
     #shell {
@@ -104,6 +117,8 @@ class StarterTUI(App[None]):
 
     .context-panel {
         border: tall $panel-darken-1;
+        background: $panel;
+        color: $text;
         padding: 1;
         margin-bottom: 1;
     }
@@ -125,6 +140,11 @@ class StarterTUI(App[None]):
     .context-label {
         padding-right: 1;
         color: $text-muted;
+    }
+
+    .context-panel DataTable {
+        background: $surface;
+        color: $text;
     }
 
     .home-actions {
@@ -265,8 +285,17 @@ class StarterTUI(App[None]):
         yield Footer()
 
     def on_mount(self) -> None:
-        self.title = "Starter Console"
+        self.theme = "textual-dark"
         self._activate_section(self._initial_key, update_nav=True)
+
+    def on_ready(self) -> None:
+        # Ensure the Header picks up title/subtitle after it has mounted.
+        self.title = "Starter Console"
+        if self.screen is not None:
+            self.screen.title = self.title
+        switcher = self.query_one("#content-switcher", ContentSwitcher)
+        current = switcher.current or self._initial_key
+        self._activate_section(current, update_nav=False)
 
     def on_tree_node_selected(self, event: Tree.NodeSelected[SectionSpec]) -> None:
         section = event.node.data
@@ -344,6 +373,8 @@ class StarterTUI(App[None]):
         switcher.current = key
         section = self._sections[self._section_index[key]]
         self.sub_title = section.label
+        if self.screen is not None:
+            self.screen.sub_title = section.label
 
     def _bind_section_shortcuts(self) -> None:
         reserved = {_binding_key(binding) for binding in self.BINDINGS}
