@@ -37,34 +37,48 @@ jobs:
           python -m pip install --upgrade pip
           pip install hatch pip-audit cyclonedx-bom
 
-      - name: Create Hatch environment
-        run: hatch env create
-
       - name: Build wheel artifacts
-        run: hatch build -t wheel
-
-      - name: Python dependency audit (pip-audit)
         run: |
-          hatch run pip-audit --progress-spinner off --format cyclonedx-json --output backend-sbom.json
+          mkdir -p dist
+          for pkg in starter_contracts starter_console starter_providers; do
+            (cd "packages/${pkg}" && hatch build -t wheel)
+            cp "packages/${pkg}/dist/"*.whl dist/
+          done
+
+      - name: Python SBOMs (pip-audit)
+        run: |
+          set -euo pipefail
+          for pkg in starter_contracts starter_console starter_providers; do
+            venv_dir="$(mktemp -d)"
+            python -m venv "${venv_dir}/venv"
+            source "${venv_dir}/venv/bin/activate"
+            python -m pip install --upgrade pip pip-audit
+            python -m pip install "packages/${pkg}/dist/"*.whl
+            pip-audit --progress-spinner off --format cyclonedx-json --output "${pkg}-sbom.json"
+            deactivate
+            rm -rf "${venv_dir}"
+          done
 
       - name: Install frontend dependencies
-        working-directory: web-app
+        working-directory: apps/web-app
         run: pnpm install --frozen-lockfile
 
       - name: Node dependency audit
-        working-directory: web-app
+        working-directory: apps/web-app
         run: pnpm audit --audit-level=high
 
       - name: Node SBOM (CycloneDX)
-        working-directory: web-app
-        run: pnpm dlx @cyclonedx/cdxgen -o ../frontend-sbom.json -t javascript --no-analytics
+        working-directory: apps/web-app
+        run: pnpm dlx @cyclonedx/cdxgen -o ../../frontend-sbom.json -t javascript --no-analytics
 
       - name: Publish GitHub Release assets
         uses: softprops/action-gh-release@v1
         with:
           files: |
             dist/*.whl
-            backend-sbom.json
+            starter_contracts-sbom.json
+            starter_console-sbom.json
+            starter_providers-sbom.json
             frontend-sbom.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
