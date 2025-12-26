@@ -9,38 +9,38 @@ from .config import SmokeConfig
 
 
 async def apply_test_fixtures(client: httpx.AsyncClient, cfg: SmokeConfig) -> Dict[str, Any]:
-    payload = {
-        "tenants": [
+    tenant_payload: Dict[str, Any] = {
+        "slug": cfg.tenant_slug,
+        "name": cfg.tenant_name,
+        "users": [
             {
-                "slug": cfg.tenant_slug,
-                "name": cfg.tenant_name,
-                "plan_code": "pro",
-                "billing_email": cfg.admin_email,
-                "users": [
-                    {
-                        "email": cfg.admin_email,
-                        "password": cfg.admin_password,
-                        "display_name": "Smoke Admin",
-                        "role": "owner",
-                        "verify_email": True,
-                    }
-                ],
-                "conversations": [
-                    {
-                        "key": cfg.fixture_conversation_key,
-                        "status": "archived",
-                        "agent_entrypoint": "default",
-                        "user_email": cfg.admin_email,
-                        "messages": [
-                            {"role": "user", "text": "hello"},
-                            {"role": "assistant", "text": "hi there"},
-                        ],
-                    }
-                ],
-                "usage": [],
+                "email": cfg.admin_email,
+                "password": cfg.admin_password,
+                "display_name": "Smoke Admin",
+                "role": "owner",
+                "verify_email": True,
             }
-        ]
+        ],
+        "conversations": [
+            {
+                "key": cfg.fixture_conversation_key,
+                "status": "archived",
+                "agent_entrypoint": "default",
+                "user_email": cfg.admin_email,
+                "messages": [
+                    {"role": "user", "text": "hello"},
+                    {"role": "assistant", "text": "hi there"},
+                ],
+            }
+        ],
+        "usage": [],
     }
+
+    if cfg.enable_billing:
+        tenant_payload["plan_code"] = "pro"
+        tenant_payload["billing_email"] = cfg.admin_email
+
+    payload = {"tenants": [tenant_payload]}
 
     response = await client.post("/api/v1/test-fixtures/apply", json=payload)
 
