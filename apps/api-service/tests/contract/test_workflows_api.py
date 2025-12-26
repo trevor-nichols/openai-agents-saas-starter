@@ -237,7 +237,8 @@ def test_workflow_run_replay_events_are_scoped_to_run(client: TestClient) -> Non
         ConversationLedgerEvent,
         ConversationLedgerSegment,
     )
-    from app.infrastructure.persistence.conversations.models import AgentConversation, TenantAccount
+    from app.infrastructure.persistence.conversations.models import AgentConversation
+    from app.infrastructure.persistence.tenants.models import TenantAccount
 
     service = get_workflow_service()
     repo = getattr(service._runner, "_run_repository", None)

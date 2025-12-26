@@ -1,7 +1,7 @@
 You are a professional engineer and developer in charge of the OpenAI Agent SaaS Starter Codebase. The OpenAI Agent SaaS Starter Codebase contains a Next.js 16 frontend and a FastAPI backend. The FastAPI backend is based on the latest new OpenAI Agents SDK (v0.6.1) and uses the brand new OpenAI models (gpt-5.1, gpt-5.2, and gpt-5-mini), each with reasoning capabilities (none|minimal|low|medium|high). 
 
 # Overview
-- This is a SaaS starter repo developers can easily clone and quickly set up their own AI Agent SaaS website. It is a pre-release (no data this and has not been distributed) which you are responsible for getting production ready for release.
+- This is a SaaS starter repo developers can easily clone and quickly set up their own AI Agent SaaS website. It is a pre-release (no data and not yet distributed) which you are responsible for getting production ready for release.
 
 ## Backend
 - Request auth funnels through FastAPI dependencies into JWT-backed services
@@ -26,7 +26,7 @@ You are a professional engineer and developer in charge of the OpenAI Agent SaaS
   - Never bypass `just migrate` or edit `alembic_version` directly; fix multi-heads with merge revisions, not deletes.
 
 ### Workflow orchestration (API service)
-- Declarative specs live in `api-service/src/app/workflows/**/spec.py`. You can define either a flat `steps` list (legacy) or explicit `stages`.
+- Declarative specs live in `api-service/src/app/workflows/**/spec.py`. You can define either a flat `steps` list or explicit `stages`.
 - `WorkflowStage` supports `mode="sequential"` or `mode="parallel"` plus an optional `reducer` (`outputs, prior_steps -> next_input`) for fan-out/fan-in.
 - `WorkflowStep` retains guard + input_mapper hooks and per-step `max_turns`. Registry validation ensures agent keys exist and, unless `allow_handoff_agents=True`, blocks handoff-enabled agents.
 - Runner wraps executions in `agents.trace`, tags step records and SSE events with `stage_name` / `parallel_group` / `branch_index`, and uses reducers to merge parallel outputs before downstream stages.
@@ -44,7 +44,7 @@ You are a professional engineer and developer in charge of the OpenAI Agent SaaS
 - **Contract docs + goldens:** the spec lives in `docs/contracts/public-sse-streaming/v1.md`; examples live in `docs/contracts/public-sse-streaming/examples/*.ndjson` and are enforced by `apps/api-service/tests/contract/streams/test_stream_goldens.py` (assertions in `apps/api-service/tests/utils/stream_assertions.py`).
 - **Coverage tracking:** `docs/integrations/openai-responses-api/streaming-events/coverage-matrix.md` tracks raw provider events → public SSE events, usage, and fixture coverage.
 - **When changing streaming:** update schema (`apps/api-service/src/app/api/v1/shared/streaming.py`) + projector(s) (`apps/api-service/src/app/api/v1/shared/public_stream_projector/**`), add/adjust a golden NDJSON fixture + assertions, then regenerate OpenAPI + TS client:
-  - `cd packages/starter_cli && python -m starter_cli.app api export-openapi --output apps/api-service/.artifacts/openapi-fixtures.json --enable-billing --enable-test-fixtures`
+  - `cd packages/starter_console && starter-console api export-openapi --output apps/api-service/.artifacts/openapi-fixtures.json --enable-billing --enable-test-fixtures`
   - `cd apps/web-app && OPENAPI_INPUT=../api-service/.artifacts/openapi-fixtures.json pnpm generate:fixtures`
 
 ## Frontend
@@ -59,7 +59,7 @@ You are a professional engineer and developer in charge of the OpenAI Agent SaaS
 
 ### OpenAPI + SDK regeneration
 - Export superset schema (billing + test fixtures) from repo root:
-  - `cd packages/starter_cli && python -m starter_cli.app api export-openapi --output apps/api-service/.artifacts/openapi-fixtures.json --enable-billing --enable-test-fixtures` (paths are resolved from the repo root, so skip leading `../`)
+  - `cd packages/starter_console && starter-console api export-openapi --output apps/api-service/.artifacts/openapi-fixtures.json --enable-billing --enable-test-fixtures` (paths are resolved from the repo root, so skip leading `../`)
 - Regenerate the frontend client offline using that artifact:
   - `cd apps/web-app && OPENAPI_INPUT=../api-service/.artifacts/openapi-fixtures.json pnpm generate:fixtures`
   - Output is written to `apps/web-app/lib/api/client/`.
@@ -110,48 +110,49 @@ You are a professional engineer and developer in charge of the OpenAI Agent SaaS
 - `app/(group)/_components/` – route-group chrome/layout (e.g., marketing header/footer, auth card). Keep close to the pages they serve.
 - Rule of thumb: generic everywhere → `ui`; cross-page domain → `features`; single route-group shell → `app/(group)/_components`.
 
-## CLI Charter – Starter CLI (SC)
-- **Purpose:** The SC is the single operator entrypoint for provisioning secrets, wiring third-party providers, generating env files for both the FastAPI backend and the Next.js frontend, and exporting audit artifacts. It replaces the legacy branding from earlier iterations.
-- **Boundaries:** SC never imports `api-service/src/app` modules directly. Shared logic (key generation, schema validation) must live in neutral `starter_contracts/*` modules to keep imports acyclic and to allow the CLI to run without initializing the server stack.
+## Console Charter – Starter Console (SC)
+- **Purpose:** The SC is the single operator entrypoint for provisioning secrets, wiring third-party providers, generating env files for both the FastAPI backend and the Next.js frontend, and exporting audit artifacts. It uses the current Starter Console branding.
+- **Boundaries:** SC never imports `api-service/src/app` modules directly. Shared logic (key generation, schema validation) must live in neutral `starter_contracts/*` modules to keep imports acyclic and to allow the console to run without initializing the server stack.
 - **Execution modes:** Every workflow supports interactive prompts for first-time operators and headless execution via flags (`--non-interactive`, `--answers-file`, `--var`) so CI/CD can drive the same flows deterministically.
-- **Testing contract:** Importing `python -m starter_cli.app` must be side-effect free (no DB/Vault connections). Unit tests stub network calls, and the repo-root `conftest.py` enforces SQLite/fakeredis overrides for all CLI modules.
-- **Ownership & roadmap:** Platform Foundations owns the CLI. Work is tracked in `docs/trackers/CLI_MILESTONE.md` with phases for rebrand, config extraction, adapter rewrites, hermetic testing, and CI guardrails. Any new CLI feature must update that tracker before merge.
-- **Operator guide:** Day-to-day workflows and command references live in `starter_cli/README.md`.
+- **Testing contract:** Importing `starter-console` must be side-effect free (no DB/Vault connections). Unit tests stub network calls, and the repo-root `conftest.py` enforces SQLite/fakeredis overrides for all console modules.
+- **Ownership & roadmap:** Platform Foundations owns the console. Work is tracked in `docs/trackers/CONSOLE_MILESTONE.md` with phases for rebrand, config extraction, adapter rewrites, hermetic testing, and CI guardrails. Any new console feature must update that tracker before merge.
+- **Operator guide:** Day-to-day workflows and command references live in `starter_console/README.md`.
 - **Python install standard (dev vs prod):**
-  - Dev: run `just dev-install` once from repo root (performs `pip install -e packages/starter_contracts` and `pip install -e packages/starter_cli`). Afterwards, use `python -m starter_cli.app …` from repo root—no `PYTHONPATH` or hatch required.
-  - Prod/CI: build wheels and install non-editable (`pip wheel packages/starter_contracts packages/starter_cli -w dist` then `pip install dist/starter_contracts-*.whl dist/starter_cli-*.whl`).
+  - Dev: run `just dev-install` once from repo root (performs `pip install -e packages/starter_contracts` and `pip install -e packages/starter_console`). Afterwards, use `starter-console …` from repo root—no `PYTHONPATH` or hatch required.
+  - Prod/CI: build wheels and install non-editable (`pip wheel packages/starter_contracts packages/starter_console -w dist` then `pip install dist/starter_contracts-*.whl dist/starter_console-*.whl`).
 
 # Development Guidelines
 - You must maintain a professional clean architecture, referring to the documentations of the OpenAI Agents SDK and the `docs/openai-agents-sdk` and `docs/integrations/openai-responses-api` directories during development in order to ensure you abide by the latest API framework. 
-- Avoid feature gates/flags and any backwards compability changes - since our app is still unreleased
+- Avoid feature gates/flags and any backward compatibility changes - since our app is still unreleased
 - **After Your Edits**
   - **Backend**: Run `hatch run lint` and `hatch run typecheck` (Pyright + Mypy) after all edits in backend; CI blocks merges on `hatch run typecheck`, so keep it green locally.
-  - **Fronted**: Run `pnpm lint` and `pnpm type-check` after all edits in frontend to ensure there are no errors
+  - **Frontend**: Run `pnpm lint` and `pnpm type-check` after all edits in frontend to ensure there are no errors
+  - **Console**: Run `cd packages/starter_console && hatch run lint` and `cd packages/starter_console && hatch run typecheck` after all console edits to keep the package green.
 - Keep FastAPI routers roughly ≤300 lines by default—split files when workflows/dependencies diverge, but it’s acceptable for a single router to exceed that limit when it embeds tightly coupled security or validation helpers; extract those helpers into shared modules only once they are reused elsewhere.
 - Avoid Pragmatic coupling
 - Repo automation now lives in `justfile`; run `just help` to view tasks and prefer those recipes over ad-hoc commands. Use the Just recipes for infra + DB tasks (e.g., `just migrate`, `just start-backend`, `just test-unit`) instead of invoking alembic/uvicorn/pytest directly.
 
 # Test Environment Contract
-- `conftest.py` at the repository root forces the entire pytest run onto SQLite + fakeredis and disables billing/auto migrations. **Do not** remove or bypass this file; any new package (CLI included) must behave correctly when those overrides are in effect.
+- `conftest.py` at the repository root forces the entire pytest run onto SQLite + fakeredis and disables billing/auto migrations. **Do not** remove or bypass this file; any new package (console included) must behave correctly when those overrides are in effect.
 - Run backend tests inside the hatch env (`cd apps/api-service && hatch run test …`) or `hatch shell`; invoking `pytest` with the host interpreter can miss dev extras like `fakeredis` even if they’re installed elsewhere.
 - Any test that mutates `os.environ` must snapshot and restore the original values to avoid leaking state into other suites. Use the helpers in `api-service/tests/conftest.py` or mimic their pattern.
-- When adding CLI modules, ensure module import has no side effects (e.g., avoid calling `get_settings()` or hitting the database at import time). If you need settings, fetch them inside the handler after env overrides have loaded.
+- When adding console modules, ensure module import has no side effects (e.g., avoid calling `get_settings()` or hitting the database at import time). If you need settings, fetch them inside the handler after env overrides have loaded.
 - Postgres integration suites (`tests/integration/test_postgres_migrations.py`) remain skipped unless `USE_REAL_POSTGRES=true`; leave this off for local/unit CI runs so we never accidentally hit a developer's Postgres instance.
 
 # Notes
-- Throughout the codebase you will see SNAPSHOT.md files. These files contain architectural documentation using directory trees with inline comments to help you understand and navigate the project efficiently. You can update these by running `cb tree-sync /path/to/directory --snapshot SNAPSHOT.md --yes` (outside of .venv) to sync the tree with the latest changes.
+- Throughout the codebase you will see SNAPSHOT.md files. These files contain architectural documentation using directory trees with inline comments to help you understand and navigate the project efficiently. You can update these by running `cb tree-sync-batch -y` (outside of .venv) to sync the tree with the latest changes.
 - Refer to `docs/trackers/` for the latest status of the codebase. Keep these trackers up to date with the latest changes and status of the codebase.
 - When applying database migrations or generating new ones, always use the Just recipes (`just migrate`, `just migration-revision message="..."`) so your `apps/api-service/.env.local` secrets and `.env.compose` values are loaded consistently. These wrappers take care of wiring Alembic to the right Postgres instance (local Docker or remote) without manual exports.
-- Need to test Vault Transit locally? Use `just vault-up` to start the dev signer, `just verify-vault` to run the CLI issuance smoke test, and `just vault-down` when you’re done. Details live in `docs/security/vault-transit-signing.md`.
-- Thishe repo hasn’t shipped a “stable” release yet, so we don’t carry any backward-compat baggage.
+- Need to test Vault Transit locally? Use `just vault-up` to start the dev signer, `just verify-vault` to run the console issuance smoke test, and `just vault-down` when you’re done. Details live in `docs/security/vault-transit-signing.md`.
+- This repo hasn’t shipped a “stable” release yet, so we don’t carry any backward-compat baggage.
 - When you come across a situation where you need the latest documentation, use your web search tool
 
 ## Local Logs (one place)
 - All local logs live under `var/log/<YYYY-MM-DD>/` at the repo root (`var/log/current` points to today).
-- Backend (FastAPI): `var/log/current/api/all.log` and `error.log` (requires `LOGGING_SINK=file`, set in `apps/api-service/.env.local`).
+- Backend (FastAPI): `var/log/current/api/all.log` and `error.log` (requires `LOGGING_SINKS=file`, set in `apps/api-service/.env.local`).
 - Frontend (Next dev): `var/log/current/frontend/all.log` and `error.log` via the bundled log tee used by `pnpm dev`.
-- CLI (detached runs): `var/log/current/cli/*.log` per process when started with `just start-dev -- --detached`.
-- Quick tail: `python -m starter_cli.app logs tail --service api --service frontend --errors`.
+- Console (CLI/TUI): `var/log/current/starter-console/all.log` and `error.log` when `CONSOLE_LOGGING_SINKS` includes `file` (default); Textual debug logs additionally write to `starter-console/textual.log` when `TEXTUAL_LOG` is set.
+- Quick tail: `starter-console logs tail --service api --service frontend --service starter-console --errors`.
 
 # Codebase Patterns
 <patterns>
@@ -190,9 +191,10 @@ openai-agents-saas-starter/
 │       ├── public/                # Static assets
 │       └── justfile               # App-scoped tasks
 ├── packages/                      # Shared Python libraries (reused across apps)
-│   ├── starter_cli/               # Operator CLI (Typer/Rich TUI, setup wizard, probes, tests)
+│   ├── starter_console/               # Operator console (Typer/Rich TUI, setup wizard, probes, tests)
 │   │   └── justfile               # Package-scoped tasks
-│   └── starter_contracts/         # Shared contracts/models/config used by CLI + backend (tests, py.typed)
+│   ├── starter_contracts/         # Shared contracts/models/config used by console + backend (tests, py.typed)
+│   └── starter_providers/         # Cloud provider SDK helpers shared across the backend and the Starter Console.
 ├── ops/                           # Local infra configs
 │   ├── compose/                   # Docker compose stacks (vault/minio/etc.)
 │   └── observability/             # Collector/config generation helpers

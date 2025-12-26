@@ -73,6 +73,29 @@ def workflow_context_from_meta(meta: Mapping[str, Any] | None) -> WorkflowContex
     )
 
 
+def agent_tool_names_from_meta(meta: Mapping[str, Any] | None) -> set[str]:
+    if not meta:
+        return set()
+    raw = meta.get("agent_tool_names")
+    if not isinstance(raw, list):
+        return set()
+    names = {name for name in raw if isinstance(name, str) and name}
+    return names
+
+
+def agent_tool_name_map_from_meta(meta: Mapping[str, Any] | None) -> dict[str, str]:
+    if not meta:
+        return {}
+    raw = meta.get("agent_tool_name_map")
+    if not isinstance(raw, Mapping):
+        return {}
+    return {
+        key: value
+        for key, value in raw.items()
+        if isinstance(key, str) and key and isinstance(value, str) and value
+    }
+
+
 def usage_to_public(usage: AgentRunUsage | None) -> PublicUsage | None:
     if usage is None:
         return None
@@ -84,4 +107,3 @@ def usage_to_public(usage: AgentRunUsage | None) -> PublicUsage | None:
         reasoning_output_tokens=usage.reasoning_output_tokens,
         requests=usage.requests,
     )
-

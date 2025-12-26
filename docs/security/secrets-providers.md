@@ -14,6 +14,11 @@
 | AWS Secrets Manager | Cloud-native fallback | ✅ Available | Uses Secrets Manager-stored HMAC secret; CLI validates IAM access. |
 | Azure Key Vault | Cloud-native fallback | ✅ Available | Uses Key Vault secret as HMAC key; supports SPN + managed identity. |
 
+> **Default hosting posture:** The AWS/Azure reference blueprints are designed around cloud‑native
+> secrets (Secrets Manager on AWS, Key Vault on Azure). Vault/Infisical remain supported for
+> enterprise teams that already operate those systems, but require explicit env wiring via
+> `api_env` / `api_secrets` in the Terraform stacks.
+
 ## 2. Environment Variables
 
 | Env Var | Vault Dev/HCP | Infisical | AWS SM | Description |
@@ -45,10 +50,15 @@
 | `AZURE_KV_CACHE_TTL_SECONDS` | — | — | Optional | Local cache TTL for Azure secrets. |
 
 > **Hardening requirement (Nov 2025):** FastAPI now refuses to start when `ENVIRONMENT`
-> is anything other than `development/dev/local/test` (and `DEBUG` is false) unless
-> `VAULT_VERIFY_ENABLED=true`. The Starter CLI wizard sets this automatically for
+> is anything other than `development/dev/demo/test` (and `DEBUG` is false) unless
+> `VAULT_VERIFY_ENABLED=true`. The Starter Console wizard sets this automatically for
 > `--profile staging` and `--profile production`, so providers must be fully configured
 > before those profiles can complete.
+
+> **Key storage requirement (Dec 2025):** Staging/production must use
+> `AUTH_KEY_STORAGE_BACKEND=secret-manager` with populated `AUTH_KEY_STORAGE_PROVIDER`
+> and `AUTH_KEY_SECRET_NAME` so Ed25519 keysets live in the chosen secrets provider
+> instead of the filesystem. Key storage can be decoupled from `SECRETS_PROVIDER`.
 
 ## 3. Operational Runbooks
 
@@ -64,7 +74,7 @@
 1. Provision HCP Vault Development/Dedicated cluster.  
 2. Enable Transit engine and create `auth-service` key (or configure CLI-specified name).  
 3. Create a scoped token/AppRole with `transit:sign` + `transit:verify` capabilities.  
-4. Run `starter_cli secrets onboard --provider vault_hcp` to capture env vars.  
+4. Run `starter-console secrets onboard --provider vault_hcp` to capture env vars.  
 5. Update backend/CLI env files and run `just verify-vault` (pointed at HCP address).  
 6. Rotate Transit keys via Vault policies; update `VAULT_TRANSIT_KEY` if names change.
 
@@ -72,7 +82,7 @@
 
 1. Create a workspace + environment in Infisical; generate a service token scoped to the required path.  
 2. Store a random signing secret (e.g., 32 bytes) at `INFISICAL_SIGNING_SECRET_NAME`.  
-3. Run `starter_cli secrets onboard --provider infisical_cloud` (or `infisical_self_host`) to gather base URL, project ID, env slug, secret path, signing secret, and optional CA bundle.  
+3. Run `starter-console secrets onboard --provider infisical_cloud` (or `infisical_self_host`) to gather base URL, project ID, env slug, secret path, signing secret, and optional CA bundle.  
 4. Command performs a live probe of `/api/v4/secrets/<name>` to validate access; investigate warnings if probe fails.  
 5. The CLI enables `VAULT_VERIFY_ENABLED=true` automatically so service-account issuance requires signatures.  
 6. Add env vars to backend + CLI, redeploy FastAPI.  
@@ -80,39 +90,33 @@
 
 ### 3.4 AWS Secrets Manager
 
-1. Ensure an IAM role or user has `secretsmanager:GetSecretValue` and `secretsmanager:DescribeSecret` permissions for the signing secret ARN.
+1. Ensure an IAM role or user has `secretsmanager:GetSecretValue`, `secretsmanager:PutSecretValue`, and `secretsmanager:DescribeSecret` permissions for the signing secret ARN and keyset secret.
 2. Store a high-entropy HMAC secret (e.g., 32+ bytes) in Secrets Manager; note its ARN.
-3. Run `starter_cli secrets onboard --provider aws_sm` to capture region, secret ARN, cache TTL, and auth method (profile, static keys, or default credentials). The CLI probes AWS immediately to validate access.
+3. Run `starter-console secrets onboard --provider aws_sm` to capture region, secret ARN, cache TTL, and auth method (profile, static keys, or default credentials). The console probes AWS immediately to validate access.
 4. CLI onboarding sets `VAULT_VERIFY_ENABLED=true` automatically so FastAPI enforces signatures.
 5. Add the emitted env vars to `apps/api-service/.env` / `apps/api-service/.env.local` and redeploy FastAPI plus any CLI shells.
 6. For compute environments with instance profiles/ECS task roles, omit profile/keys and rely on IMDS automatically.
 7. Rotate the signing secret via Secrets Manager; FastAPI will pick up the new value once the cache TTL expires (default 60s).
 
-## 4. Telemetry & Health Hooks
-
-- Backend `SecretProviderHealth` now surfaces provider status; `/health/ready` will surface provider errors once the provider is initialized.
-- Enable `ENABLE_SECRETS_PROVIDER_TELEMETRY=true` to log the active provider at startup (no payload data, just provider name).
-- CLI onboarding can emit anonymous telemetry (`STARTER_CLI_TELEMETRY_OPT_IN=true`) summarizing provider selection success/failure in stdout logs.
-
-## 5. Future Provider Checklists
-
-### AWS Secrets Manager
-- [x] Use Secrets Manager-stored HMAC secret with TTL caching.  
-- [x] Implement AWS SDK client + CLI onboarding with validation.  
-- [x] Document IAM policy requirements.  
-- [ ] Optional: support KMS asymmetric keys for server-side signing.
-
 ### 3.5 Azure Key Vault
 
-1. Create or reuse a Key Vault; ensure the operator identity has `get` permissions on secrets.
+1. Create or reuse a Key Vault; ensure the operator identity has `get` + `set` permissions on secrets.
 2. Store a strong random string secret named per `AZURE_KV_SIGNING_SECRET_NAME`.
-3. Run `starter_cli secrets onboard --provider azure_kv` and choose auth method:  
+3. Run `starter-console secrets onboard --provider azure_kv` and choose auth method:  
    - **Service principal:** provide tenant ID, client ID, and client secret.  
    - **Managed identity:** supply the managed identity client ID (blank for system-assigned).  
    The CLI uses the Azure SDK to fetch the secret and confirms access.
 4. CLI onboarding sets `VAULT_VERIFY_ENABLED=true` automatically so FastAPI enforces signatures.
 5. Apply the emitted env vars to backend + CLI and redeploy.
 6. Rotate the signing secret via Key Vault; FastAPI picks up the new value when the cache TTL expires.
+
+## 4. Telemetry & Health Hooks
+
+- Backend `SecretProviderHealth` now surfaces provider status; `/health/ready` will surface provider errors once the provider is initialized.
+- Enable `ENABLE_SECRETS_PROVIDER_TELEMETRY=true` to log the active provider at startup (no payload data, just provider name).
+- CLI onboarding can emit anonymous telemetry (`STARTER_CONSOLE_TELEMETRY_OPT_IN=true`) summarizing provider selection success/failure in stdout logs.
+
+## 5. Future Provider Checklists
 
 ### AWS Secrets Manager
 - [x] Use Secrets Manager-stored HMAC secret with TTL caching.  
@@ -128,4 +132,4 @@
 
 ---
 
-For questions ping #proj-secrets-provider or open issues under BE-007. Update this document whenever a provider workflow or default changes.***
+For questions ping #proj-secrets-provider or open issues under BE-007. Update this document whenever a provider workflow or default changes.

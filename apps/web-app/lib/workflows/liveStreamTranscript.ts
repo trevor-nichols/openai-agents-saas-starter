@@ -5,6 +5,7 @@ import type {
 import { assembledText, appendDelta, replaceText, type TextParts } from '@/lib/streams/publicSseV1/textParts';
 import { applyReasoningEvent, createReasoningPartsState, getReasoningParts, type ReasoningPart } from '@/lib/streams/publicSseV1/reasoningParts';
 import { applyCitationEvent, createCitationsState, getCitationsForItem } from '@/lib/streams/publicSseV1/citations';
+import { createAgentToolStreamAccumulator, type AgentToolStream } from '@/lib/streams/publicSseV1/agentToolStreams';
 import { asPublicSseEvent, createPublicSseToolAccumulator, type PublicSseToolState } from '@/lib/streams/publicSseV1/tools';
 import type { Annotation } from '@/lib/chat/types';
 
@@ -33,6 +34,7 @@ export type WorkflowLiveTranscriptItem =
       itemId: string;
       outputIndex: number;
       tool: PublicSseToolState;
+      agentStream?: AgentToolStream | null;
     };
 
 export type WorkflowLiveTranscriptSegment = {
@@ -57,6 +59,7 @@ type SegmentState = {
   reasoningParts: ReturnType<typeof createReasoningPartsState>;
   citations: ReturnType<typeof createCitationsState>;
   toolAccumulator: ReturnType<typeof createPublicSseToolAccumulator>;
+  agentToolStreams: ReturnType<typeof createAgentToolStreamAccumulator>;
   lifecycle: WorkflowLifecycle | null;
   agentUpdates: WorkflowAgentUpdate[];
   memoryCheckpoints: WorkflowMemoryCheckpoint[];
@@ -110,6 +113,7 @@ export function buildWorkflowLiveTranscript(
       reasoningParts: createReasoningPartsState(),
       citations: createCitationsState(),
       toolAccumulator: createPublicSseToolAccumulator(),
+      agentToolStreams: createAgentToolStreamAccumulator(),
       lifecycle: null,
       agentUpdates: [],
       memoryCheckpoints: [],
@@ -133,6 +137,11 @@ export function buildWorkflowLiveTranscript(
 
     const segment = ensureSegment(event);
     const asPublic = asPublicSseEvent(event);
+
+    if (event.scope?.type === 'agent_tool') {
+      segment.agentToolStreams.apply(asPublic);
+      continue;
+    }
 
     if ('output_index' in event && 'item_id' in event && typeof event.output_index === 'number') {
       ensureItemOrder(segment, { itemId: event.item_id, outputIndex: event.output_index });
@@ -254,11 +263,13 @@ export function buildWorkflowLiveTranscript(
       const tool = seg.toolAccumulator.getToolById(entry.itemId);
 
       if (tool) {
+        const agentStream = seg.agentToolStreams.getStream(tool.id);
         items.push({
           kind: 'tool',
           itemId: entry.itemId,
           outputIndex: entry.outputIndex,
           tool,
+          agentStream,
         });
         continue;
       }

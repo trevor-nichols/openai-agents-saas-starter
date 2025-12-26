@@ -2,9 +2,9 @@ import pytest
 from types import SimpleNamespace
 from typing import cast
 
-from agents import FileSearchTool, ImageGenerationTool
+from agents import CodeInterpreterTool, FileSearchTool, ImageGenerationTool
 
-from app.agents._shared.prompt_context import PromptRuntimeContext
+from app.agents._shared.prompt_context import ContainerOverrideContext, PromptRuntimeContext
 from app.agents._shared.specs import AgentSpec
 from app.core.settings import Settings
 from app.infrastructure.providers.openai.registry.tool_resolver import ToolResolver
@@ -103,3 +103,39 @@ def test_image_generation_invalid_size_raises():
 
     with pytest.raises(ValueError):
         resolver.select_tools(spec, runtime_ctx=None)
+
+
+def test_code_interpreter_override_takes_precedence():
+    registry = ToolRegistry()
+    registry.register_tool(
+        CodeInterpreterTool(
+            tool_config={
+                "type": "code_interpreter",
+                "container": {"type": "auto", "memory_limit": "1g"},
+            }
+        )
+    )
+    resolver = _resolver(registry)
+    spec = _spec(
+        tool_keys=("code_interpreter",),
+        tool_configs={"code_interpreter": {"container_id": "spec-container"}},
+    )
+    ctx = PromptRuntimeContext(
+        actor=None,
+        conversation_id="c1",
+        request_message=None,
+        settings=_settings(),
+        container_bindings={"test": "binding-container"},
+        container_overrides={
+            "test": ContainerOverrideContext(
+                container_id="local-container",
+                openai_container_id="override-container",
+            )
+        },
+    )
+
+    result = resolver.select_tools(spec, runtime_ctx=ctx)
+    assert result.code_interpreter_mode == "explicit"
+    tool = result.tools[0]
+    cfg = getattr(tool, "tool_config", None) or getattr(tool, "__dict__", {}).get("tool_config", {})
+    assert cfg.get("container") == "override-container"

@@ -6,17 +6,14 @@ import { AnimatedBeam } from '@/components/ui/beam';
 import { cn } from '@/lib/utils';
 import type { WorkflowDescriptor, WorkflowStageDescriptor } from '@/lib/workflows/types';
 
-type ActiveStep = {
-  stepName?: string | null;
-  stageName?: string | null;
-  parallelGroup?: string | null;
-  branchIndex?: number | null;
-};
+import { WorkflowGraphEmptyState } from './WorkflowGraphEmptyState';
+import type { WorkflowGraphActiveStep } from './types';
+import { resolveActiveStep } from './utils/resolveActiveStep';
 
 type Props = {
   descriptor: WorkflowDescriptor | null;
   className?: string;
-  activeStep?: ActiveStep | null;
+  activeStep?: WorkflowGraphActiveStep | null;
 };
 
 type StepRef = {
@@ -115,34 +112,20 @@ export function WorkflowGraph({ descriptor, className, activeStep }: Props) {
     return built;
   }, [descriptor]);
 
-  const activeKey = useMemo(() => {
-    if (!activeStep || !stepRefs.length) return null;
-    const candidate = stepRefs.find((step) => {
-      const nameMatch = activeStep.stepName ? step.label === activeStep.stepName : false;
-      const stageMatch = activeStep.stageName ? step.stage.name === activeStep.stageName : false;
-      const branchMatch = activeStep.branchIndex == null || activeStep.branchIndex === step.stepIndex;
-
-      if (activeStep.stepName) {
-        return nameMatch && branchMatch;
-      }
-      if (activeStep.stageName) {
-        return stageMatch && branchMatch;
-      }
-      if (activeStep.parallelGroup) {
-        const parallelMatch = step.stage.name === activeStep.parallelGroup;
-        return parallelMatch && branchMatch;
-      }
-      return false;
-    });
-    return candidate?.key ?? null;
-  }, [activeStep, stepRefs]);
+  const resolvedActiveStep = useMemo(
+    () => resolveActiveStep(descriptor, activeStep),
+    [descriptor, activeStep],
+  );
+  const activeKey = useMemo(
+    () =>
+      resolvedActiveStep
+        ? keyFor(resolvedActiveStep.stageIndex, resolvedActiveStep.stepIndex)
+        : null,
+    [resolvedActiveStep],
+  );
 
   if (!descriptor) {
-    return (
-      <div className={cn('rounded-lg border border-white/5 bg-white/5 p-4', className)}>
-        <p className="text-sm text-foreground/70">Select a workflow to preview its structure.</p>
-      </div>
-    );
+    return <WorkflowGraphEmptyState className={className} />;
   }
 
   const palette = ['#7c3aed', '#0ea5e9', '#22c55e', '#f59e0b', '#ec4899'];

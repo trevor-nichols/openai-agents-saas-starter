@@ -2,7 +2,7 @@
 
 import type { Meta, StoryObj } from '@storybook/react';
 
-import { UploadObjectForm } from '../components/UploadObjectForm';
+import { UploadObjectForm } from '../components';
 
 const meta: Meta<typeof UploadObjectForm> = {
   title: 'Storage/UploadObjectForm',

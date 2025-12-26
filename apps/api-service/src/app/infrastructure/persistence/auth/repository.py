@@ -30,7 +30,7 @@ from app.infrastructure.persistence.auth.cache import (
     RefreshTokenCache,
     build_refresh_token_cache,
 )
-from app.infrastructure.persistence.auth.models import ServiceAccountToken
+from app.infrastructure.persistence.auth.models.sessions import ServiceAccountToken
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +98,8 @@ class PostgresRefreshTokenRepository(RefreshTokenRepository):
 
         if not row:
             return None
-        if row.revoked_at is not None or row.expires_at <= datetime.now(UTC):
+        expires_at = self._coerce_utc(row.expires_at)
+        if row.revoked_at is not None or expires_at <= datetime.now(UTC):
             return None
         return self._row_to_record(row)
 
@@ -275,29 +276,31 @@ class PostgresRefreshTokenRepository(RefreshTokenRepository):
         token = self._rehydrate_token(row)
         if not token:
             return None
+        expires_at = self._coerce_utc(row.expires_at)
+        issued_at = self._coerce_utc(row.issued_at)
         return RefreshTokenRecord(
             token=token,
             jti=row.refresh_jti,
             account=row.account,
             tenant_id=str(row.tenant_id) if row.tenant_id else None,
             scopes=list(row.scopes),
-            expires_at=row.expires_at,
-            issued_at=row.issued_at,
+            expires_at=expires_at,
+            issued_at=issued_at,
             fingerprint=row.fingerprint,
             signing_kid=row.signing_kid,
             session_id=row.session_id,
         )
 
-    @staticmethod
-    def _row_to_view(row: ServiceAccountToken) -> ServiceAccountTokenView:
+    @classmethod
+    def _row_to_view(cls, row: ServiceAccountToken) -> ServiceAccountTokenView:
         return ServiceAccountTokenView(
             jti=row.refresh_jti,
             account=row.account,
             tenant_id=str(row.tenant_id) if row.tenant_id else None,
             scopes=list(row.scopes),
-            expires_at=row.expires_at,
-            issued_at=row.issued_at,
-            revoked_at=row.revoked_at,
+            expires_at=cls._coerce_utc(row.expires_at),
+            issued_at=cls._coerce_utc(row.issued_at),
+            revoked_at=cls._coerce_utc(row.revoked_at) if row.revoked_at else None,
             revoked_reason=row.revoked_reason,
             fingerprint=row.fingerprint,
             signing_kid=row.signing_kid,
@@ -305,6 +308,8 @@ class PostgresRefreshTokenRepository(RefreshTokenRepository):
 
     def _rehydrate_token(self, row: ServiceAccountToken) -> str | None:
         subject = self._subject_from_account(row.account)
+        issued_at = self._coerce_utc(row.issued_at)
+        expires_at = self._coerce_utc(row.expires_at)
         payload = {
             "sub": subject,
             "account": row.account,
@@ -312,9 +317,9 @@ class PostgresRefreshTokenRepository(RefreshTokenRepository):
             "jti": row.refresh_jti,
             "scope": " ".join(row.scopes),
             "iss": self._settings.app_name,
-            "iat": int(row.issued_at.timestamp()),
-            "nbf": int(row.issued_at.timestamp()),
-            "exp": int(row.expires_at.timestamp()),
+            "iat": int(issued_at.timestamp()),
+            "nbf": int(issued_at.timestamp()),
+            "exp": int(expires_at.timestamp()),
         }
         if row.tenant_id:
             payload["tenant_id"] = str(row.tenant_id)
@@ -376,6 +381,12 @@ class PostgresRefreshTokenRepository(RefreshTokenRepository):
             if material.kid == kid:
                 return material
         return None
+
+    @staticmethod
+    def _coerce_utc(value: datetime) -> datetime:
+        if value.tzinfo is None:
+            return value.replace(tzinfo=UTC)
+        return value.astimezone(UTC)
 
     @staticmethod
     def _enforce_single_active(account: str) -> bool:

@@ -12,7 +12,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.infrastructure.persistence.auth import models as auth_models  # noqa: F401
 from app.infrastructure.persistence.billing import models as billing_models
 from app.infrastructure.persistence.billing.postgres import PostgresBillingRepository
-from app.infrastructure.persistence.conversations import models as conversation_models
 from app.infrastructure.persistence.tenants import models as tenant_models
 from app.services.billing.billing_service import (
     BillingService,
@@ -115,7 +114,7 @@ class ErrorGateway(FakeGateway):
 TABLES_TO_CREATE = cast(
     tuple[Table, ...],
     (
-        conversation_models.TenantAccount.__table__,
+        tenant_models.TenantAccount.__table__,
         tenant_models.TenantSettingsModel.__table__,
         billing_models.BillingPlan.__table__,
         billing_models.PlanFeature.__table__,
@@ -138,7 +137,7 @@ async def billing_context():
 
     async with session_factory() as session:
         session.add(
-            conversation_models.TenantAccount(
+            tenant_models.TenantAccount(
                 id=tenant_id,
                 slug="tenant",
                 name="Test Tenant",

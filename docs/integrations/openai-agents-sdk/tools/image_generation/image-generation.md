@@ -267,13 +267,13 @@ Config defaults (can override via env / settings)
 
 Storage + attachments
 
-- Generated images are decoded and stored via the built-in storage service (MinIO/GCS/memory) and linked to the conversation/user/agent.
+- Generated images are decoded and stored via the built-in storage service (MinIO/S3/Azure Blob/GCS/memory) and linked to the conversation/user/agent.
 - Conversation messages carry `attachments` with `object_id`, filename, mime, size, presigned URL, and `tool_call_id`. Streaming events include attachments as they are stored.
 - Images are **not** stored as base64 in Postgres; only metadata and storage references are persisted.
 - Fallbacks: if storage fails, chat still returns text; we log `image.ingest_failed` with tool_call_id/tenant for debugging.
 
 DX checklist
 
-- Ensure `OPENAI_API_KEY` and storage provider env vars are set (`STORAGE_PROVIDER`, `MINIO_*` or `GCS_*`).
+- Ensure `OPENAI_API_KEY` and storage provider env vars are set (`STORAGE_PROVIDER`, plus provider-specific vars like `MINIO_*`, `S3_*`, `AZURE_BLOB_*`, or `GCS_*`).
 - Run migrations to add the `attachments` column: `just migrate` (or `hatch run migrate` with `DATABASE_URL` set).
 - Add `image_generation` to agent `tool_keys`; use `tool_configs.image_generation` for per-agent overrides.

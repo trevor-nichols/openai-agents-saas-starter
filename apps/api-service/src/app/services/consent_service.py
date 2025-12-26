@@ -9,7 +9,7 @@ from sqlalchemy import Select, desc, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.infrastructure.persistence.auth.models import UserConsent
+from app.infrastructure.persistence.auth.models.consent import UserConsent
 
 
 class ConsentService:

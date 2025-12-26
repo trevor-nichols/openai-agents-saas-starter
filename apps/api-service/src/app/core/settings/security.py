@@ -2,9 +2,13 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
+
+from app.core.paths import resolve_repo_path
+from app.domain.secrets import SecretsProviderLiteral
 
 from .base import SAFE_ENVIRONMENTS, BaseAppSettings
 
@@ -41,14 +45,25 @@ class SecuritySettingsMixin(BaseModel):
     auth_key_storage_backend: str = Field(
         default="file",
         description="Key storage backend (file or secret-manager).",
+        alias="AUTH_KEY_STORAGE_BACKEND",
+    )
+    auth_key_storage_provider: SecretsProviderLiteral | None = Field(
+        default=None,
+        description=(
+            "Secrets provider used for Ed25519 keyset storage when "
+            "auth_key_storage_backend=secret-manager."
+        ),
+        alias="AUTH_KEY_STORAGE_PROVIDER",
     )
     auth_key_storage_path: str = Field(
         default=DEFAULT_KEY_STORAGE_PATH,
         description="Filesystem path for keyset JSON when using file backend.",
+        alias="AUTH_KEY_STORAGE_PATH",
     )
     auth_key_secret_name: str | None = Field(
         default=None,
         description="Secret-manager key/path storing keyset JSON when backend=secret-manager.",
+        alias="AUTH_KEY_SECRET_NAME",
     )
     auth_jwks_cache_seconds: int = Field(
         default=300,
@@ -293,7 +308,7 @@ class SecuritySettingsMixin(BaseModel):
             warnings.append("AUTH_REFRESH_TOKEN_PEPPER is using the starter value")
         if (
             self.auth_key_storage_backend == "file"
-            and self.auth_key_storage_path == DEFAULT_KEY_STORAGE_PATH
+            and _is_default_key_path(self.auth_key_storage_path)
         ):
             warnings.append("AUTH_KEY_STORAGE_PATH still points to var/keys/keyset.json")
         if self.enable_resend_email_delivery:
@@ -321,6 +336,11 @@ class SecuritySettingsMixin(BaseModel):
         debug_mode = bool(getattr(self, "debug", False))
         return not debug_mode and env not in SAFE_ENVIRONMENTS
 
+    def requires_secret_manager_for_key_storage(self) -> bool:
+        env = str(getattr(self, "environment", "") or "").lower()
+        debug_mode = bool(getattr(self, "debug", False))
+        return not debug_mode and env not in SAFE_ENVIRONMENTS
+
     @field_validator("auth_audience", mode="before")
     @classmethod
     def _parse_auth_audience(
@@ -344,6 +364,13 @@ class SecuritySettingsMixin(BaseModel):
         if value <= 0:
             raise ValueError("Configuration value must be greater than zero.")
         return value
+
+    @field_validator("auth_key_storage_path")
+    @classmethod
+    def _normalize_key_storage_path(cls, value: str) -> str:
+        if not value:
+            return value
+        return str(resolve_repo_path(value))
 
     @field_validator("contact_email_recipients", mode="before")
     @classmethod
@@ -387,3 +414,14 @@ def _parse_email_list(value: Any) -> list[str]:
         if candidate and candidate not in normalized:
             normalized.append(candidate)
     return normalized
+
+
+def _is_default_key_path(value: str) -> bool:
+    if not value:
+        return False
+    candidate = Path(value).expanduser()
+    default = resolve_repo_path(DEFAULT_KEY_STORAGE_PATH)
+    try:
+        return candidate.resolve() == default.resolve()
+    except OSError:
+        return candidate == default

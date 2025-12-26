@@ -9,9 +9,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from app.api.v1.agents.schemas import AgentStatus, AgentSummary
+from app.api.v1.agents.schemas import AgentStatus, AgentSummary, AgentToolingFlags
 from app.domain.ai import AgentDescriptor
+from app.domain.ai.ports import AgentProvider
 from app.services.agents.provider_registry import AgentProviderRegistry
+from app.services.agents.tooling import normalize_tool_overview, resolve_tooling_by_agent
 
 DEFAULT_PAGE_SIZE = 24
 MAX_PAGE_SIZE = 100
@@ -51,6 +53,7 @@ class AgentCatalogService:
         """
         provider = self._providers.get_default()
         descriptors = provider.list_agents()
+        tooling_by_agent = self._resolve_tooling_by_agent(provider)
         filtered = self._apply_search(descriptors, search)
         ordered = self._sort_descriptors(filtered)
 
@@ -64,7 +67,10 @@ class AgentCatalogService:
         )
 
         return AgentCatalogPage(
-            items=[self._to_summary(descriptor) for descriptor in page_descriptors],
+            items=[
+                self._to_summary(descriptor, tooling_by_agent.get(descriptor.key))
+                for descriptor in page_descriptors
+            ],
             next_cursor=next_cursor,
             total=len(ordered),
         )
@@ -74,14 +80,18 @@ class AgentCatalogService:
         descriptor = provider.get_agent(agent_name)
         if not descriptor:
             raise ValueError(f"Agent '{agent_name}' not found")
+        tooling_by_agent = self._resolve_tooling_by_agent(provider)
+        tooling = AgentToolingFlags.model_validate(tooling_by_agent.get(descriptor.key) or {})
         last_used = getattr(descriptor, "last_seen_at", None)
         if last_used:
             last_used = last_used.replace(microsecond=0).isoformat() + "Z"
         return AgentStatus(
             name=descriptor.key,
             status="active",
+            output_schema=getattr(descriptor, "output_schema", None),
             last_used=last_used,
             total_conversations=0,
+            tooling=tooling,
         )
 
     def get_tool_information(self) -> dict[str, Any]:
@@ -94,7 +104,9 @@ class AgentCatalogService:
             return None
         return dt.replace(microsecond=0).isoformat() + "Z"
 
-    def _to_summary(self, descriptor: AgentDescriptor) -> AgentSummary:
+    def _to_summary(
+        self, descriptor: AgentDescriptor, tooling: dict[str, bool] | None = None
+    ) -> AgentSummary:
         return AgentSummary(
             name=descriptor.key,
             status=descriptor.status,
@@ -103,6 +115,7 @@ class AgentCatalogService:
             model=descriptor.model,
             output_schema=getattr(descriptor, "output_schema", None),
             last_seen_at=self._serialize_ts(getattr(descriptor, "last_seen_at", None)),
+            tooling=AgentToolingFlags.model_validate(tooling or {}),
         )
 
     @staticmethod
@@ -172,6 +185,12 @@ class AgentCatalogService:
             return agent
         except Exception as exc:  # pragma: no cover - defensive
             raise ValueError("Invalid pagination cursor") from exc
+
+    @staticmethod
+    def _resolve_tooling_by_agent(provider: AgentProvider) -> dict[str, dict[str, bool]]:
+        overview = provider.tool_overview()
+        per_agent = normalize_tool_overview(overview)
+        return resolve_tooling_by_agent(per_agent)
 
 
 __all__ = ["AgentCatalogService", "AgentCatalogPage"]

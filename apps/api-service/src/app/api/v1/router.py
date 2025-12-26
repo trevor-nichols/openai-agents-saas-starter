@@ -20,6 +20,7 @@ from app.api.v1.storage.router import router as storage_router
 from app.api.v1.tenants.router import router as tenants_router
 from app.api.v1.test_fixtures.router import router as test_fixtures_router
 from app.api.v1.tools.router import router as tools_router
+from app.api.v1.uploads.router import router as uploads_router
 from app.api.v1.usage.router import router as usage_router
 from app.api.v1.users.routes_consents import router as user_consents_router
 from app.api.v1.users.routes_notifications import router as user_notifications_router
@@ -44,6 +45,7 @@ router.include_router(activity_router)
 router.include_router(containers_router)
 router.include_router(vector_stores_router)
 router.include_router(storage_router)
+router.include_router(uploads_router)
 router.include_router(openai_files_router)
 router.include_router(contact_router)
 router.include_router(status_router)

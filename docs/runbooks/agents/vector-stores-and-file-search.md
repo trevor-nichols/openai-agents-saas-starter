@@ -49,7 +49,9 @@ Notes:
   2) Attaches that store's OpenAI ID to the FileSearchTool before sending the run to OpenAI.
 
 ## API workflow reminder
-- Before agents can search, tenants must upload files to a vector store via `/api/v1/vector-stores/{id}/files` and wait for status `completed`.
+- Before agents can search, tenants must upload files to a vector store and wait for status `completed`.
+  - If you already have an OpenAI `file_id`, attach via `/api/v1/vector-stores/{id}/files`.
+  - If you have a storage object in this service, promote + attach via `/api/v1/vector-stores/{id}/files/upload`.
 - Search can also be invoked directly via `/api/v1/vector-stores/{id}/search` if you want pre- or post-agent retrieval.
 
 ## Common options
@@ -72,6 +74,13 @@ Notes:
      -H "Content-Type: application/json" \
      -d '{"file_id":"$FILE_ID","poll":true}'
    ```
+2b) Attach a file from storage (upload to storage first, then promote)
+   ```bash
+   curl -X POST "$API_URL/api/v1/vector-stores/$STORE_ID/files/upload" \
+     -H "Authorization: Bearer $TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"object_id":"$OBJECT_ID","agent_key":"$AGENT_KEY","poll":true}'
+   ```
 3) Search
    ```bash
    curl -X POST "$API_URL/api/v1/vector-stores/$STORE_ID/search" \
@@ -91,7 +100,7 @@ Notes: Endpoints are tenant-gated; viewer can read/search, admin/owner can creat
   - `vector.total_bytes_per_tenant` (bytes)
   - `vector.files_per_store` (count)
   - `vector.stores_per_tenant` (count)
-- The starter CLI wizard can add these to `usage-entitlements.json`; otherwise defaults from settings are used.
+- The Starter Console wizard can add these to `usage-entitlements.json`; otherwise defaults from settings are used.
 
 ### Background sync worker (default ON)
 - Enabled by default (`ENABLE_VECTOR_STORE_SYNC_WORKER=true`) to refresh store/file status and apply expirations.

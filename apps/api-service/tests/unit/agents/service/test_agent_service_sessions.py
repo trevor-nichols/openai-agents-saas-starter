@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 
 from app.api.v1.chat.schemas import AgentChatRequest
 from app.domain.ai import AgentDescriptor, AgentStreamEvent
-from app.services.agent_service import AgentService
+from app.services.agents import AgentService
 from app.services.agents.context import ConversationActorContext
+from app.services.agents.policy import AgentRuntimePolicy
+from app.services.conversation_service import ConversationService
 
 
 class _StubConversationService:
@@ -154,13 +158,13 @@ async def test_stream_uses_session_without_provider_conversation_id():
     conversation_service = _StubConversationService()
 
     svc = AgentService(
-        conversation_service=conversation_service,
+        conversation_service=cast(ConversationService, conversation_service),
         provider_registry=registry,
+        policy=AgentRuntimePolicy(),
+        attachment_service=_StubAttachmentService(),
+        usage_service=_StubUsageService(),
+        event_projector=_StubEventProjector(),
     )
-    # Replace heavy collaborators with stubs
-    svc._attachment_service = _StubAttachmentService()
-    svc._usage_service = _StubUsageService()
-    svc._event_projector = _StubEventProjector()
 
     request = AgentChatRequest(message="hi", agent_type="triage")
     actor = ConversationActorContext(tenant_id="tenant-1", user_id="user-1")

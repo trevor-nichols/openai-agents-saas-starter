@@ -14,6 +14,8 @@ class StorageProviderLiteral(StrEnum):
 
     MINIO = "minio"
     GCS = "gcs"
+    S3 = "s3"
+    AZURE_BLOB = "azure_blob"
     MEMORY = "memory"  # test/default provider; never used in production
 
 
@@ -82,6 +84,25 @@ class GCSProviderConfig:
     uniform_access: bool
 
 
+@dataclass(slots=True)
+class S3ProviderConfig:
+    """Resolved S3 configuration shared across surfaces."""
+
+    region: str | None
+    bucket: str | None
+    endpoint_url: str | None
+    force_path_style: bool
+
+
+@dataclass(slots=True)
+class AzureBlobProviderConfig:
+    """Resolved Azure Blob configuration shared across surfaces."""
+
+    account_url: str | None
+    container: str | None
+    connection_string: str | None
+
+
 @runtime_checkable
 class StorageProviderProtocol(Protocol):
     """Async contract every storage provider must satisfy."""
@@ -119,8 +140,10 @@ class StorageProviderProtocol(Protocol):
 
 
 __all__ = [
+    "AzureBlobProviderConfig",
     "GCSProviderConfig",
     "MinioProviderConfig",
+    "S3ProviderConfig",
     "StorageObjectRef",
     "StoragePresignedUrl",
     "StorageProviderHealth",

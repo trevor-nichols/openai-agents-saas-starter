@@ -1,13 +1,13 @@
 # Human Identity Provider Requirements
 
-**Status:** Draft for security review (IDP-001)  
+**Status:** Active requirements (security review required)  
 **Last Updated:** 2025-11-07  
 **Owners:** Platform Security Guild · Backend Auth Pod
 
 ---
 
 ## 1. Purpose & Alignment
-- Replace the `/api/v1/auth/token` demo credentials with a production-grade human login path backed by a persistent identity provider (IdP) while preserving the ability to switch to an external IdP later.
+- Replace the `/api/v1/auth/token` demo credentials with a production-grade human login path backed by a persistent identity provider (IdP) while preserving the ability to switch to an external IdP without changing caller contracts.
 - Provide canonical requirements for IDP-002 through IDP-006 so backend, frontend, and ops teams deliver against the same contract.
 - Extend the existing EdDSA token stack (AUTH-002/003) to cover human principals without reworking downstream APIs.
 
@@ -21,7 +21,7 @@
 
 Tenant relationships:
 - A user may belong to multiple tenants; each membership carries role grants (e.g., `admin`, `member`, `billing-only`).
-- Tokens carry a single `tenant_id` claim; multi-tenant users choose the tenant context during login (future: scoped switching endpoint).
+- Tokens carry a single `tenant_id` claim; multi-tenant users choose the tenant context during login. Scoped tenant switching endpoints are not exposed in this release.
 - Removing the last tenant membership implicitly disables the account until a new tenant is assigned.
 
 ## 3. Credential Policy (Passwords + Secrets)
@@ -33,7 +33,7 @@ Tenant relationships:
 
 ## 4. Login Attempt Limits & Lockouts
 - **Per-User Counter:** Redis key `auth:lockout:user:{user_id}` increments on failed login; 1-hour TTL sliding window.
-- **Thresholds:** 5 consecutive failures ⇒ user enters `locked` state; refresh tokens revoked; admin notified via webhook (future automation). Account unlocks automatically after TTL or via admin API.
+- **Thresholds:** 5 consecutive failures ⇒ user enters `locked` state; refresh tokens revoked; account unlocks automatically after TTL or via admin API. Admin notifications rely on logs/alerts rather than webhook automation.
 - **Global IP Guardrail:** `auth:lockout:ip:{/24}` counters throttle credential stuffing; 50 failures per minute triggers a configurable block (see `AUTH_IP_LOCKOUT_WINDOW_MINUTES` + `AUTH_IP_LOCKOUT_DURATION_MINUTES`) and structured alert.
 - **Observation:** Lockout events emit `auth.lockout` log with `tenant_id`, `ip_hash`, `user_id`, and `reason` for SOC review.
 
@@ -73,13 +73,13 @@ Tenant relationships:
 - **Revocation:** Admin logout, lockout, or password reset sets `revoked_at` and caches `jti` in Redis for TTL = remaining lifetime to short-circuit DB lookups.
 
 ## 7. External IdP Compatibility
-- **Protocols:** Must support OIDC Authorization Code flow with PKCE and SCIM 2.0 provisioning. Local implementation mirrors these contracts so we can later proxy to Auth0/Okta without changing callers.
+- **Protocols:** Must support OIDC Authorization Code flow with PKCE and SCIM 2.0 provisioning. Local implementation mirrors these contracts to allow proxying to Auth0/Okta without changing callers.
 - **Attribute Mapping:** Standardize on `email`, `name`, `tenant_roles` claim, `external_id`. Store mapping so `sub` continuity is preserved if/when we swap IdPs.
 - **Just-In-Time Provisioning:** When operating against an external IdP, we can JIT create users on first login if tenant + role info present; otherwise require SCIM sync before login succeeds.
 - **Session Federation:** Access/refresh tokens remain our own; external IdP handles primary auth but exchanges for our tokens via OIDC token endpoint. This doc ensures our token schema remains stable for that flow.
-- **Secrets & Rotation:** External IdP client secrets stored alongside current pepper/keys; rotation SOP documented in `docs/security/idp-rotation.md` (to be authored in IDP-006).
+- **Secrets & Rotation:** External IdP client secrets live alongside current pepper/keys; document rotation procedures in your security runbook and keep the process audited.
 
-## 8. Acceptance & Next Steps
-- This document plus the updated threat model constitute the deliverable for IDP-001.
-- Backend + security leads must sign off before IDP-002 migration work starts.
+## 8. Governance
+- This document plus the updated threat model are required inputs to the security review.
+- Backend + security leads must sign off before identity-provider changes are deployed.
 - Any change to password policy, lockout thresholds, or token schema requires updating this doc and notifying the platform security review channel.

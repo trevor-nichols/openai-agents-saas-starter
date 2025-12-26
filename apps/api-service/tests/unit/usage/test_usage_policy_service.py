@@ -8,7 +8,7 @@ from fakeredis.aioredis import FakeRedis
 
 from app.domain.billing import BillingPlan, PlanFeature, TenantSubscription, UsageTotal
 from app.services.billing.billing_service import BillingService
-from app.services.usage_policy_service import (
+from app.services.usage.policy_service import (
     InMemoryUsageTotalsCache,
     RedisUsageTotalsCache,
     UsagePolicyConfigurationError,

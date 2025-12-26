@@ -16,7 +16,9 @@ async def test_agents_catalog_and_status(
     headers = auth_headers(smoke_state)
     catalog = await http_client.get("/api/v1/agents", headers=headers)
     assert catalog.status_code == 200
-    agents = catalog.json()
+    body = catalog.json()
+    assert isinstance(body, dict)
+    agents = body.get("items", [])
     assert any(agent.get("name") == "triage" for agent in agents)
 
     status = await http_client.get("/api/v1/agents/triage/status", headers=headers)

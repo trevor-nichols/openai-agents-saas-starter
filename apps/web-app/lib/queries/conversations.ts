@@ -327,3 +327,28 @@ export function useUpdateConversationMemory(
     error: mutation.error instanceof Error ? mutation.error.message : null,
   };
 }
+
+export function useConversationsByAgent(agentKey: string | null, options?: { limit?: number }) {
+  const limit = options?.limit ?? 100;
+  const enabled = Boolean(agentKey);
+
+  const query = useQuery({
+    queryKey: queryKeys.conversations.list({ agent: agentKey ?? 'all', limit }),
+    queryFn: () => fetchConversationsPage({ limit, agent: agentKey }),
+    enabled,
+    staleTime: 30 * 1000,
+  });
+
+  const conversations = useMemo(
+    () => sortConversationsByDate(query.data?.items ?? []),
+    [query.data?.items],
+  );
+
+  return {
+    conversations,
+    isLoadingConversations: query.isLoading && enabled,
+    isFetchingConversations: query.isFetching && enabled,
+    conversationsError: query.error instanceof Error ? query.error : null,
+    refetchConversations: query.refetch,
+  };
+}

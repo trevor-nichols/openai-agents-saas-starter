@@ -57,6 +57,7 @@ export function ChatWorkspace() {
     toolsError,
     refetchTools,
     activeAgents,
+    selectedAgentSupportsFileSearch,
     hasOlderMessages,
     isFetchingOlderMessages,
     loadOlderMessages,
@@ -99,7 +100,8 @@ export function ChatWorkspace() {
             </TabsList>
             <TabsContent value="tools" className="mt-4 space-y-4">
               <ToolMetadataPanel
-                selectedAgent={selectedAgentLabel}
+                selectedAgentKey={selectedAgent}
+                selectedAgentLabel={selectedAgentLabel}
                 tools={tools}
                 isLoading={isLoadingTools}
                 error={toolsError}
@@ -166,6 +168,10 @@ export function ChatWorkspace() {
                     </Button>
                   </div>
                 ),
+              }}
+              vectorStoreUpload={{
+                enabled: Boolean(selectedAgent && selectedAgentSupportsFileSearch),
+                agentKey: selectedAgent,
               }}
             />
           </ChatControllerProvider>

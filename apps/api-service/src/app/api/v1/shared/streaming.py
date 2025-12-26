@@ -34,6 +34,15 @@ class WorkflowContext(BaseModel):
     branch_index: int | None = None
 
 
+class StreamScope(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    type: Literal["agent_tool"]
+    tool_call_id: str
+    tool_name: str | None = None
+    agent: str | None = None
+
+
 class MessageAttachment(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -177,6 +186,16 @@ class McpTool(BaseModel):
     output: Any | None = None
 
 
+class AgentTool(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tool_type: Literal["agent"]
+    tool_call_id: str
+    status: Literal["in_progress", "completed", "failed"]
+    name: str
+    agent: str | None = None
+
+
 PublicTool = (
     WebSearchTool
     | FileSearchTool
@@ -184,6 +203,7 @@ PublicTool = (
     | ImageGenerationTool
     | FunctionTool
     | McpTool
+    | AgentTool
 )
 
 
@@ -206,6 +226,7 @@ class PublicSseEventBase(BaseModel):
     response_id: str | None = None
     agent: str | None = None
     workflow: WorkflowContext | None = None
+    scope: StreamScope | None = None
 
     provider_sequence_number: int | None = None
     notices: list[StreamNotice] | None = None
@@ -336,7 +357,7 @@ class ToolStatusEvent(PublicSseItemEventBase):
 class ToolArgumentsDeltaEvent(PublicSseItemEventBase):
     kind: Literal["tool.arguments.delta"]
     tool_call_id: str
-    tool_type: Literal["function", "mcp"]
+    tool_type: Literal["function", "mcp", "agent"]
     tool_name: str
     delta: str
 
@@ -344,7 +365,7 @@ class ToolArgumentsDeltaEvent(PublicSseItemEventBase):
 class ToolArgumentsDoneEvent(PublicSseItemEventBase):
     kind: Literal["tool.arguments.done"]
     tool_call_id: str
-    tool_type: Literal["function", "mcp"]
+    tool_type: Literal["function", "mcp", "agent"]
     tool_name: str
     arguments_text: str
     arguments_json: dict[str, Any] | None = None
@@ -372,6 +393,7 @@ class ToolOutputEvent(PublicSseItemEventBase):
         "image_generation",
         "function",
         "mcp",
+        "agent",
     ]
     output: Any
 
@@ -478,6 +500,7 @@ class PublicSseEvent(RootModel[PublicSseEventUnion]):
 __all__ = [
     "PUBLIC_SSE_SCHEMA_VERSION",
     "AgentUpdatedEvent",
+    "AgentTool",
     "ChunkDeltaEvent",
     "ChunkDoneEvent",
     "ChunkTarget",
@@ -511,6 +534,7 @@ __all__ = [
     "RefusalDeltaEvent",
     "RefusalDoneEvent",
     "StreamNotice",
+    "StreamScope",
     "ToolArgumentsDeltaEvent",
     "ToolArgumentsDoneEvent",
     "ToolCodeDeltaEvent",

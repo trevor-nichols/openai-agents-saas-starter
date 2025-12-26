@@ -12,8 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.core.settings import Settings
 from app.domain.billing import PlanFeature, BillingPlan, TenantSubscription
-from app.infrastructure.persistence.conversations.models import TenantAccount
+from app.infrastructure.persistence.tenants.models import TenantAccount
 from app.infrastructure.persistence.vector_stores.models import AgentVectorStore, VectorStore, VectorStoreFile
+from app.domain.storage import StorageObjectRef, StoragePresignedUrl
 from app.services.vector_stores import (
     VectorLimitResolver,
     VectorStoreFileConflictError,
@@ -62,13 +63,17 @@ class _FakeFile:
 
 
 class _FakeFilesClient:
-    def __init__(self, file_meta: _FakeFile):
+    def __init__(self, file_meta: _FakeFile, upload_file: _FakeFile | None = None):
         self._file_meta = file_meta
+        self._upload_file = upload_file or file_meta
 
     async def retrieve(self, file_id: str) -> _FakeFile:
         return self._file_meta
 
-    async def delete(self, *, vector_store_id: str, file_id: str):
+    async def create(self, **kwargs) -> _FakeFile:
+        return self._upload_file
+
+    async def delete(self, *args, **kwargs):
         return None
 
 
@@ -112,9 +117,9 @@ class _FakeVectorStores:
 
 
 class _FakeOpenAI:
-    def __init__(self, remote_store, file_meta: _FakeFile):
+    def __init__(self, remote_store, file_meta: _FakeFile, upload_file: _FakeFile | None = None):
         self.vector_stores = _FakeVectorStores(remote_store, file_meta)
-        self.files = _FakeFilesClient(file_meta)
+        self.files = _FakeFilesClient(file_meta, upload_file=upload_file)
 
 
 class _FakeBilling:
@@ -135,15 +140,18 @@ def _service(
     file_meta: _FakeFile,
     *,
     limit_resolver: VectorLimitResolver | None = None,
+    storage_service: object | None = None,
+    upload_file: _FakeFile | None = None,
 ):
     remote_store = type("RemoteStore", (), {"id": "vs_123", "usage_bytes": 0, "status": "ready"})
-    fake_client = _FakeOpenAI(remote_store, file_meta)
+    fake_client = _FakeOpenAI(remote_store, file_meta, upload_file=upload_file)
 
     return VectorStoreService(
         session_factory,
         lambda: settings,
         client_factory=lambda _tenant_id: cast(AsyncOpenAI, fake_client),
         limit_resolver=limit_resolver,
+        storage_service=cast(Any, storage_service) if storage_service is not None else None,
     )
 
 
@@ -157,6 +165,32 @@ async def test_create_store_name_conflict(session_factory, settings):
 
     with pytest.raises(VectorStoreNameConflictError):
         await svc.create_store(tenant_id=tenant_id, owner_user_id=None, name="primary")
+
+
+@pytest.mark.asyncio
+async def test_create_store_reuses_name_after_delete(session_factory, settings):
+    svc = _service(session_factory, settings, _FakeFile("file-reuse"))
+    tenant_id = uuid4()
+
+    first = await svc.create_store(tenant_id=tenant_id, owner_user_id=None, name="test")
+    await svc.delete_store(vector_store_id=first.id, tenant_id=tenant_id)
+
+    second = await svc.create_store(tenant_id=tenant_id, owner_user_id=None, name="test")
+    assert second.id != first.id
+
+    async with session_factory() as session:
+        first_row = await session.get(VectorStore, first.id)
+        assert first_row.deleted_at is not None
+        active_count = await session.scalar(
+            select(func.count())
+            .select_from(VectorStore)
+            .where(
+                VectorStore.tenant_id == tenant_id,
+                VectorStore.deleted_at.is_(None),
+                VectorStore.name == "test",
+            )
+        )
+        assert int(active_count or 0) == 1
 
 
 @pytest.mark.asyncio
@@ -378,3 +412,71 @@ async def test_get_store_by_openai_id(session_factory, settings):
     fetched = await svc.get_store_by_openai_id(tenant_id=tenant_id, openai_id=store.openai_id)
     assert fetched is not None
     assert fetched.id == store.id
+
+
+class _FakeStorage:
+    def __init__(self, object_id, data: bytes, *, filename: str, mime_type: str):
+        self._object_id = object_id
+        self._data = data
+        self._ref = StorageObjectRef(
+            id=object_id,
+            bucket="bucket",
+            key="key",
+            size_bytes=len(data),
+            mime_type=mime_type,
+            filename=filename,
+            status="uploaded",
+        )
+
+    async def get_presigned_download(self, *, tenant_id, object_id):
+        if object_id != self._object_id:
+            raise FileNotFoundError("Object not found")
+        return StoragePresignedUrl(url="https://example.com", method="GET"), self._ref
+
+    async def get_object_bytes(self, *, tenant_id, object_id, verify_sha256: bool = True):
+        if object_id != self._object_id:
+            raise FileNotFoundError("Object not found")
+        return self._data
+
+
+@pytest.mark.asyncio
+async def test_attach_storage_object_success(session_factory, settings):
+    settings.vector_max_files_per_store = 5
+    upload_file = _FakeFile("file-uploaded", bytes=2048, mime_type="text/plain")
+    object_id = uuid4()
+    svc = _service(
+        session_factory,
+        settings,
+        _FakeFile("file-meta"),
+        storage_service=_FakeStorage(object_id, b"hello world", filename="doc.txt", mime_type="text/plain"),
+        upload_file=upload_file,
+    )
+    tenant_id = uuid4()
+    store = await svc.create_store(tenant_id=tenant_id, owner_user_id=None, name="primary")
+
+    created = await svc.attach_storage_object(
+        vector_store_id=store.id,
+        tenant_id=tenant_id,
+        object_id=object_id,
+        attributes=None,
+        chunking_strategy=None,
+    )
+    assert created.openai_file_id == "file-uploaded"
+
+
+@pytest.mark.asyncio
+async def test_attach_storage_object_respects_mime_policy(session_factory, settings):
+    settings.vector_allowed_mime_types = ["text/plain"]
+    storage = _FakeStorage(uuid4(), b"%PDF", filename="doc.pdf", mime_type="application/pdf")
+    svc = _service(session_factory, settings, _FakeFile("file-meta"), storage_service=storage)
+    tenant_id = uuid4()
+    store = await svc.create_store(tenant_id=tenant_id, owner_user_id=None, name="primary")
+
+    with pytest.raises(VectorStoreValidationError):
+        await svc.attach_storage_object(
+            vector_store_id=store.id,
+            tenant_id=tenant_id,
+            object_id=storage._object_id,
+            attributes=None,
+            chunking_strategy=None,
+        )

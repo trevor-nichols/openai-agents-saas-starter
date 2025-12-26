@@ -16,10 +16,10 @@ Key primitives:
 - If you need a new capability, add it to the agent spec (prompt/tools/guardrails) first, then reference that agent in the workflow.
 
 ## Guards & input mappers
-- `guard`: dotted callable `(request, prior_outputs, ctx) -> bool`; when False, the step is skipped.
-- `input_mapper`: dotted callable `(request, prior_outputs, ctx) -> str | dict | list`; return value becomes the next step’s input message/content.
+- `guard`: dotted callable `(current_input, prior_steps) -> bool`; when False, the step is skipped.
+- `input_mapper`: dotted callable `(current_input, prior_steps) -> str | dict | list`; return value becomes the next step’s input message/content.
 - Both are looked up by dotted path; keep them in module-level functions for importability and reuse.
-- For parallel stages, `prior_outputs` is the list of branch outputs; for sequential, it is the previous step’s output.
+- `prior_steps` is a list of `WorkflowStepResult` objects; for parallel stages it includes the branch results, for sequential it contains prior step results in order.
 
 ## Authoring checklist
 - [ ] Define `WorkflowSpec` in `app/workflows/<key>/spec.py` with `key`, `display_name`, `description`.

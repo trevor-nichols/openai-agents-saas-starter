@@ -31,52 +31,8 @@ def _sqlite_omit_computed(element, compiler, **kwargs):
     return ""
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
-    from app.infrastructure.persistence.auth.models import (
-        TenantUserMembership,
-        UserAccount,
-    )
-    from app.infrastructure.persistence.billing.models import TenantSubscription
-    from app.infrastructure.persistence.tenants.models import TenantSettingsModel
-
-
-class TenantAccount(Base):
-    """Represents a customer tenant in a multi-tenant deployment."""
-
-    __tablename__ = "tenant_accounts"
-
-    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk)
-    slug: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
-    name: Mapped[str] = mapped_column(String(128), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=UTC_NOW, nullable=False
-    )
-
-    memberships: Mapped[list[TenantUserMembership]] = relationship(
-        "TenantUserMembership",
-        back_populates="tenant",
-        cascade="all, delete-orphan",
-    )
-    users: Mapped[list[UserAccount]] = relationship(
-        "UserAccount",
-        secondary="tenant_user_memberships",
-        back_populates="tenants",
-        viewonly=True,
-    )
-    subscriptions: Mapped[list[TenantSubscription]] = relationship(
-        "TenantSubscription",
-        back_populates="tenant",
-        cascade="all, delete-orphan",
-    )
-    conversations: Mapped[list[AgentConversation]] = relationship(
-        back_populates="tenant", cascade="all, delete-orphan"
-    )
-    settings: Mapped[TenantSettingsModel | None] = relationship(
-        "TenantSettingsModel",
-        back_populates="tenant",
-        cascade="all, delete-orphan",
-        uselist=False,
-        single_parent=True,
-    )
+    from app.infrastructure.persistence.auth.models.user import UserAccount
+    from app.infrastructure.persistence.tenants.models import TenantAccount
 
 
 class AgentConversation(Base):
@@ -131,8 +87,8 @@ class AgentConversation(Base):
         DateTime(timezone=True), default=UTC_NOW, nullable=False
     )
 
-    tenant: Mapped[TenantAccount] = relationship(back_populates="conversations")
-    user: Mapped[UserAccount | None] = relationship(back_populates="conversations")
+    tenant: Mapped[TenantAccount] = relationship("TenantAccount")
+    user: Mapped[UserAccount | None] = relationship("UserAccount")
     messages: Mapped[list[AgentMessage]] = relationship(
         back_populates="conversation",
         cascade="all, delete-orphan",
@@ -306,7 +262,6 @@ class AgentRunUsageModel(Base):
 
 __all__ = [
     "Base",
-    "TenantAccount",
     "AgentConversation",
     "AgentMessage",
     "AgentRunEvent",

@@ -154,6 +154,8 @@
       "enum": [
         "minio",
         "gcs",
+        "s3",
+        "azure_blob",
         "memory"
       ],
       "title": "StorageProviderLiteral",
@@ -327,6 +329,43 @@
       "description": "Preferred Cache-Control max-age for JWKS responses.",
       "title": "Auth Jwks Max Age Seconds",
       "type": "integer"
+    },
+    "AUTH_KEY_SECRET_NAME": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Secret-manager key/path storing keyset JSON when backend=secret-manager.",
+      "title": "Auth Key Secret Name"
+    },
+    "AUTH_KEY_STORAGE_BACKEND": {
+      "default": "file",
+      "description": "Key storage backend (file or secret-manager).",
+      "title": "Auth Key Storage Backend",
+      "type": "string"
+    },
+    "AUTH_KEY_STORAGE_PATH": {
+      "default": "var/keys/keyset.json",
+      "description": "Filesystem path for keyset JSON when using file backend.",
+      "title": "Auth Key Storage Path",
+      "type": "string"
+    },
+    "AUTH_KEY_STORAGE_PROVIDER": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SecretsProviderLiteral"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Secrets provider used for Ed25519 keyset storage when auth_key_storage_backend=secret-manager."
     },
     "AUTH_LOCKOUT_DURATION_MINUTES": {
       "default": 60.0,
@@ -948,7 +987,7 @@
         }
       ],
       "default": null,
-      "description": "Datadog API key when logging_sink=datadog.",
+      "description": "Datadog API key when LOGGING_SINKS includes datadog.",
       "title": "Logging Datadog Api Key"
     },
     "LOGGING_DATADOG_SITE": {
@@ -966,27 +1005,27 @@
     },
     "LOGGING_DUPLEX_ERROR_FILE": {
       "default": false,
-      "description": "When logging_sink=stdout, also write errors to the dated error file.",
+      "description": "When LOGGING_SINKS includes stdout, also write errors to the dated error file.",
       "title": "Logging Duplex Error File",
       "type": "boolean"
     },
     "LOGGING_FILE_BACKUPS": {
       "default": 5,
-      "description": "Rotated backup files to retain when logging_sink=file.",
+      "description": "Rotated backup files to retain when LOGGING_SINKS includes file.",
       "minimum": 0,
       "title": "Logging File Backups",
       "type": "integer"
     },
     "LOGGING_FILE_MAX_MB": {
       "default": 10,
-      "description": "Maximum megabytes per log file when logging_sink=file.",
+      "description": "Maximum megabytes per log file when LOGGING_SINKS includes file.",
       "minimum": 1,
       "title": "Logging File Max Mb",
       "type": "integer"
     },
     "LOGGING_FILE_PATH": {
       "default": "var/log/api-service.log",
-      "description": "Filesystem path for file sink when logging_sink=file.",
+      "description": "Filesystem path for file sink when LOGGING_SINKS includes file.",
       "title": "Logging File Path",
       "type": "string"
     },
@@ -1007,7 +1046,7 @@
         }
       ],
       "default": null,
-      "description": "OTLP/HTTP endpoint when logging_sink=otlp.",
+      "description": "OTLP/HTTP endpoint when LOGGING_SINKS includes otlp.",
       "title": "Logging Otlp Endpoint"
     },
     "LOGGING_OTLP_HEADERS": {
@@ -1020,27 +1059,14 @@
         }
       ],
       "default": null,
-      "description": "Optional OTLP headers JSON when logging_sink=otlp.",
+      "description": "Optional OTLP headers JSON when LOGGING_SINKS includes otlp.",
       "title": "Logging Otlp Headers"
     },
-    "LOGGING_SINK": {
-      "default": "stdout",
-      "description": "Logging sink (stdout, file, datadog, otlp, or none).",
-      "title": "Logging Sink",
-      "type": "string"
-    },
     "LOGGING_SINKS": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "description": "Comma-separated logging sinks (stdout, file, datadog, otlp, none). Overrides LOGGING_SINK when set.",
-      "title": "Logging Sinks"
+      "default": "stdout",
+      "description": "Comma-separated logging sinks (stdout, file, datadog, otlp, none).",
+      "title": "Logging Sinks",
+      "type": "string"
     },
     "LOG_ROOT": {
       "anyOf": [
@@ -1323,7 +1349,7 @@
         },
         "type": "array"
       },
-      "description": "JSON map of tenant_id → channel list overrides.",
+      "description": "JSON map of tenant_id \u2192 channel list overrides.",
       "title": "Slack Status Tenant Channel Map",
       "type": "object"
     },
@@ -1373,7 +1399,7 @@
     "STORAGE_PROVIDER": {
       "$ref": "#/$defs/StorageProviderLiteral",
       "default": "memory",
-      "description": "Which storage provider implementation to use (minio, gcs, memory)."
+      "description": "Which storage provider implementation to use (minio, gcs, s3, azure_blob, memory)."
     },
     "STRIPE_PRODUCT_PRICE_MAP": {
       "additionalProperties": {
@@ -1594,31 +1620,6 @@
       "title": "Auth Audience",
       "type": "array"
     },
-    "auth_key_secret_name": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "description": "Secret-manager key/path storing keyset JSON when backend=secret-manager.",
-      "title": "Auth Key Secret Name"
-    },
-    "auth_key_storage_backend": {
-      "default": "file",
-      "description": "Key storage backend (file or secret-manager).",
-      "title": "Auth Key Storage Backend",
-      "type": "string"
-    },
-    "auth_key_storage_path": {
-      "default": "var/keys/keyset.json",
-      "description": "Filesystem path for keyset JSON when using file backend.",
-      "title": "Auth Key Storage Path",
-      "type": "string"
-    },
     "auto_create_vector_store_for_file_search": {
       "default": true,
       "description": "Automatically create a primary vector store for tenants when file_search is used.",
@@ -1636,6 +1637,45 @@
       "description": "Automatically run Alembic migrations on startup (dev convenience)",
       "title": "Auto Run Migrations",
       "type": "boolean"
+    },
+    "azure_blob_account_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Azure Blob account URL (https://<account>.blob.core.windows.net).",
+      "title": "Azure Blob Account Url"
+    },
+    "azure_blob_connection_string": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Azure Blob connection string (optional, overrides account URL auth).",
+      "title": "Azure Blob Connection String"
+    },
+    "azure_blob_container": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Azure Blob container name for storage operations.",
+      "title": "Azure Blob Container"
     },
     "container_allowed_memory_tiers": {
       "description": "Allowed memory tiers for explicit containers.",
@@ -1958,6 +1998,51 @@
       "description": "Redis connection URL",
       "title": "Redis Url",
       "type": "string"
+    },
+    "s3_bucket": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "S3 bucket name for storage operations.",
+      "title": "S3 Bucket"
+    },
+    "s3_endpoint_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Optional custom S3 endpoint URL (leave blank for AWS).",
+      "title": "S3 Endpoint Url"
+    },
+    "s3_force_path_style": {
+      "default": false,
+      "description": "Force path-style addressing for S3-compatible endpoints.",
+      "title": "S3 Force Path Style",
+      "type": "boolean"
+    },
+    "s3_region": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "AWS region for S3 operations (optional; falls back to SDK defaults).",
+      "title": "S3 Region"
     },
     "secret_key": {
       "default": "your-secret-key-here-change-in-production",

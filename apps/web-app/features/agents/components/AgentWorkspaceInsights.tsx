@@ -31,6 +31,7 @@ interface AgentWorkspaceInsightsProps {
   toolsSummary: ToolRegistrySummary;
   toolsByAgent: ToolsByAgentMap;
   selectedAgent: string | null;
+  supportsContainers: boolean;
   isLoadingTools: boolean;
   toolsError: string | null;
   onRefreshTools: () => void | Promise<void>;
@@ -56,6 +57,7 @@ export function AgentWorkspaceInsights({
   toolsSummary,
   toolsByAgent,
   selectedAgent,
+  supportsContainers,
   isLoadingTools,
   toolsError,
   onRefreshTools,
@@ -72,9 +74,16 @@ export function AgentWorkspaceInsights({
   const [selectedContainerId, setSelectedContainerId] = useState<string | null>(null);
 
   const openTab = (tab: typeof insightsTab) => {
+    if (tab === 'containers' && !supportsContainers) {
+      return;
+    }
     setInsightsTab(tab);
     setInsightsOpen(true);
   };
+
+  const actionGridClass = supportsContainers ? 'grid-cols-3' : 'grid-cols-2';
+  const resolvedTab =
+    supportsContainers || insightsTab !== 'containers' ? insightsTab : 'archive';
 
   return (
     <>
@@ -84,7 +93,7 @@ export function AgentWorkspaceInsights({
           <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Workspace Insights
           </h4>
-          <div className="grid grid-cols-3 gap-2">
+          <div className={`grid ${actionGridClass} gap-2`}>
             <Button
               variant="outline"
               size="sm"
@@ -103,15 +112,17 @@ export function AgentWorkspaceInsights({
               <Wrench className="h-4 w-4 opacity-70" />
               <span>Tools</span>
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex flex-col items-center gap-1 h-auto py-3 text-xs"
-              onClick={() => openTab('containers')}
-            >
-              <Box className="h-4 w-4 opacity-70" />
-              <span>Containers</span>
-            </Button>
+            {supportsContainers ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex flex-col items-center gap-1 h-auto py-3 text-xs"
+                onClick={() => openTab('containers')}
+              >
+                <Box className="h-4 w-4 opacity-70" />
+                <span>Containers</span>
+              </Button>
+            ) : null}
           </div>
         </div>
       </div>
@@ -127,7 +138,7 @@ export function AgentWorkspaceInsights({
           
           <div className="mt-6 h-full pb-12">
             <Tabs
-              value={insightsTab}
+              value={resolvedTab}
               onValueChange={(value) =>
                 setInsightsTab(value as 'archive' | 'tools' | 'containers')
               }
@@ -140,9 +151,11 @@ export function AgentWorkspaceInsights({
                 <TabsTrigger value="tools" className="gap-2">
                   <Wrench className="h-4 w-4" /> Tools
                 </TabsTrigger>
-                <TabsTrigger value="containers" className="gap-2">
-                  <Box className="h-4 w-4" /> Containers
-                </TabsTrigger>
+                {supportsContainers ? (
+                  <TabsTrigger value="containers" className="gap-2">
+                    <Box className="h-4 w-4" /> Containers
+                  </TabsTrigger>
+                ) : null}
               </TabsList>
 
               <TabsContent value="archive" className="flex-1 overflow-hidden p-1">
@@ -172,20 +185,22 @@ export function AgentWorkspaceInsights({
                 />
               </TabsContent>
 
-              <TabsContent value="containers" className="flex-1 overflow-y-auto p-1">
-                <ContainerBindingsPanel
-                  containers={containers}
-                  isLoading={isLoadingContainers}
-                  error={containersError}
-                  selectedContainerId={selectedContainerId}
-                  onSelect={setSelectedContainerId}
-                  onCreate={onCreateContainer}
-                  onDelete={onDeleteContainer}
-                  onBind={onBindContainer}
-                  onUnbind={onUnbindContainer}
-                  agentKey={selectedAgent ?? ''}
-                />
-              </TabsContent>
+              {supportsContainers ? (
+                <TabsContent value="containers" className="flex-1 overflow-y-auto p-1">
+                  <ContainerBindingsPanel
+                    containers={containers}
+                    isLoading={isLoadingContainers}
+                    error={containersError}
+                    selectedContainerId={selectedContainerId}
+                    onSelect={setSelectedContainerId}
+                    onCreate={onCreateContainer}
+                    onDelete={onDeleteContainer}
+                    onBind={onBindContainer}
+                    onUnbind={onUnbindContainer}
+                    agentKey={selectedAgent ?? ''}
+                  />
+                </TabsContent>
+              ) : null}
             </Tabs>
           </div>
         </SheetContent>

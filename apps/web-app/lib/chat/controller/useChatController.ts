@@ -22,6 +22,7 @@ import type {
 } from '../types';
 import type { LocationHint, PublicSseEvent } from '@/lib/api/client/types.gen';
 import type { ReasoningPart } from '@/lib/streams/publicSseV1/reasoningParts';
+import type { AgentToolStreamMap } from '@/lib/streams/publicSseV1/agentToolStreams';
 
 import { createLogger } from '@/lib/logging';
 import {
@@ -61,6 +62,7 @@ export interface UseChatControllerReturn {
   activeAgent: string;
   agentNotices: AgentNotice[];
   toolEvents: ToolState[];
+  agentToolStreams: AgentToolStreamMap;
   toolEventAnchors: ToolEventAnchors;
   reasoningText: string;
   reasoningParts: ReasoningPart[];
@@ -107,6 +109,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
   const [activeAgent, setActiveAgent] = useState<string>('triage');
   const [agentNotices, setAgentNotices] = useState<AgentNotice[]>([]);
   const [toolEvents, setToolEvents] = useState<ToolState[]>([]);
+  const [liveAgentToolStreams, setLiveAgentToolStreams] = useState<AgentToolStreamMap>({});
   const [toolEventAnchors, setToolEventAnchors] = useState<ToolEventAnchors>({});
   const [reasoningText, setReasoningText] = useState('');
   const [reasoningParts, setReasoningParts] = useState<ReasoningPart[]>([]);
@@ -187,15 +190,19 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
     () => dedupeAndSortMessages([...historyMessagesWithMarkers, ...messages]),
     [historyMessagesWithMarkers, messages],
   );
-  const { toolEvents: combinedToolEvents, toolEventAnchors: combinedToolEventAnchors } =
-    useToolTimeline({
-      ledgerEvents,
-      historyMessagesWithMarkers,
-      liveToolEvents: toolEvents,
-      liveToolEventAnchors: toolEventAnchors,
-      liveMessages: messages,
-      mergedMessages,
-    });
+  const {
+    toolEvents: combinedToolEvents,
+    toolEventAnchors: combinedToolEventAnchors,
+    agentToolStreams: combinedAgentToolStreams,
+  } = useToolTimeline({
+    ledgerEvents,
+    historyMessagesWithMarkers,
+    liveToolEvents: toolEvents,
+    liveToolEventAnchors: toolEventAnchors,
+    liveAgentToolStreams,
+    liveMessages: messages,
+    mergedMessages,
+  });
 
   const { enqueueMessageAction, flushQueuedMessages } = useMessageDispatchQueue(dispatchMessages);
 
@@ -205,6 +212,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
     setErrorMessage(null);
     clearHistoryError();
     setToolEvents([]);
+    setLiveAgentToolStreams({});
     setToolEventAnchors({});
     setReasoningText('');
     setReasoningParts([]);
@@ -219,6 +227,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
     setReasoningText('');
     setReasoningParts([]);
     setToolEvents([]);
+    setLiveAgentToolStreams({});
     setToolEventAnchors({});
     setLifecycleStatus('idle');
     resetTurnRuntimeRefs(turnRuntimeRefs);
@@ -319,6 +328,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
           flushQueuedMessages,
           setErrorMessage,
           setToolEvents,
+          setAgentToolStreams: setLiveAgentToolStreams,
           setToolEventAnchors,
           setReasoningText,
           setReasoningParts,
@@ -363,6 +373,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       setReasoningParts,
       setToolEventAnchors,
       setToolEvents,
+      setLiveAgentToolStreams,
       turnRuntimeRefs,
     ],
   );
@@ -482,6 +493,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       activeAgent,
       agentNotices,
       toolEvents: combinedToolEvents,
+      agentToolStreams: combinedAgentToolStreams,
       toolEventAnchors: combinedToolEventAnchors,
       reasoningText,
       reasoningParts,
@@ -519,6 +531,7 @@ export function useChatController(options: UseChatControllerOptions = {}): UseCh
       activeAgent,
       agentNotices,
       combinedToolEvents,
+      combinedAgentToolStreams,
       combinedToolEventAnchors,
       reasoningText,
       reasoningParts,

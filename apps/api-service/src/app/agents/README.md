@@ -4,7 +4,7 @@ Operational guide for declaring and running agents with the OpenAI Agents SDK in
 
 ## Mental model
 - **Declarative specs → concrete SDK Agents at runtime.** Specs live in `app/agents/<key>/spec.py`; `OpenAIAgentRegistry` renders prompts with request context and attaches tools/handoffs on each call.
-- **Explicit tools only.** If a tool isn’t named in `tool_keys`, it is not exposed. Optional tools (e.g., `web_search`) are skipped quietly when unavailable; required tools cause startup errors.
+- **Explicit tools only.** If a tool isn’t named in `tool_keys`, it is not exposed. Optional tools (e.g., `web_search`) are skipped quietly when unavailable; other tool keys are required and will fail registration if missing.
 - **Handoffs are first-class.** Orchestrator agents list `handoff_keys`; input filters and per-target overrides tune what history/shape flows to the next agent.
 - **Models are explicit and predictable.** Specs can set `model` (fixed per-agent) or use `model_key` (settings bucket). Otherwise they use `AGENT_MODEL_DEFAULT`.
 
@@ -20,7 +20,7 @@ Operational guide for declaring and running agents with the OpenAI Agents SDK in
 - Misc: `prompt_defaults` feed prompt rendering; `capabilities` are surfaced in catalogs.
 
 ## Tool inventory (where tools come from)
-- Registry (`app/utils/tools/registry.py::initialize_tools()`): registers hosted OpenAI tools (`web_search`, `code_interpreter`, `image_generation`, `file_search`) when `OPENAI_API_KEY` is set, plus hosted MCP tools from `mcp_tools` settings.
+- Registry (`app/utils/tools/registry.py::initialize_tools()`): registers hosted OpenAI tools (`web_search`, `code_interpreter`, `image_generation`, `file_search`) only when `OPENAI_API_KEY` is set, plus hosted MCP tools from `mcp_tools` settings.
 - Built-in utility tools: `OpenAIAgentRegistry._register_builtin_tools()` adds `get_current_time` and `search_conversations`.
 - Agent-as-tools: any agent listed in `agent_tool_keys` is exposed via `as_tool`.
 - Custom function tools: register in the tool registry and list the tool name in `tool_keys` to expose it on an agent.

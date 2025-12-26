@@ -4,7 +4,7 @@
 _Last updated: YYYY-MM-DD_  
 **Status:** Planned | In Progress | Completed | Archived  
 **Owner:** @handle or team name  
-**Domain:** Backend | Frontend | CLI | Infra | Cross-cutting  
+**Domain:** Backend | Frontend | Console | Infra | Cross-cutting  
 **ID / Links:** [Issue/Linear/Jira], [Docs], [Related trackers]
 
 ---
@@ -59,7 +59,7 @@ Short summary of the important decisions + links. For example:
 
 - Key decisions (algos, patterns, boundaries, provider choices).
 - New modules / packages / tables introduced.
-- How this plugs into existing services/agents/CLI.
+- How this plugs into existing services/agents/console.
 
 If there’s a full design doc, just summarize and link it.
 
@@ -88,10 +88,10 @@ Top-level workstreams, each with its own mini checklist.
 
 Use when the milestone is multi-stage or time-based.
 
-| Phase | Scope | Exit Criteria | Status | Target |
-| ----- | ----- | ------------- | ------ | ------ |
-| P0 – Alignment | … | … | ✅ | 2025-11-10 |
-| P1 – Impl | … | … | ⏳ | 2025-11-20 |
+| Phase | Scope | Exit Criteria | Status |
+| ----- | ----- | ------------- | ------ |
+| P0 – Alignment | … | … | ✅ |
+| P1 – Impl | … | … | ⏳ |
 
 ---
 
@@ -125,7 +125,7 @@ Use when the milestone is multi-stage or time-based.
 <!-- SECTION: Rollout / Ops Notes -->
 ## Rollout / Ops Notes
 
-- How this is enabled/rolled out (flags, envs, CLI commands).
+- How this is enabled/rolled out (flags, envs, console commands).
 - Migration steps, backfill, or one-time scripts.
 - Rollback considerations.
 

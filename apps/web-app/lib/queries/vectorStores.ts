@@ -5,6 +5,7 @@ import {
   createVectorStore,
   deleteVectorStore,
   deleteVectorStoreFile,
+  uploadVectorStoreFile,
   bindAgentToVectorStore,
   unbindAgentFromVectorStore,
   listVectorStoreFiles,
@@ -14,12 +15,17 @@ import {
 import type {
   VectorStoreCreateRequest,
   VectorStoreFileCreateRequest,
+  VectorStoreFileUploadRequest,
   VectorStoreSearchRequest,
 } from '@/lib/api/client/types.gen';
 import { queryKeys } from './keys';
 
-export function useVectorStoresQuery() {
-  return useQuery({ queryKey: queryKeys.vectorStores.list(), queryFn: listVectorStores });
+export function useVectorStoresQuery(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: queryKeys.vectorStores.list(),
+    queryFn: listVectorStores,
+    enabled: options?.enabled ?? true,
+  });
 }
 
 export function useVectorStoreFilesQuery(vectorStoreId: string, enabled = true) {
@@ -56,6 +62,17 @@ export function useAttachVectorStoreFile(vectorStoreId: string) {
     mutationFn: (body: VectorStoreFileCreateRequest) => attachVectorStoreFile(vectorStoreId, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.vectorStores.files(vectorStoreId) }).catch(() => {});
+    },
+  });
+}
+
+export function useUploadVectorStoreFile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { vectorStoreId: string; body: VectorStoreFileUploadRequest }) =>
+      uploadVectorStoreFile(payload.vectorStoreId, payload.body),
+    onSuccess: (_data, payload) => {
+      qc.invalidateQueries({ queryKey: queryKeys.vectorStores.files(payload.vectorStoreId) }).catch(() => {});
     },
   });
 }

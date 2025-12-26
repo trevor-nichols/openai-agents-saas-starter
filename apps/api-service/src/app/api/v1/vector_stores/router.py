@@ -13,12 +13,17 @@ from app.api.v1.vector_stores.schemas import (
     VectorStoreFileCreateRequest,
     VectorStoreFileListResponse,
     VectorStoreFileResponse,
+    VectorStoreFileUploadRequest,
     VectorStoreListResponse,
     VectorStoreResponse,
     VectorStoreSearchRequest,
     VectorStoreSearchResponse,
 )
 from app.bootstrap.container import get_container, wire_vector_store_service
+from app.services.agents.vector_store_access import (
+    AgentVectorStoreAccessError,
+    AgentVectorStoreAccessService,
+)
 from app.services.vector_stores import (
     VectorStoreFileConflictError,
     VectorStoreNameConflictError,
@@ -62,7 +67,7 @@ def _store_response(store) -> VectorStoreResponse:
         expires_after=store.expires_after,
         expires_at=store.expires_at,
         last_active_at=store.last_active_at,
-        metadata=store.metadata_json or {},
+        metadata=store.metadata or {},
         created_at=store.created_at,
         updated_at=store.updated_at,
     )
@@ -78,8 +83,8 @@ def _file_response(file, store_id: uuid.UUID) -> VectorStoreFileResponse:
         size_bytes=file.size_bytes,
         usage_bytes=file.usage_bytes,
         status=file.status,
-        attributes=file.attributes_json or {},
-        chunking_strategy=file.chunking_json,
+        attributes=file.attributes or {},
+        chunking_strategy=file.chunking,
         last_error=file.last_error,
         created_at=file.created_at,
         updated_at=file.updated_at,
@@ -188,6 +193,61 @@ async def attach_file(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Vector store not found"
         ) from None
+    except VectorStoreFileConflictError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
+    except VectorStoreValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except VectorStoreQuotaError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except Exception as exc:  # pragma: no cover - translated to 400
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    return _file_response(file, vector_store_id)
+
+
+@router.post(
+    "/{vector_store_id}/files/upload",
+    response_model=VectorStoreFileResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_and_attach_file(
+    vector_store_id: uuid.UUID,
+    payload: VectorStoreFileUploadRequest,
+    current_user: CurrentUser = Depends(require_verified_user()),
+    tenant_context=Depends(tenant_admin),
+    service: VectorStoreService = Depends(_svc),
+) -> VectorStoreFileResponse:
+    user_id = current_user.get("user_id") if isinstance(current_user, dict) else None
+    agent_key = payload.agent_key
+    try:
+        if agent_key:
+            access = AgentVectorStoreAccessService(vector_store_service=service)
+            await access.assert_agent_can_attach(
+                agent_key=agent_key,
+                tenant_id=str(tenant_context.tenant_id),
+                user_id=str(user_id) if user_id else None,
+                vector_store_id=str(vector_store_id),
+            )
+        file = await service.attach_storage_object(
+            vector_store_id=vector_store_id,
+            tenant_id=_uuid(tenant_context.tenant_id),
+            object_id=payload.object_id,
+            attributes=payload.attributes,
+            chunking_strategy=payload.chunking_strategy,
+            poll=payload.poll,
+        )
+    except VectorStoreNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Vector store not found"
+        ) from None
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except AgentVectorStoreAccessError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)
+        ) from exc
     except VectorStoreFileConflictError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail=str(exc)

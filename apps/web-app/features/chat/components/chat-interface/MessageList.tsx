@@ -2,12 +2,14 @@ import { Fragment, useMemo } from 'react';
 import { MessageItem } from './MessageItem';
 import { ToolEventsPanel } from './ToolEventsPanel';
 import type { ChatMessage, ToolEventAnchors, ToolState } from '@/lib/chat/types';
+import type { AgentToolStreamMap } from '@/lib/streams/publicSseV1/agentToolStreams';
 import type { AttachmentState } from '../../hooks/useAttachmentResolver';
 import { Separator } from '@/components/ui/separator';
 
 interface MessageListProps {
   messages: ChatMessage[];
   tools: ToolState[];
+  agentToolStreams?: AgentToolStreamMap;
   toolEventAnchors?: ToolEventAnchors;
   attachmentState: AttachmentState;
   onResolveAttachment: (objectId: string) => Promise<void>;
@@ -19,6 +21,7 @@ interface MessageListProps {
 export function MessageList({
   messages,
   tools,
+  agentToolStreams,
   toolEventAnchors,
   attachmentState,
   onResolveAttachment,
@@ -76,13 +79,15 @@ export function MessageList({
               onDeleteMessage={onDeleteMessage}
             />
             {anchoredToolsForMessage.length > 0 ? (
-              <ToolEventsPanel tools={anchoredToolsForMessage} />
+              <ToolEventsPanel tools={anchoredToolsForMessage} agentToolStreams={agentToolStreams} />
             ) : null}
           </Fragment>
         );
       })}
 
-      {unanchoredTools.length > 0 ? <ToolEventsPanel tools={unanchoredTools} /> : null}
+      {unanchoredTools.length > 0 ? (
+        <ToolEventsPanel tools={unanchoredTools} agentToolStreams={agentToolStreams} />
+      ) : null}
     </>
   );
 }

@@ -14,7 +14,8 @@ from app.api.dependencies.usage import enforce_usage_guardrails
 from app.api.v1.chat.schemas import AgentChatRequest, AgentChatResponse, StreamingChatEvent
 from app.api.v1.shared.public_stream_projector import PublicStreamProjector
 from app.core.settings import get_settings
-from app.services.agent_service import ConversationActorContext, agent_service
+from app.domain.input_attachments import InputAttachmentNotFoundError
+from app.services.agents import AgentService, ConversationActorContext, get_agent_service
 from app.services.conversations.ledger_recorder import get_conversation_ledger_recorder
 from app.services.shared.rate_limit_service import (
     ConcurrencyQuota,
@@ -51,6 +52,7 @@ async def chat_with_agent(
     current_user: CurrentUser = Depends(require_verified_scopes("conversations:write")),
     tenant_context: TenantContext = Depends(require_tenant_role(*_ALLOWED_VIEWER_ROLES)),
     _: object = Depends(enforce_usage_guardrails),
+    agent_service: AgentService = Depends(get_agent_service),
 ) -> AgentChatResponse:
     """Send a message to the agent framework and receive a full response."""
 
@@ -69,6 +71,16 @@ async def chat_with_agent(
 
     try:
         return await agent_service.chat(request, actor=actor)
+    except InputAttachmentNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -82,6 +94,7 @@ async def stream_chat_with_agent(
     current_user: CurrentUser = Depends(require_verified_scopes("conversations:write")),
     tenant_context: TenantContext = Depends(require_tenant_role(*_ALLOWED_VIEWER_ROLES)),
     _: object = Depends(enforce_usage_guardrails),
+    agent_service: AgentService = Depends(get_agent_service),
 ) -> StreamingResponse:
     """Provide an SSE stream for real-time agent responses."""
 
@@ -121,11 +134,11 @@ async def stream_chat_with_agent(
             terminal_sent = False
             try:
                 async for event in agent_service.chat_stream(request, actor=actor):
-                    if event.conversation_id:
+                    if event.conversation_id and event.scope is None:
                         last_conversation_id = event.conversation_id
-                    if event.response_id:
+                    if event.response_id and event.scope is None:
                         last_response_id = event.response_id
-                    if event.agent:
+                    if event.agent and event.scope is None:
                         last_agent = event.agent
 
                     now_iso = datetime.now(tz=UTC).isoformat().replace("+00:00", "Z")

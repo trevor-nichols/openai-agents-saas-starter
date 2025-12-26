@@ -21,6 +21,7 @@ from cryptography.hazmat.primitives.serialization import (
 )
 
 from starter_contracts.config import StarterSettingsProtocol, get_settings
+from starter_contracts.secrets.models import SecretsProviderLiteral
 
 UTC = UTC
 KEYSET_SCHEMA_VERSION = 1
@@ -243,6 +244,23 @@ def get_key_storage(settings: StarterSettingsProtocol | None = None) -> KeyStora
     raise KeyStorageError(f"Unsupported key storage backend: {backend}")
 
 
+def resolve_key_storage_provider(
+    settings: StarterSettingsProtocol | None = None,
+) -> SecretsProviderLiteral:
+    settings = settings or get_settings()
+    provider = settings.auth_key_storage_provider
+    if provider is None:
+        raise KeyStorageError(
+            "auth_key_storage_provider must be set when auth_key_storage_backend=secret-manager."
+        )
+    if isinstance(provider, SecretsProviderLiteral):
+        return provider
+    try:
+        return SecretsProviderLiteral(str(provider))
+    except ValueError as exc:  # pragma: no cover - defensive
+        raise KeyStorageError(f"Unsupported auth_key_storage_provider: {provider}") from exc
+
+
 def load_keyset(settings: StarterSettingsProtocol | None = None) -> KeySet:
     storage = get_key_storage(settings)
     return storage.load_keyset()
@@ -302,4 +320,5 @@ __all__ = [
     "save_keyset",
     "register_secret_manager_client",
     "reset_secret_manager_client",
+    "resolve_key_storage_provider",
 ]

@@ -20,7 +20,7 @@ Developer-facing overview of the pieces that persist and surface conversation da
 
 ## Persistence shape
 - Domain contracts live in `app/domain/conversations.py` (messages, attachments, summaries, memory config, run events/usage, etc.).
-- Postgres implementation is composed of focused stores (`message_store`, `search_store`, `run_event_store`, `summary_store`, `usage_store`) under `infrastructure/persistence/conversations/`.
+- Postgres implementation is composed of focused stores (`conversation_store`, `conversation_reader`, `message_store`, `search_store`, `run_event_store`, `summary_store`, `usage_store`) under `infrastructure/persistence/conversations/`.
 - All operations require a `tenant_id`; helper guards in `ConversationService` enforce this and validate metadata tenant consistency.
 
 ## How to work with it

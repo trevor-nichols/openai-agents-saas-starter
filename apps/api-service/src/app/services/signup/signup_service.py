@@ -18,14 +18,14 @@ from app.core.password_policy import PasswordPolicyError, validate_password_stre
 from app.core.security import PASSWORD_HASH_VERSION, get_password_hash
 from app.core.settings import Settings, get_settings
 from app.infrastructure.db import get_async_sessionmaker
-from app.infrastructure.persistence.auth.models import (
+from app.infrastructure.persistence.auth.models.membership import TenantUserMembership
+from app.infrastructure.persistence.auth.models.user import (
     PasswordHistory,
-    TenantUserMembership,
     UserAccount,
     UserProfile,
     UserStatus,
 )
-from app.infrastructure.persistence.conversations.models import TenantAccount
+from app.infrastructure.persistence.tenants.models import TenantAccount
 from app.observability.logging import log_event
 from app.services.activity import activity_service
 from app.services.auth_service import AuthService, UserSessionTokens, get_auth_service

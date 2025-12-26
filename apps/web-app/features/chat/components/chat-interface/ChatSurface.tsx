@@ -16,6 +16,7 @@ import { MessageList } from './MessageList';
 import { ReasoningPanel } from './ReasoningPanel';
 import { PromptComposer } from './PromptComposer';
 import type { ChatMessage, ConversationLifecycleStatus, ToolEventAnchors, ToolState } from '@/lib/chat/types';
+import type { AgentToolStreamMap } from '@/lib/streams/publicSseV1/agentToolStreams';
 import type { PublicSseEvent } from '@/lib/api/client/types.gen';
 import type { ReasoningPart } from '@/lib/streams/publicSseV1/reasoningParts';
 import type { AttachmentState } from '../../hooks/useAttachmentResolver';
@@ -32,6 +33,7 @@ interface ChatSurfaceProps {
   reasoningParts?: ReasoningPart[];
   debugEvents?: PublicSseEvent[];
   tools: ToolState[];
+  agentToolStreams?: AgentToolStreamMap;
   toolEventAnchors?: ToolEventAnchors;
   chatStatus?: ChatStatus;
   lifecycleStatus?: ConversationLifecycleStatus;
@@ -70,6 +72,10 @@ interface ChatSurfaceProps {
   onMemoryModeChange: (mode: MemoryModeOption) => void;
   onMemoryInjectionChange: (value: boolean) => void;
   isUpdatingMemory: boolean;
+  vectorStoreUpload?: {
+    enabled: boolean;
+    agentKey?: string | null;
+  };
 }
 
 export function ChatSurface({
@@ -82,6 +88,7 @@ export function ChatSurface({
   reasoningParts,
   debugEvents,
   tools,
+  agentToolStreams,
   toolEventAnchors,
   chatStatus,
   lifecycleStatus,
@@ -115,6 +122,7 @@ export function ChatSurface({
   onMemoryModeChange,
   onMemoryInjectionChange,
   isUpdatingMemory,
+  vectorStoreUpload,
 }: ChatSurfaceProps) {
   const showEmpty = !isLoadingHistory && messages.length === 0;
   const isBusy = isSending || Boolean(isDeletingMessage) || isLoadingHistory;
@@ -207,6 +215,7 @@ export function ChatSurface({
               <MessageList
                 messages={messages}
                 tools={tools}
+                agentToolStreams={agentToolStreams}
                 toolEventAnchors={toolEventAnchors}
                 attachmentState={attachmentState}
                 onResolveAttachment={resolveAttachment}
@@ -262,6 +271,7 @@ export function ChatSurface({
         onMemoryModeChange={onMemoryModeChange}
         onMemoryInjectionChange={onMemoryInjectionChange}
         isUpdatingMemory={isUpdatingMemory}
+        vectorStoreUpload={vectorStoreUpload}
       />
     </div>
   );

@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from app.infrastructure.providers.openai.stream_event_mapper import map_stream_event
 from app.infrastructure.providers.openai.streaming import OpenAIStreamingHandle
 
 
@@ -26,8 +27,13 @@ def test_map_raw_response_event_sets_reasoning_delta_and_tool_call_file_search()
     )
     event = SimpleNamespace(type="raw_response_event", data=raw)
 
-    mapped = handle._map_raw_response_event(event)
+    mapped = map_stream_event(
+        event,
+        response_id="resp-1",
+        metadata=handle.metadata,
+    )
 
+    assert mapped is not None
     assert mapped.kind == "raw_response_event"
     assert mapped.sequence_number == 3
     assert mapped.tool_call is not None
@@ -44,8 +50,13 @@ def test_map_raw_response_event_code_interpreter_completed():
     )
     event = SimpleNamespace(type="raw_response_event", data=raw)
 
-    mapped = handle._map_raw_response_event(event)
+    mapped = map_stream_event(
+        event,
+        response_id="resp-1",
+        metadata=handle.metadata,
+    )
 
+    assert mapped is not None
     assert mapped.tool_call is not None
     assert mapped.tool_call["tool_type"] == "code_interpreter"
     assert mapped.tool_call["code_interpreter_call"]["status"] == "completed"
@@ -62,8 +73,13 @@ def test_map_run_item_event_image_generation_includes_result_and_tool_ids():
     )
     event = SimpleNamespace(type="run_item_stream_event", item=item, name="image-gen")
 
-    mapped = handle._map_run_item_event(event)
+    mapped = map_stream_event(
+        event,
+        response_id="resp-1",
+        metadata=handle.metadata,
+    )
 
+    assert mapped is not None
     assert mapped.kind == "run_item_stream_event"
     assert mapped.tool_call_id == "img-1"
     assert mapped.tool_call["tool_type"] == "image_generation"

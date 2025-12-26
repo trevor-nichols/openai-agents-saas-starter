@@ -16,7 +16,7 @@ export function SubscribePanel({ rssHref, onCtaClick }: SubscribePanelProps) {
   return (
     <GlassPanel className="space-y-3">
       <h4 className="text-base font-semibold text-foreground">Subscribe for alerts</h4>
-      <p className="text-sm text-foreground/70">Hook this status feed into your tooling via RSS or our CLI.</p>
+      <p className="text-sm text-foreground/70">Hook this status feed into your tooling via RSS or our console.</p>
       <div className="flex flex-wrap gap-2">
         <Button
           asChild

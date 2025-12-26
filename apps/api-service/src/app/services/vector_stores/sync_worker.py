@@ -17,6 +17,7 @@ from sqlalchemy.sql.elements import ColumnElement
 from app.core.settings import Settings
 from app.infrastructure.persistence.vector_stores.models import VectorStore, VectorStoreFile
 from app.services.activity import activity_service
+from app.services.vector_stores.utils import coerce_datetime
 
 logger = logging.getLogger(__name__)
 
@@ -142,8 +143,13 @@ class VectorStoreSyncWorker:
         remote_usage = getattr(remote_store, "usage_bytes", None)
         usage_bytes = store.usage_bytes if remote_usage is None else remote_usage
 
-        expires_at = getattr(remote_store, "expires_at", None) or store.expires_at
-        last_active_at = getattr(remote_store, "last_active_at", None) or store.last_active_at
+        expires_at = (
+            coerce_datetime(getattr(remote_store, "expires_at", None)) or store.expires_at
+        )
+        last_active_at = (
+            coerce_datetime(getattr(remote_store, "last_active_at", None))
+            or store.last_active_at
+        )
 
         # Expiry enforcement
         expired = expires_at is not None and expires_at <= now

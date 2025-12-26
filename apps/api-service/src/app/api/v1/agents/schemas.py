@@ -5,6 +5,23 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
+class AgentToolingFlags(BaseModel):
+    """Stable capability flags for UI gating."""
+
+    supports_code_interpreter: bool = Field(
+        default=False, description="Whether the agent can use code_interpreter."
+    )
+    supports_file_search: bool = Field(
+        default=False, description="Whether the agent can use file_search."
+    )
+    supports_image_generation: bool = Field(
+        default=False, description="Whether the agent can use image_generation."
+    )
+    supports_web_search: bool = Field(
+        default=False, description="Whether the agent can use web_search."
+    )
+
+
 class AgentSummary(BaseModel):
     """Lightweight representation of an available agent."""
 
@@ -27,6 +44,10 @@ class AgentSummary(BaseModel):
     model: str | None = Field(
         default=None,
         description="Model configured for this agent.",
+    )
+    tooling: AgentToolingFlags = Field(
+        default_factory=AgentToolingFlags,
+        description="Tooling capability flags for UI gating.",
     )
     last_seen_at: str | None = Field(
         default=None,
@@ -51,6 +72,10 @@ class AgentStatus(BaseModel):
     total_conversations: int = Field(
         default=0,
         description="Total number of conversations handled.",
+    )
+    tooling: AgentToolingFlags = Field(
+        default_factory=AgentToolingFlags,
+        description="Tooling capability flags for UI gating.",
     )
 
 

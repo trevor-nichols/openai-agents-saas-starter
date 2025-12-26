@@ -8,21 +8,21 @@ This runbook explains how to enable, monitor, and troubleshoot the plan-aware us
 ## Enablement Checklist
 
 1. **Billable environment** – Guardrails require billing to be enabled (`ENABLE_BILLING=true`) so `BillingService` can read subscriptions + plans.
-2. **Starter CLI wizard** – Run `cd packages/starter_cli && python -m starter_cli.app setup wizard` (or `just cli cmd="setup wizard"`) and complete the new **Usage & Entitlements** section, or re-run just that section with `--sections usage`. Provide:
+2. **Starter Console wizard** – Run `cd packages/starter_console && starter-console setup wizard` (or `just cli cmd="setup wizard"`) and complete the new **Usage & Entitlements** section, or re-run just that section with `--sections usage`. Provide:
    - `ENABLE_USAGE_GUARDRAILS=true`
    - `USAGE_GUARDRAIL_CACHE_TTL_SECONDS` (default `30`)
    - `USAGE_GUARDRAIL_SOFT_LIMIT_MODE` (`warn` or `block`)
    - `USAGE_GUARDRAIL_CACHE_BACKEND` (`redis` recommended; use `memory` for single-node dev)
    - `USAGE_GUARDRAIL_REDIS_URL` when the backend is `redis` (leave blank to inherit `REDIS_URL`)
    - Plan codes + per-feature soft/hard limits; the wizard emits `var/reports/usage-entitlements.json` as the operator artifact.
-3. **Plan metadata** – Run `python -m starter_cli.app usage sync-entitlements` to upsert plan features from `var/reports/usage-entitlements.json` into `plan_features`. Use `--dry-run` to preview and `--prune-missing` to delete stale rows.
+3. **Plan metadata** – Run `starter-console usage sync-entitlements` to upsert plan features from `var/reports/usage-entitlements.json` into `plan_features`. Use `--dry-run` to preview and `--prune-missing` to delete stale rows.
 4. **Deploy / restart API** – When FastAPI boots it wires `UsageRecorder` + `UsagePolicyService` automatically whenever billing + guardrails are enabled.
 5. **Smoke test** – Issue two requests against `/api/v1/chat`: one baseline (expect 200) and one where you temporarily lower a plan limit via SQL to force a 429. Confirm the error payload contains `code=usage_limit_exceeded`, `plan_code`, and `feature_key`.
 
 ### Seeding plan entitlements
 
 ```
-cd packages/starter_cli && python -m starter_cli.app usage sync-entitlements \
+cd packages/starter_console && starter-console usage sync-entitlements \
   --plan starter --plan pro \
   --prune-missing
 ```
@@ -37,7 +37,7 @@ cd packages/starter_cli && python -m starter_cli.app usage sync-entitlements \
 Run the CLI exporter whenever operators need an audit-friendly snapshot of usage vs. plan limits:
 
 ```
-cd packages/starter_cli && python -m starter_cli.app usage export-report \
+cd packages/starter_console && starter-console usage export-report \
   --tenant acme \
   --plan starter \
   --period-start 2025-11-01T00:00:00Z \
@@ -78,7 +78,7 @@ Alert suggestions:
 - Hard-limit blocks log at `ERROR` right before the 429 is raised; soft limits log at `WARNING` but still allow the request.
 
 Ingestion tips:
-- Route the JSON logs through OTLP (default via `LOGGING_SINK=otlp` + the bundled collector) so they land in your SIEM with preserved fields.
+- Route the JSON logs through OTLP (default via `LOGGING_SINKS=otlp` + the bundled collector) so they land in your SIEM with preserved fields.
 - Pair log volume with counter data by charting `count_over_time({code="usage_limit_exceeded"}[5m])` in Loki or equivalent.
 
 ## Troubleshooting Playbook
@@ -95,7 +95,7 @@ Ingestion tips:
 - [ ] `ENABLE_USAGE_GUARDRAILS=true` and cache/soft-limit env vars managed via the CLI wizard or secrets store.
 - [ ] `usage_guardrail_decisions_total` present on the Prometheus `/metrics` output and ingested into dashboards.
 - [ ] Alerts configured for hard-limit spikes and policy configuration errors.
-- [ ] `cd packages/starter_cli && python -m starter_cli.app usage sync-entitlements` has been run after every plan limit change (use `--dry-run` first in CI).
-- [ ] `cd packages/starter_cli && python -m starter_cli.app usage export-report` captured the current billing period snapshot and artifacts stored under `var/reports/`.
+- [ ] `cd packages/starter_console && starter-console usage sync-entitlements` has been run after every plan limit change (use `--dry-run` first in CI).
+- [ ] `cd packages/starter_console && starter-console usage export-report` captured the current billing period snapshot and artifacts stored under `var/reports/`.
 - [ ] Runbook + plan entitlements reviewed whenever pricing/plan tiers change.
 - [ ] `var/reports/usage-entitlements.json` stored with the rest of the operator artifacts for auditability.

@@ -151,9 +151,12 @@ ENV/
 env.bak/
 venv.bak/
 .direnv/
+
+# Terraform
+**/.terraform/
 # allow env adapter package to be tracked
-!packages/starter_cli/src/starter_cli/adapters/env/
-!packages/starter_cli/src/starter_cli/adapters/env/**
+!packages/starter_console/src/starter_console/adapters/env/
+!packages/starter_console/src/starter_console/adapters/env/**
 
 # Spyder project settings
 .spyderproject

@@ -1,9 +1,11 @@
 import uuid
+from typing import cast
 
 import pytest
 
-from app.domain.assets import AssetNotFoundError, AssetRecord, AssetView
+from app.domain.assets import AssetNotFoundError, AssetRecord, AssetRepository, AssetView
 from app.services.assets.service import AssetService
+from app.services.storage.service import StorageService
 
 
 class StubAssetRepository:
@@ -45,8 +47,8 @@ async def test_get_download_url_maps_missing_storage_to_asset_not_found() -> Non
     )
     service = AssetService(
         lambda: None,
-        storage_service=StubStorageService(),
-        repository=StubAssetRepository(asset),
+        storage_service=cast(StorageService, StubStorageService()),
+        repository=cast(AssetRepository, StubAssetRepository(asset)),
     )
 
     with pytest.raises(AssetNotFoundError, match="storage object"):
@@ -123,7 +125,11 @@ async def test_get_thumbnail_urls_skips_missing_and_non_images() -> None:
         def signed_url_ttl(self) -> int:
             return 900
 
-    service = AssetService(lambda: None, storage_service=_Storage(), repository=_Repo())
+    service = AssetService(
+        lambda: None,
+        storage_service=cast(StorageService, _Storage()),
+        repository=cast(AssetRepository, _Repo()),
+    )
 
     items, missing, unsupported = await service.get_thumbnail_urls(
         tenant_id=tenant_id,

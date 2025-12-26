@@ -2,103 +2,44 @@
 
 from __future__ import annotations
 
-import logging
-import logging.config
-from dataclasses import asdict
-from typing import Any
+from starter_contracts.observability.logging import LoggingRuntimeConfig
+from starter_contracts.observability.logging.config import (
+    ALLOWED_SINKS as SHARED_ALLOWED_SINKS,
+)
+from starter_contracts.observability.logging.config import (
+    configure_logging as configure_shared_logging,
+)
 
+from app.core import paths as core_paths
 from app.core.settings import Settings
-from app.observability.logging.formatting import StructuredLoggingConfig
-from app.observability.logging.sinks import SINK_BUILDERS
-from app.observability.logging.sinks.base import SinkConfig
-
-ALLOWED_SINKS = {"stdout", "console", "file", "datadog", "otlp", "none"}
 
 
 def configure_logging(settings: Settings) -> None:
     """Apply JSON logging configuration based on deployment settings."""
 
-    sinks = _parse_sinks(settings)
-    log_level = (settings.log_level or "INFO").upper()
-    formatter_ref = "json"
-
-    handlers, root_handlers = _resolve_handler_configs(sinks, settings, log_level, formatter_ref)
-    logging_config = {
-        "version": 1,
-        "disable_existing_loggers": False,
-        "formatters": {
-            formatter_ref: {
-                "()": "app.observability.logging.formatting.JSONLogFormatter",
-                "config": asdict(
-                    StructuredLoggingConfig(
-                        service=settings.app_name,
-                        environment=settings.environment,
-                    )
-                ),
-            }
-        },
-        "handlers": handlers,
-        "root": {"level": log_level, "handlers": root_handlers},
-    }
-    logging.config.dictConfig(logging_config)
-    # Suppress verbose HTTP client logs to prevent infinite recursion when OTLP sink
-    # is enabled (httpx/httpcore debug logs would trigger more OTLP sends).
-    for logger_name in ("httpx", "httpcore"):
-        logging.getLogger(logger_name).setLevel(
-            max(logging.WARNING, logging.getLogger(logger_name).level)
-        )
+    runtime = LoggingRuntimeConfig(
+        service=settings.app_name,
+        environment=settings.environment,
+        log_level=settings.log_level,
+        logging_sinks=settings.logging_sinks,
+        log_root=settings.log_root,
+        logging_file_path=settings.logging_file_path,
+        logging_file_max_mb=settings.logging_file_max_mb,
+        logging_file_backups=settings.logging_file_backups,
+        logging_max_days=settings.logging_max_days,
+        logging_duplex_error_file=settings.logging_duplex_error_file,
+        logging_datadog_api_key=settings.logging_datadog_api_key,
+        logging_datadog_site=settings.logging_datadog_site,
+        logging_otlp_endpoint=settings.logging_otlp_endpoint,
+        logging_otlp_headers=settings.logging_otlp_headers,
+        component="api",
+        handler_namespace="app.observability.logging.sinks",
+        default_file_path="var/log/api-service.log",
+        repo_root=core_paths.REPO_ROOT,
+    )
+    configure_shared_logging(runtime)
 
 
-def _parse_sinks(settings: Settings) -> list[str]:
-    raw = settings.logging_sinks or settings.logging_sink or "stdout"
-    if isinstance(raw, str):
-        parts = [part.strip().lower() for part in raw.split(",") if part.strip()]
-    else:
-        parts = [str(raw).strip().lower()]
+ALLOWED_SINKS = SHARED_ALLOWED_SINKS
 
-    if not parts:
-        raise ValueError("At least one logging sink must be specified.")
-
-    deduped: list[str] = []
-    for sink in parts:
-        if sink not in ALLOWED_SINKS:
-            raise ValueError(f"Unsupported LOGGING_SINK '{sink}'. Expected one of {ALLOWED_SINKS}.")
-        if sink == "none" and len(parts) > 1:
-            raise ValueError("LOGGING_SINKS cannot include 'none' with other sinks.")
-        if sink not in deduped:
-            deduped.append(sink)
-
-    return deduped
-
-
-def _resolve_handler_configs(
-    sinks: list[str],
-    settings: Settings,
-    log_level: str,
-    formatter_ref: str,
-) -> tuple[dict[str, Any], list[str]]:
-    handlers: dict[str, Any] = {}
-    root_handlers: list[str] = []
-    file_selected = "file" in sinks
-
-    for sink in sinks:
-        builder = SINK_BUILDERS.get(sink)
-        if builder is None:
-            raise ValueError(f"Unsupported LOGGING_SINK '{sink}'.")
-        sink_cfg: SinkConfig = builder(
-            settings=settings,
-            log_level=log_level,
-            formatter_ref=formatter_ref,
-            file_selected=file_selected,
-        )
-        for name, cfg in sink_cfg.handlers.items():
-            if name in handlers:
-                raise ValueError(f"Duplicate handler name '{name}' while configuring sinks {sinks}")
-            handlers[name] = cfg
-        root_handlers.extend(sink_cfg.root_handlers)
-
-    root_handlers = list(dict.fromkeys(root_handlers))
-    return handlers, root_handlers
-
-
-__all__ = ["configure_logging"]
+__all__ = ["ALLOWED_SINKS", "configure_logging"]

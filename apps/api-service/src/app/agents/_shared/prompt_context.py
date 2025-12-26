@@ -14,6 +14,15 @@ ContextProvider = Callable[["PromptRuntimeContext", Any], dict[str, Any]]
 
 
 @dataclass(slots=True)
+class ContainerOverrideContext:
+    """Resolved container override for a specific agent."""
+
+    container_id: str
+    openai_container_id: str
+    source: str = "override"
+
+
+@dataclass(slots=True)
 class PromptRuntimeContext:
     """Base data available when rendering prompts.
 
@@ -33,6 +42,7 @@ class PromptRuntimeContext:
     settings: Any
     user_location: UserLocation | None = None
     container_bindings: dict[str, str] | None = None
+    container_overrides: dict[str, ContainerOverrideContext] | None = None
     file_search: dict[str, Any] | None = None
     client_overrides: dict[str, Any] | None = None
     memory_summary: str | None = None
@@ -158,6 +168,7 @@ def _datetime_provider(ctx: PromptRuntimeContext, spec) -> dict[str, Any]:  # pr
 
 
 __all__ = [
+    "ContainerOverrideContext",
     "PromptRuntimeContext",
     "build_prompt_context",
     "register_context_provider",

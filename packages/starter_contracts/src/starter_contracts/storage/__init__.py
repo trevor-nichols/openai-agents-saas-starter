@@ -1,6 +1,8 @@
 from .models import (
+    AzureBlobProviderConfig,
     GCSProviderConfig,
     MinioProviderConfig,
+    S3ProviderConfig,
     StorageObjectRef,
     StoragePresignedUrl,
     StorageProviderHealth,
@@ -10,8 +12,10 @@ from .models import (
 )
 
 __all__ = [
+    "AzureBlobProviderConfig",
     "GCSProviderConfig",
     "MinioProviderConfig",
+    "S3ProviderConfig",
     "StorageObjectRef",
     "StoragePresignedUrl",
     "StorageProviderHealth",

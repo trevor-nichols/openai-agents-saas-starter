@@ -5,7 +5,7 @@ Structured logging and Prometheus metrics live here. Logging is configured on im
 ### Logging
 - JSON logs with `ts`, `level`, `logger`, `service`, `environment`, and merged contextual fields. Emit via `log_event(...)` (preferred) or a standard logger with `extra={"structured": {...}}`.
 - Context propagation uses a `ContextVar` (`log_context`, `bind_log_context`, `clear_log_context`, `get_log_context`). HTTP middleware attaches `correlation_id`, method, path, and client IP; tenant dependencies bind `tenant_id`/`tenant_role`/`user_id`.
-- Formatters/sinks live under `logging/`. Supported sinks (choose via `LOGGING_SINK` or comma-separated `LOGGING_SINKS`):
+- Formatters/sinks live under `logging/`. Supported sinks (choose via comma-separated `LOGGING_SINKS`):
   - `stdout`/`console` (default) — JSON to stdout; optionally duplex error file when `LOGGING_DUPLEX_ERROR_FILE=true`.
   - `file` — dated tree under `LOG_ROOT` (default `var/log/<YYYY-MM-DD>/api/{all,error}.log` + `current` symlink); rotation respects `LOGGING_FILE_MAX_MB`, `LOGGING_FILE_BACKUPS`, `LOGGING_MAX_DAYS`, and `LOGGING_FILE_PATH` for a custom target.
   - `datadog` — HTTP intake (`LOGGING_DATADOG_API_KEY`, optional `LOGGING_DATADOG_SITE`).
@@ -29,5 +29,5 @@ Structured logging and Prometheus metrics live here. Logging is configured on im
 
 ### Developer quick start
 - Defaults: JSON to stdout, no files, `/metrics` available. Start the API (e.g., `just start-backend`) and hit `http://localhost:8000/metrics`.
-- File logs: set `LOGGING_SINKS=stdout,file` (or `LOGGING_SINK=file`) to write to `var/log/current/api/{all,error}.log`.
+- File logs: set `LOGGING_SINKS=stdout,file` to write to `var/log/current/api/{all,error}.log`.
 - External exporters: set the Datadog/OTLP envs listed above; invalid configs fail fast on startup.

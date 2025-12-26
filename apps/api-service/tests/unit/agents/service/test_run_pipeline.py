@@ -71,7 +71,9 @@ async def test_prepare_and_record_user_message_happy_path():
         session_manager=session_manager,
     )
 
-    await record_user_message(ctx=ctx, request=request, conversation_service=conversation_service)
+    await record_user_message(
+        ctx=ctx, request=request, conversation_service=conversation_service
+    )
 
     conversation_service.append_message.assert_called_once()
     _, _, kwargs = conversation_service.append_message.mock_calls[0]

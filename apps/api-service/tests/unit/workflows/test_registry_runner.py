@@ -119,6 +119,7 @@ async def test_runner_sync_applies_guards_and_mappers(monkeypatch: pytest.Monkey
             spec,
             actor=_actor(),
             message="please go",
+            attachments=None,
             conversation_id="c1",
         )
     finally:
@@ -167,6 +168,7 @@ async def test_runner_parallel_stage_executes_in_parallel(monkeypatch: pytest.Mo
             spec,
             actor=_actor(),
             message="prompt",
+            attachments=None,
             conversation_id="conv",
         )
     finally:
@@ -217,6 +219,7 @@ async def test_runner_parallel_reducer_failure_bubbles(monkeypatch: pytest.Monke
                 spec,
                 actor=_actor(),
                 message="prompt",
+                attachments=None,
                 conversation_id="conv",
             )
     finally:
@@ -267,6 +270,7 @@ async def test_runner_parallel_all_guards_skipped_preserves_input(monkeypatch: p
             spec,
             actor=_actor(),
             message="keep-me",
+            attachments=None,
             conversation_id="conv",
         )
     finally:
@@ -312,6 +316,7 @@ async def test_runner_all_steps_guarded_results_in_none_final_output(monkeypatch
             spec,
             actor=_actor(),
             message="prompt",
+            attachments=None,
             conversation_id="conv",
         )
     finally:
@@ -342,6 +347,7 @@ async def test_runner_stream_emits_metadata(monkeypatch: pytest.MonkeyPatch):
             ),
             actor=_actor(),
             message="hello",
+            attachments=None,
             conversation_id="c-stream",
         ):
             events.append(event)

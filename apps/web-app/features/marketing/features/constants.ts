@@ -45,10 +45,10 @@ export const FEATURE_PILLARS: FeaturePillar[] = [
   {
     id: 'operations',
     title: 'Operations & security',
-    description: 'Status, health, Starter CLI, and Vault-ready keys so ops stays in lockstep with product.',
+    description: 'Status, health, Starter Console, and Vault-ready keys so ops stays in lockstep with product.',
     bullets: [
       'Status page + alert subscriptions share one API',
-      'Starter CLI provisions secrets, envs, and keys',
+      'Starter Console provisions secrets, envs, and keys',
       'Vault transit + Ed25519 key rotation runbooks',
     ],
     icon: ShieldCheck,
@@ -78,9 +78,9 @@ export const SHOWCASE_TABS: ShowcaseTab[] = [
   {
     id: 'operations',
     label: 'Operations toolkit',
-    title: 'Status, health, and CLI automation',
-    description: 'Expose customer-facing status while operators run Starter CLI workflows behind the scenes.',
-    bullets: ['Status alerts + RSS feeds reuse FastAPI endpoints', 'Starter CLI handles env sync + secrets rotation', 'Vault transit + Ed25519 key lifecycle docs'],
+    title: 'Status, health, and Console automation',
+    description: 'Expose customer-facing status while operators run Starter Console workflows behind the scenes.',
+    bullets: ['Status alerts + RSS feeds reuse FastAPI endpoints', 'Starter Console handles env sync + secrets rotation', 'Vault transit + Ed25519 key lifecycle docs'],
   },
 ];
 
@@ -99,7 +99,7 @@ export const FEATURES_FAQ: MarketingFaqItem[] = [
   },
   {
     question: 'What about deployments?',
-    answer: 'Use Docker/Compose locally and promote builds through CI. The Starter CLI wires env files for dev, preview, and prod, and Vault transit handles key signing.',
+    answer: 'Use Docker/Compose locally and promote builds through CI. The Starter Console wires env files for dev, preview, and prod, and Vault transit handles key signing.',
   },
 ];
 

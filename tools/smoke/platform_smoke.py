@@ -24,6 +24,7 @@ sys.path = [
     str(ROOT / "apps" / "api-service" / "src"),
     str(ROOT / "apps" / "api-service"),
     str(ROOT / "packages" / "starter_contracts" / "src"),
+    str(ROOT / "packages" / "starter_providers" / "src"),
     str(ROOT),
     *_stdlib_paths,
     *_site_packages,
@@ -45,7 +46,7 @@ else:  # pragma: no cover - defensive
 # ---------------------------------------------------------------------------
 # Environment defaults for a minimal, self-contained boot
 # ---------------------------------------------------------------------------
-os.environ.setdefault("ENVIRONMENT", "local")
+os.environ["ENVIRONMENT"] = "test"
 os.environ.setdefault("DEBUG", "false")
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
@@ -64,8 +65,8 @@ TEST_KEYSET = ROOT / "apps" / "api-service" / "tests" / "fixtures" / "keysets" /
 os.environ.setdefault("AUTH_KEY_STORAGE_BACKEND", "file")
 os.environ.setdefault("AUTH_KEY_STORAGE_PATH", str(TEST_KEYSET))
 # Avoid CLI probes inside app bootstrap
-os.environ.setdefault("STARTER_CLI_SKIP_ENV", "true")
-os.environ.setdefault("STARTER_CLI_SKIP_VAULT_PROBE", "true")
+os.environ.setdefault("STARTER_CONSOLE_SKIP_ENV", "true")
+os.environ.setdefault("STARTER_CONSOLE_SKIP_VAULT_PROBE", "true")
 
 
 # ---------------------------------------------------------------------------

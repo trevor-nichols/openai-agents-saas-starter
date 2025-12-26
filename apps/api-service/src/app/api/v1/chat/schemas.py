@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
+from app.api.v1.shared.attachments import InputAttachment
+from app.api.v1.shared.overrides import VectorStoreOverrides
 from app.api.v1.shared.streaming import MessageAttachment, PublicSseEvent
 
 
@@ -21,6 +23,7 @@ class AgentRunOptions(BaseModel):
 
 class AgentChatRequest(BaseModel):
     message: str
+    attachments: list[InputAttachment] | None = None
     conversation_id: str | None = None
     agent_type: str | None = None
     share_location: bool | None = None
@@ -29,6 +32,14 @@ class AgentChatRequest(BaseModel):
     run_options: AgentRunOptions | None = None
     memory_strategy: MemoryStrategyRequest | None = None
     memory_injection: bool | None = None
+    container_overrides: dict[str, str] | None = Field(
+        default=None,
+        description="Optional container overrides keyed by agent key.",
+    )
+    vector_store_overrides: VectorStoreOverrides | None = Field(
+        default=None,
+        description="Optional vector store overrides keyed by agent key.",
+    )
 
 
 class AgentChatResponse(BaseModel):

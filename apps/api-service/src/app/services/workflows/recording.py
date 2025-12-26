@@ -60,6 +60,7 @@ class WorkflowRunRecorder:
         actor: ConversationActorContext,
         message: str,
         conversation_id: str,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         if not self._repository:
             return
@@ -73,7 +74,7 @@ class WorkflowRunRecorder:
                 started_at=_now(),
                 request_message=message,
                 conversation_id=conversation_id,
-                metadata=None,
+                metadata=metadata,
                 final_output_structured=None,
                 final_output_text=None,
                 trace_id=None,

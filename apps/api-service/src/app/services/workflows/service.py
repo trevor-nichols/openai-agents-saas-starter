@@ -7,17 +7,20 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timezone
 from typing import Any
 
+from app.api.v1.shared.attachments import InputAttachment
 from app.core.settings import get_settings
 from app.domain.workflows import WorkflowRunListPage, WorkflowRunRepository, WorkflowStatus
 from app.observability.metrics import WORKFLOW_RUN_DELETES_TOTAL
 from app.services.agents.attachments import AttachmentService
 from app.services.agents.context import ConversationActorContext
+from app.services.agents.input_attachments import InputAttachmentService
 from app.services.agents.interaction_context import InteractionContextBuilder
 from app.services.agents.provider_registry import (
     AgentProviderRegistry,
     get_provider_registry,
 )
 from app.services.assets.service import AssetService
+from app.services.containers import ContainerService
 from app.services.workflows.catalog import WorkflowCatalogPage, WorkflowCatalogService
 from app.services.workflows.runner import WorkflowRunner, WorkflowRunResult
 from app.workflows._shared.registry import WorkflowRegistry, get_workflow_registry
@@ -27,9 +30,12 @@ from app.workflows._shared.specs import WorkflowDescriptor, WorkflowSpec
 @dataclass(slots=True)
 class WorkflowRunRequest:
     message: str
+    attachments: list[InputAttachment] | None = None
     conversation_id: str | None = None
     location: Any | None = None
     share_location: bool | None = None
+    container_overrides: dict[str, str] | None = None
+    vector_store_overrides: dict[str, Any] | None = None
 
 
 class WorkflowService:
@@ -42,7 +48,9 @@ class WorkflowService:
         run_repository: WorkflowRunRepository | None = None,
         catalog_service: WorkflowCatalogService | None = None,
         attachment_service: AttachmentService | None = None,
+        input_attachment_service: InputAttachmentService | None = None,
         asset_service: AssetService | None = None,
+        container_service: ContainerService | None = None,
     ) -> None:
         self._registry = registry or get_workflow_registry()
         self._catalog_service = catalog_service or WorkflowCatalogService(self._registry)
@@ -53,7 +61,9 @@ class WorkflowService:
             run_repository=run_repository,
             cancellation_tracker=_CancellationTracker(),
             attachment_service=attachment_service,
+            input_attachment_service=input_attachment_service,
             asset_service=asset_service,
+            container_service=container_service,
         )
 
     def list_workflows(self) -> Sequence[WorkflowDescriptor]:
@@ -92,9 +102,12 @@ class WorkflowService:
             spec,
             actor=actor,
             message=request.message,
+            attachments=request.attachments,
             conversation_id=conversation_id,
             location=request.location,
             share_location=request.share_location,
+            container_overrides=request.container_overrides,
+            vector_store_overrides=request.vector_store_overrides,
         )
 
     async def get_run(self, run_id: str):
@@ -287,18 +300,22 @@ class WorkflowService:
             spec,
             actor=actor,
             message=request.message,
+            attachments=request.attachments,
             conversation_id=conversation_id,
             location=request.location,
             share_location=request.share_location,
+            container_overrides=request.container_overrides,
+            vector_store_overrides=request.vector_store_overrides,
         )
 
 
 def build_workflow_service(
     *,
     run_repository: WorkflowRunRepository | None = None,
-    container_service=None,
+    container_service: ContainerService | None = None,
     vector_store_service=None,
     attachment_service: AttachmentService | None = None,
+    input_attachment_service: InputAttachmentService | None = None,
 ) -> WorkflowService:
     return WorkflowService(
         registry=get_workflow_registry(),
@@ -308,6 +325,8 @@ def build_workflow_service(
         ),
         run_repository=run_repository,
         attachment_service=attachment_service,
+        input_attachment_service=input_attachment_service,
+        container_service=container_service,
     )
 
 

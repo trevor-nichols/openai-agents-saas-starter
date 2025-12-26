@@ -3,14 +3,23 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from typing import Any
 
 from app.agents._shared.prompt_context import PromptRuntimeContext
 from app.agents._shared.registry_loader import load_agent_specs
 from app.core.settings import Settings, get_settings
+from app.services.agents.container_overrides import (
+    ContainerOverrideError,
+    ContainerOverrideResolver,
+)
+from app.services.agents.vector_store_overrides import (
+    VectorStoreOverrideError,
+    VectorStoreOverrideResolver,
+)
+from app.services.agents.vector_store_resolution import resolve_vector_store_ids_for_agent
 from app.services.containers import ContainerService
-from app.services.vector_stores.service import VectorStoreNotFoundError, VectorStoreService
+from app.services.vector_stores.service import VectorStoreService
 from app.utils.tools.location import build_web_search_location
 
 
@@ -28,6 +37,8 @@ class InteractionContextBuilder:
         self._vector_store_service = vector_store_service
         self._settings_factory = settings_factory
         self._spec_index: dict[str, Any] | None = None
+        self._container_override_resolver: ContainerOverrideResolver | None = None
+        self._vector_store_override_resolver: VectorStoreOverrideResolver | None = None
 
     async def build(
         self,
@@ -40,12 +51,23 @@ class InteractionContextBuilder:
         container_bindings = await self._resolve_container_bindings_for_tenant(
             tenant_id=actor.tenant_id
         )
+        container_overrides = await self._resolve_container_overrides(
+            actor=actor,
+            request=request,
+            agent_keys=agent_keys,
+        )
         file_search_keys = self._file_search_agent_keys(agent_keys)
+        vector_store_overrides = await self._resolve_vector_store_overrides(
+            actor=actor,
+            request=request,
+            agent_keys=file_search_keys,
+        )
         file_search = (
             await self._resolve_file_search_for_agents(
                 agent_keys=file_search_keys,
                 actor=actor,
                 request=request,
+                overrides=vector_store_overrides,
             )
             if file_search_keys
             else None
@@ -59,6 +81,7 @@ class InteractionContextBuilder:
                 request.location, share_location=request.share_location
             ),
             container_bindings=container_bindings,
+            container_overrides=container_overrides,
             file_search=file_search,
             client_overrides=getattr(request, "context", None),
         )
@@ -109,12 +132,60 @@ class InteractionContextBuilder:
             return None
         return bindings or None
 
+    async def _resolve_container_overrides(
+        self,
+        *,
+        actor,
+        request: Any,
+        agent_keys: Iterable[str] | None,
+    ):
+        overrides = getattr(request, "container_overrides", None)
+        if not overrides or not isinstance(overrides, Mapping):
+            return None
+        if self._container_service is None:
+            raise ContainerOverrideError("Container overrides require container service")
+        if self._container_override_resolver is None:
+            self._container_override_resolver = ContainerOverrideResolver(
+                container_service=self._container_service
+            )
+        return await self._container_override_resolver.resolve(
+            overrides=overrides,
+            tenant_id=actor.tenant_id,
+            allowed_agent_keys=agent_keys,
+        )
+
+    async def _resolve_vector_store_overrides(
+        self,
+        *,
+        actor,
+        request: Any,
+        agent_keys: Iterable[str] | None,
+    ) -> dict[str, list[str]] | None:
+        overrides = getattr(request, "vector_store_overrides", None)
+        if not overrides or not isinstance(overrides, Mapping):
+            return None
+        if self._vector_store_service is None:
+            raise VectorStoreOverrideError("Vector store overrides require vector store service")
+        if self._vector_store_override_resolver is None:
+            self._vector_store_override_resolver = VectorStoreOverrideResolver(
+                vector_store_service=self._vector_store_service,
+                settings_factory=self._settings_factory,
+                spec_index=self._spec_index,
+            )
+        return await self._vector_store_override_resolver.resolve(
+            overrides=overrides,
+            tenant_id=actor.tenant_id,
+            user_id=actor.user_id,
+            allowed_agent_keys=agent_keys,
+        )
+
     async def _resolve_file_search_for_agents(
         self,
         *,
         agent_keys: Iterable[str],
         actor,
         request: Any,
+        overrides: Mapping[str, list[str]] | None = None,
     ) -> dict[str, Any] | None:
         """Resolve vector store bindings per agent for file_search."""
 
@@ -125,19 +196,30 @@ class InteractionContextBuilder:
         specs = self._load_specs()
         tenant_id = actor.tenant_id
         user_id = actor.user_id
-        overrides = getattr(request, "context", None) or {}
+        context_overrides = getattr(request, "context", None) or {}
+        if isinstance(context_overrides, Mapping):
+            context_overrides = dict(context_overrides)
+        else:
+            context_overrides = {}
+        per_agent_overrides = overrides or {}
         result: dict[str, Any] = {}
         for key in agent_keys:
             spec = specs.get(key)
             if spec is None or "file_search" not in getattr(spec, "tool_keys", ()):
                 continue
-            vector_store_ids = await self._resolve_vector_store_ids(
-                spec=spec,
-                tenant_id=tenant_id,
-                user_id=user_id,
-                overrides=overrides,
-                vector_store_service=svc,
-            )
+            override_ids = None
+            if per_agent_overrides:
+                override_ids = per_agent_overrides.get(key)
+            if override_ids:
+                vector_store_ids = list(override_ids)
+            else:
+                vector_store_ids = await self._resolve_vector_store_ids(
+                    spec=spec,
+                    tenant_id=tenant_id,
+                    user_id=user_id,
+                    overrides=context_overrides,
+                    vector_store_service=svc,
+                )
             options = getattr(spec, "file_search_options", {}) or {}
             result[key] = {
                 "vector_store_ids": vector_store_ids,
@@ -155,82 +237,19 @@ class InteractionContextBuilder:
         *,
         spec,
         tenant_id: str,
-        user_id: str,
+        user_id: str | None,
         overrides: dict[str, Any],
         vector_store_service,
     ) -> list[str]:
         """Resolve the vector_store_ids for file_search following override > binding > default."""
-
-        # Request override (client-provided)
-        override_ids = overrides.get("vector_store_ids") or overrides.get("vector_store_id")
-        if override_ids:
-            if isinstance(override_ids, str):
-                override_ids = [override_ids]
-            resolved: list[str] = []
-            for candidate in override_ids:
-                store = None
-                try:
-                    store = await vector_store_service.get_store(
-                        vector_store_id=candidate, tenant_id=tenant_id
-                    )
-                except Exception:
-                    store = await vector_store_service.get_store_by_openai_id(
-                        tenant_id=tenant_id, openai_id=str(candidate)
-                    )
-                if store is None:
-                    raise VectorStoreNotFoundError("Vector store override not found")
-                resolved.append(str(store.openai_id))
-            return resolved
-
-        # Agent-level binding stored in DB
-        try:
-            binding = await vector_store_service.get_agent_binding(
-                agent_key=spec.key,
-                tenant_id=tenant_id,
-            )
-        except Exception:
-            binding = None
-        if binding is not None and getattr(binding, "openai_id", None):
-            return [str(binding.openai_id)]
-
-        # Spec-configured bindings
-        binding_mode = getattr(spec, "vector_store_binding", "tenant_default")
-        spec_ids = list(getattr(spec, "vector_store_ids", ()) or [])
-
-        if binding_mode == "static":
-            if not spec_ids:
-                raise ValueError(
-                    "Agent "
-                    f"'{spec.key}' file_search requires vector_store_ids when binding='static'"
-                )
-            return spec_ids
-
-        settings = self._settings_factory()
-        auto_create = getattr(settings, "auto_create_vector_store_for_file_search", True)
-
-        if binding_mode == "required":
-            store = await vector_store_service.get_store_by_name(
-                tenant_id=tenant_id,
-                name="primary",
-            )
-            if store is None or not store.openai_id:
-                raise VectorStoreNotFoundError("Primary vector store is required but not found")
-            return [str(store.openai_id)]
-
-        if auto_create:
-            store = await vector_store_service.ensure_primary_store(
-                tenant_id=tenant_id,
-                owner_user_id=user_id,
-            )
-        else:
-            store = await vector_store_service.get_store_by_name(
-                tenant_id=tenant_id,
-                name="primary",
-            )
-
-        if store is None or not getattr(store, "openai_id", None):
-            raise VectorStoreNotFoundError("Failed to resolve vector store for file_search")
-        return [str(store.openai_id)]
+        return await resolve_vector_store_ids_for_agent(
+            spec=spec,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            overrides=overrides,
+            vector_store_service=vector_store_service,
+            settings_factory=self._settings_factory,
+        )
 
 
 __all__ = ["InteractionContextBuilder"]

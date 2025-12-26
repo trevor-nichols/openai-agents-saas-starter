@@ -66,9 +66,12 @@ export function ConversationArchivePanel({
     if (debounced) {
       return searchResults.map((hit) => ({
         id: hit.conversation_id,
-        title: hit.topic_hint ?? hit.preview,
+        title: hit.display_name ?? hit.topic_hint ?? hit.last_message_preview ?? hit.preview,
+        display_name: hit.display_name ?? null,
         topic_hint: hit.topic_hint,
         last_message_preview: hit.last_message_preview ?? hit.preview,
+        agent_entrypoint: hit.agent_entrypoint ?? null,
+        active_agent: hit.active_agent ?? null,
         updated_at: hit.updated_at ?? new Date().toISOString(),
       }));
     }
@@ -86,8 +89,17 @@ export function ConversationArchivePanel({
         id: 'title',
         header: 'Title',
         cell: ({ row }) => (
-          <div className="font-semibold text-foreground">
-            {row.original.topic_hint ?? row.original.title ?? `Conversation ${row.original.id.substring(0, 8)}…`}
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="truncate font-semibold text-foreground">
+              {row.original.topic_hint ??
+                row.original.title ??
+                `Conversation ${row.original.id.substring(0, 8)}…`}
+            </span>
+            {row.original.active_agent || row.original.agent_entrypoint ? (
+              <InlineTag className="shrink-0">
+                {row.original.active_agent ?? row.original.agent_entrypoint}
+              </InlineTag>
+            ) : null}
           </div>
         ),
       },

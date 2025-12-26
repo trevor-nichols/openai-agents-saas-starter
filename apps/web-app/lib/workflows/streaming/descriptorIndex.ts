@@ -8,8 +8,9 @@ import {
   type SerializedWorkflowNodeIdentity,
   type WorkflowNodeIdentity,
 } from './stepKey';
+import { workflowGraphNodeId, type WorkflowGraphNodeId } from './graphNodeId';
 
-export type WorkflowGraphNodeId = string;
+export type { WorkflowGraphNodeId };
 
 export type WorkflowDescriptorIndex = Readonly<{
   workflowKey: string;
@@ -18,11 +19,6 @@ export type WorkflowDescriptorIndex = Readonly<{
   nodeIdByStageAgentBranch: Map<string, WorkflowGraphNodeId>;
   knownNodeIds: Set<WorkflowGraphNodeId>;
 }>;
-
-function nodeIdFor(stageIndex: number, stepIndex: number): WorkflowGraphNodeId {
-  // Keep consistent with WorkflowGraphViewport stepKey()
-  return `${stageIndex}:${stepIndex}`;
-}
 
 export function buildWorkflowDescriptorIndex(descriptor: WorkflowDescriptorResponse): WorkflowDescriptorIndex {
   const nodeIdByIdentity = new Map<SerializedWorkflowNodeIdentity, WorkflowGraphNodeId>();
@@ -33,7 +29,7 @@ export function buildWorkflowDescriptorIndex(descriptor: WorkflowDescriptorRespo
   descriptor.stages.forEach((stage, stageIndex) => {
     stage.steps.forEach((step, stepIndex) => {
       const branchIndex = stage.mode === 'parallel' ? stepIndex : null;
-      const nodeId = nodeIdFor(stageIndex, stepIndex);
+      const nodeId = workflowGraphNodeId(stageIndex, stepIndex);
       knownNodeIds.add(nodeId);
 
       const identity: WorkflowNodeIdentity = {

@@ -355,7 +355,7 @@ class StripeEventDispatcher:
         price_metadata = price.get("metadata") or {}
         return (
             price_metadata.get("plan_code")
-            or price_metadata.get("starter_cli_plan_code")
+            or price_metadata.get("starter_console_plan_code")
             or price.get("nickname")
         )
 

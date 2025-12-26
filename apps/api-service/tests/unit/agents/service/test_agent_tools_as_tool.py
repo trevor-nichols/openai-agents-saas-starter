@@ -38,7 +38,7 @@ def test_agent_tool_uses_override_description_when_spec_missing():
     )
 
     builder, static_agents = _builder_with_agent("ext", ext_agent)
-    tools = builder._build_agent_tools(  # noqa: SLF001
+    tools, _ = builder._build_agent_tools(  # noqa: SLF001
         spec=spec,
         spec_map={"orchestrator": spec},
         agents={},
@@ -59,7 +59,7 @@ def test_agent_tool_uses_handoff_description_when_no_override_and_spec_missing()
     )
 
     builder, static_agents = _builder_with_agent("ext", ext_agent)
-    tools = builder._build_agent_tools(  # noqa: SLF001
+    tools, _ = builder._build_agent_tools(  # noqa: SLF001
         spec=spec,
         spec_map={"orchestrator": spec},
         agents={},

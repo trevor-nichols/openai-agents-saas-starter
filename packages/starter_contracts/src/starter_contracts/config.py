@@ -1,4 +1,4 @@
-"""Lightweight config bridge for the Agent Starter CLI.
+"""Lightweight config bridge for the Agent Starter Console.
 
 This module exposes a narrow, import-safe surface that lets CLI code obtain the
 backend's Pydantic settings without importing `api-service/src/app` directly at
@@ -22,8 +22,10 @@ from starter_contracts.secrets.models import (
     VaultProviderConfig,
 )
 from starter_contracts.storage.models import (
+    AzureBlobProviderConfig,
     GCSProviderConfig,
     MinioProviderConfig,
+    S3ProviderConfig,
     StorageProviderLiteral,
 )
 
@@ -63,6 +65,7 @@ class StarterSettingsProtocol(Protocol):
     azure_managed_identity_client_id: str | None
     azure_kv_cache_ttl_seconds: int
     auth_key_storage_backend: str
+    auth_key_storage_provider: SecretsProviderLiteral | None
     auth_key_storage_path: str
     auth_key_secret_name: str | None
     enable_resend_email_delivery: bool
@@ -90,6 +93,13 @@ class StarterSettingsProtocol(Protocol):
     gcs_credentials_path: str | None
     gcs_signing_email: str | None
     gcs_uniform_access: bool
+    s3_region: str | None
+    s3_bucket: str | None
+    s3_endpoint_url: str | None
+    s3_force_path_style: bool
+    azure_blob_account_url: str | None
+    azure_blob_container: str | None
+    azure_blob_connection_string: str | None
 
     @property
     def vault_settings(self) -> VaultProviderConfig: ...
@@ -108,6 +118,12 @@ class StarterSettingsProtocol(Protocol):
 
     @property
     def gcs_settings(self) -> GCSProviderConfig: ...
+
+    @property
+    def s3_settings(self) -> S3ProviderConfig: ...
+
+    @property
+    def azure_blob_settings(self) -> AzureBlobProviderConfig: ...
 
     def secret_warnings(self) -> list[str]: ...
 

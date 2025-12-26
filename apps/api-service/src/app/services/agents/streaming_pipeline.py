@@ -68,14 +68,15 @@ class AgentStreamProcessor:
     async def iter_events(self, stream_handle: Any) -> AsyncIterator[AgentStreamEvent]:
         async for event in stream_handle.events():
             processed = await self._process_event(event)
-            if processed.is_terminal:
+            is_terminal = processed.is_terminal and processed.scope is None
+            if is_terminal:
                 if processed.response_text is None:
                     text = self.outcome.complete_response.strip()
                     processed.response_text = text or None
                 if processed.usage is None and hasattr(stream_handle, "usage"):
                     processed.usage = getattr(stream_handle, "usage", None)
             yield processed
-            if processed.is_terminal:
+            if is_terminal:
                 break
 
         async for leftover in self._bus.drain():
@@ -94,68 +95,79 @@ class AgentStreamProcessor:
 
     async def _process_event(self, event: AgentStreamEvent) -> AgentStreamEvent:
         event.conversation_id = self._conversation_id
+        is_scoped = event.scope is not None
 
-        if event.kind == "agent_updated_stream_event" and event.new_agent:
-            self.outcome.current_agent = event.new_agent
-            descriptor = self._provider.get_agent(self.outcome.current_agent)
-            if descriptor:
-                self.outcome.current_output_schema = descriptor.output_schema
-            self.outcome.handoff_count += 1
-            event.agent = event.new_agent
+        if not is_scoped:
+            if event.kind == "agent_updated_stream_event" and event.new_agent:
+                self.outcome.current_agent = event.new_agent
+                descriptor = self._provider.get_agent(self.outcome.current_agent)
+                if descriptor:
+                    self.outcome.current_output_schema = descriptor.output_schema
+                self.outcome.handoff_count += 1
+                event.agent = event.new_agent
 
-        if event.agent is None:
+        if event.agent is None and not is_scoped:
             event.agent = self.outcome.current_agent or self._entrypoint_agent
 
-        if event.response_id:
+        if event.response_id and not is_scoped:
             self.outcome.last_response_id = event.response_id
 
-        if event.text_delta:
-            self.outcome.complete_response += event.text_delta
-        elif event.response_text and not self.outcome.complete_response:
-            self.outcome.complete_response = event.response_text
+        if not is_scoped:
+            if event.text_delta:
+                self.outcome.complete_response += event.text_delta
+            elif event.response_text and not self.outcome.complete_response:
+                self.outcome.complete_response = event.response_text
 
-        self._collect_container_file_citations(event)
+        if not is_scoped:
+            self._collect_container_file_citations(event)
 
-        attachment_sources: list[Mapping[str, Any]] = []
-        if event.payload and isinstance(event.payload, Mapping):
-            attachment_sources.append(event.payload)
-        if isinstance(event.tool_call, Mapping):
-            attachment_sources.append(event.tool_call)
+        if not is_scoped:
+            attachment_sources: list[Mapping[str, Any]] = []
+            if event.payload and isinstance(event.payload, Mapping):
+                attachment_sources.append(event.payload)
+            if isinstance(event.tool_call, Mapping):
+                attachment_sources.append(event.tool_call)
 
-        new_attachments = await self._attachments.ingest_image_outputs(
-            attachment_sources or None,
-            actor=self._actor,
-            conversation_id=self._conversation_id,
-            agent_key=self._entrypoint_agent,
-            response_id=event.response_id,
-            seen_tool_calls=self._seen_tool_calls,
-        )
-        if new_attachments:
-            self.outcome.attachments.extend(new_attachments)
-            event.attachments = [
-                self._attachments.to_attachment_payload(att) for att in new_attachments
-            ]
+            new_attachments = await self._attachments.ingest_image_outputs(
+                attachment_sources or None,
+                actor=self._actor,
+                conversation_id=self._conversation_id,
+                agent_key=self._entrypoint_agent,
+                response_id=event.response_id,
+                seen_tool_calls=self._seen_tool_calls,
+            )
+            if new_attachments:
+                self.outcome.attachments.extend(new_attachments)
+                event.attachments = [
+                    self._attachments.to_attachment_payload(att) for att in new_attachments
+                ]
 
-            payload: dict[str, Any] | None = None
-            if event.payload is None:
-                payload = {}
-            elif isinstance(event.payload, dict):
-                payload = event.payload
-            elif isinstance(event.payload, Mapping):
-                payload = dict(event.payload)
+                payload: dict[str, Any] | None = None
+                if event.payload is None:
+                    payload = {}
+                elif isinstance(event.payload, dict):
+                    payload = event.payload
+                elif isinstance(event.payload, Mapping):
+                    payload = dict(event.payload)
 
-            if payload is not None:
-                payload.setdefault("_attachment_note", "stored")
-                event.payload = payload
+                if payload is not None:
+                    payload.setdefault("_attachment_note", "stored")
+                    event.payload = payload
 
         event.payload = AgentStreamEvent._strip_unserializable(event.payload)
         event.structured_output = AgentStreamEvent._strip_unserializable(event.structured_output)
         event.response_text = None if event.response_text is None else str(event.response_text)
-        if event.output_schema is None and self.outcome.current_output_schema is not None:
+        if (
+            not is_scoped
+            and event.output_schema is None
+            and self.outcome.current_output_schema is not None
+        ):
             event.output_schema = self.outcome.current_output_schema
 
-        if event.is_terminal and self.outcome.current_agent:
+        if not is_scoped and event.is_terminal and self.outcome.current_agent:
             event.agent = self.outcome.current_agent
+        if is_scoped:
+            event.agent = None
 
         return event
 

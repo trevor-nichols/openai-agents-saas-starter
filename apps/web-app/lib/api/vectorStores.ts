@@ -4,6 +4,8 @@ import type {
   VectorStoreSearchResponse,
   VectorStoreCreateRequest,
   VectorStoreFileCreateRequest,
+  VectorStoreFileUploadRequest,
+  VectorStoreFileResponse,
   VectorStoreSearchRequest,
 } from '@/lib/api/client/types.gen';
 import { USE_API_MOCK } from '@/lib/config';
@@ -13,7 +15,14 @@ import { apiV1Path } from '@/lib/apiPaths';
 export async function listVectorStores(): Promise<VectorStoreListResponse> {
   if (USE_API_MOCK) return mockVectorStores;
   const res = await fetch(apiV1Path('/vector-stores'), { cache: 'no-store' });
-  if (!res.ok) throw new Error(`Failed to load vector stores (${res.status})`);
+  if (!res.ok) {
+    const payload = await res.json().catch(() => null);
+    const message =
+      typeof payload?.message === 'string'
+        ? payload.message
+        : `Failed to load vector stores (${res.status})`;
+    throw new Error(message);
+  }
   return (await res.json()) as VectorStoreListResponse;
 }
 
@@ -24,14 +33,28 @@ export async function createVectorStore(body: VectorStoreCreateRequest) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`Failed to create vector store (${res.status})`);
+  if (!res.ok) {
+    const payload = await res.json().catch(() => null);
+    const message =
+      typeof payload?.message === 'string'
+        ? payload.message
+        : `Failed to create vector store (${res.status})`;
+    throw new Error(message);
+  }
   return (await res.json()) as VectorStoreListResponse['items'][number];
 }
 
 export async function deleteVectorStore(vectorStoreId: string) {
   if (USE_API_MOCK) return;
   const res = await fetch(apiV1Path(`/vector-stores/${encodeURIComponent(vectorStoreId)}`), { method: 'DELETE' });
-  if (!res.ok) throw new Error(`Failed to delete vector store (${res.status})`);
+  if (!res.ok) {
+    const payload = await res.json().catch(() => null);
+    const message =
+      typeof payload?.message === 'string'
+        ? payload.message
+        : `Failed to delete vector store (${res.status})`;
+    throw new Error(message);
+  }
 }
 
 export async function listVectorStoreFiles(vectorStoreId: string): Promise<VectorStoreFileListResponse> {
@@ -50,6 +73,29 @@ export async function attachVectorStoreFile(vectorStoreId: string, body: VectorS
   });
   if (!res.ok) throw new Error(`Failed to attach file (${res.status})`);
   return (await res.json()) as VectorStoreFileListResponse['items'][number];
+}
+
+export async function uploadVectorStoreFile(
+  vectorStoreId: string,
+  body: VectorStoreFileUploadRequest,
+): Promise<VectorStoreFileResponse> {
+  if (USE_API_MOCK) {
+    const fallback = mockVectorStoreFiles.items[0];
+    if (!fallback) {
+      throw new Error('Mock vector store files are unavailable');
+    }
+    return fallback;
+  }
+  const res = await fetch(
+    apiV1Path(`/vector-stores/${encodeURIComponent(vectorStoreId)}/files/upload`),
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!res.ok) throw new Error(`Failed to upload vector store file (${res.status})`);
+  return (await res.json()) as VectorStoreFileResponse;
 }
 
 export async function deleteVectorStoreFile(vectorStoreId: string, fileId: string) {

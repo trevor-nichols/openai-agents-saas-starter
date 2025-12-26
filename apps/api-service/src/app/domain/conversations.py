@@ -152,6 +152,11 @@ class ConversationMetadata:
             raise ValueError("ConversationMetadata requires tenant_id")
 
 
+def ensure_metadata_tenant(metadata: ConversationMetadata, tenant_id: str) -> None:
+    if metadata.tenant_id != tenant_id:
+        raise ValueError("ConversationMetadata tenant_id mismatch")
+
+
 @dataclass(slots=True)
 class ConversationSessionState:
     """State container describing the SDK session associated with a conversation."""
@@ -394,5 +399,6 @@ __all__ = [
     "ConversationMemoryConfig",
     "ConversationSummary",
     "ConversationRunUsage",
+    "ensure_metadata_tenant",
     "MessagePage",
 ]

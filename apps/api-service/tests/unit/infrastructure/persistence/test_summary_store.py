@@ -14,11 +14,8 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app.domain.conversations import ConversationSummary as DomainSummary
-from app.infrastructure.persistence.conversations.models import (
-    AgentConversation,
-    ConversationSummary,
-    TenantAccount,
-)
+from app.infrastructure.persistence.conversations.models import AgentConversation, ConversationSummary
+from app.infrastructure.persistence.tenants.models import TenantAccount
 from app.infrastructure.persistence.models.base import Base
 from app.infrastructure.persistence.conversations.summary_store import ConversationSummaryStore
 

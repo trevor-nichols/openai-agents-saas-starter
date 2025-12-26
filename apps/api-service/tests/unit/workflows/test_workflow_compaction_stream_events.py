@@ -147,6 +147,7 @@ async def test_workflow_stream_emits_compaction_event():
         spec,
         actor=SimpleNamespace(tenant_id="t1", user_id="u1"),
         message="hi",
+        attachments=None,
         conversation_id="conv-1",
     ):
         events.append(ev)

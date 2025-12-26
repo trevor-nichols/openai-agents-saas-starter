@@ -5,6 +5,7 @@ export {
   useChatSelector,
   useChatMessages,
   useChatStreamEvents,
+  useChatAgentToolStreams,
   useChatToolEventAnchors,
   useChatToolEvents,
   useChatLifecycle,

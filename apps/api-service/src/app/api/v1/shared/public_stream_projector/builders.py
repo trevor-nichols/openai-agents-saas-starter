@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -16,6 +16,7 @@ class EventBuilder:
     response_id: str | None
     agent: str | None
     workflow: WorkflowContext | None
+    scope: Mapping[str, Any] | None
     server_timestamp: str
     schema: str
     next_event_id: Callable[[], int]
@@ -27,7 +28,7 @@ class EventBuilder:
         provider_seq: int | None = None,
         notices: list[StreamNotice] | None = None,
     ) -> dict[str, Any]:
-        return {
+        base = {
             "schema": self.schema,
             "kind": kind,
             "event_id": self.next_event_id(),
@@ -40,6 +41,9 @@ class EventBuilder:
             "provider_sequence_number": provider_seq,
             "notices": notices,
         }
+        if self.scope is not None:
+            base["scope"] = self.scope
+        return base
 
     def item(
         self,
@@ -54,4 +58,3 @@ class EventBuilder:
         base["item_id"] = item_id
         base["output_index"] = output_index
         return base
-

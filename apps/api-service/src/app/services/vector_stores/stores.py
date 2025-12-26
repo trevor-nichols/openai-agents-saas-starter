@@ -18,7 +18,11 @@ from app.domain.vector_stores import (
 from app.services.vector_stores.gateway import OpenAIVectorStoreGateway
 from app.services.vector_stores.instrumentation import instrument
 from app.services.vector_stores.policy import VectorStorePolicy
-from app.services.vector_stores.utils import coerce_uuid, coerce_uuid_optional
+from app.services.vector_stores.utils import (
+    coerce_datetime,
+    coerce_uuid,
+    coerce_uuid_optional,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +79,8 @@ class StoreService:
 
         usage_bytes = getattr(remote, "usage_bytes", None) or getattr(remote, "bytes", 0) or 0
         status = getattr(remote, "status", None) or "ready"
+        expires_at = coerce_datetime(getattr(remote, "expires_at", None))
+        last_active_at = coerce_datetime(getattr(remote, "last_active_at", None))
 
         store = VectorStore(
             id=uuid.uuid4(),
@@ -86,8 +92,8 @@ class StoreService:
             status=status,
             usage_bytes=usage_bytes,
             expires_after=expires_after,
-            expires_at=getattr(remote, "expires_at", None),
-            last_active_at=getattr(remote, "last_active_at", None),
+            expires_at=expires_at,
+            last_active_at=last_active_at,
             metadata=metadata or {},
             created_at=datetime.now(UTC),
         )

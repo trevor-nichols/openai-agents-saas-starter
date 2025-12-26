@@ -15,6 +15,10 @@ import {
 } from '@/components/ui/workflow';
 import { useWorkflowNodePreview } from '../nodeStreamContext';
 import { cn } from '@/lib/utils';
+import type { ContainerResponse, VectorStoreResponse } from '@/lib/api/client/types.gen';
+import { WorkflowAgentNodeConfigPopover } from './WorkflowAgentNodeConfigPopover';
+import { WorkflowAgentNodePreviewList } from './WorkflowAgentNodePreviewList';
+import { WORKFLOW_AGENT_NODE_STATUS_META, WORKFLOW_AGENT_NODE_WIDTH } from './workflowAgentNode.constants';
 
 export type WorkflowAgentNodeData = {
   title: string;
@@ -22,60 +26,35 @@ export type WorkflowAgentNodeData = {
   stageName: string;
   stageMode: 'sequential' | 'parallel';
   status: NodeStatus;
+  tools: string[];
+  supportsContainers: boolean;
+  supportsFileSearch: boolean;
+  containers: ContainerResponse[];
+  containersError: string | null;
+  isLoadingContainers: boolean;
+  selectedContainerId: string | null;
+  onContainerOverrideChange?: (agentKey: string, containerId: string | null) => void;
+  vectorStores: VectorStoreResponse[];
+  vectorStoresError: string | null;
+  isLoadingVectorStores: boolean;
+  selectedVectorStoreId: string | null;
+  onVectorStoreOverrideChange?: (agentKey: string, vectorStoreId: string | null) => void;
 };
 
 export type WorkflowAgentFlowNode = Node<WorkflowAgentNodeData, 'workflowAgent'>;
 
-function statusTone(status: NodeStatus): 'secondary' | 'outline' | 'destructive' {
-  if (status === 'success') return 'secondary';
-  if (status === 'error') return 'destructive';
-  return 'outline';
-}
-
-function toolTone(status: 'waiting' | 'running' | 'done' | 'error'): 'secondary' | 'outline' | 'destructive' {
-  if (status === 'done') return 'secondary';
-  if (status === 'error') return 'destructive';
-  return 'outline';
-}
-
 export function WorkflowAgentNode({ id, data, selected }: NodeProps<WorkflowAgentFlowNode>) {
   const preview = useWorkflowNodePreview(id);
-
-  const statusTitle = (() => {
-    switch (data.status) {
-      case 'loading':
-        return 'Running…';
-      case 'success':
-        return 'Completed';
-      case 'error':
-        return 'Error';
-      case 'initial':
-      default:
-        return 'Ready';
-    }
-  })();
-
-  const statusDescription = (() => {
-    switch (data.status) {
-      case 'loading':
-        return 'Streaming output will appear here.';
-      case 'success':
-        return 'This step finished successfully.';
-      case 'error':
-        return 'This step failed.';
-      case 'initial':
-      default:
-        return 'Awaiting execution.';
-    }
-  })();
+  const statusMeta = WORKFLOW_AGENT_NODE_STATUS_META[data.status];
 
   return (
     <NodeStatusIndicator status={data.status} variant="border">
       <BaseNode
         className={cn(
-          'group w-[360px] overflow-hidden shadow-sm',
+          'group overflow-hidden shadow-sm',
           selected ? 'ring-1 ring-ring' : null,
         )}
+        style={{ width: WORKFLOW_AGENT_NODE_WIDTH }}
       >
         <Handle
           type="target"
@@ -95,79 +74,49 @@ export function WorkflowAgentNode({ id, data, selected }: NodeProps<WorkflowAgen
               {data.title}
             </BaseNodeHeaderTitle>
           </div>
-          <Badge variant="secondary" className="shrink-0 text-xs">
-            {data.stageMode}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <WorkflowAgentNodeConfigPopover
+              agentKey={data.agentKey}
+              tools={data.tools}
+              supportsContainers={data.supportsContainers}
+              supportsFileSearch={data.supportsFileSearch}
+              containers={data.containers}
+              containersError={data.containersError}
+              isLoadingContainers={data.isLoadingContainers}
+              selectedContainerId={data.selectedContainerId}
+              onContainerOverrideChange={data.onContainerOverrideChange}
+              vectorStores={data.vectorStores}
+              vectorStoresError={data.vectorStoresError}
+              isLoadingVectorStores={data.isLoadingVectorStores}
+              selectedVectorStoreId={data.selectedVectorStoreId}
+              onVectorStoreOverrideChange={data.onVectorStoreOverrideChange}
+            />
+
+            <Badge variant="secondary" className="shrink-0 text-xs">
+              {data.stageMode}
+            </Badge>
+          </div>
         </BaseNodeHeader>
 
         <div className="h-px w-full bg-border/60" />
 
         <BaseNodeContent className="gap-3 px-4 py-4">
           <div className="flex items-center justify-between gap-2">
-            <div className="text-sm font-semibold tracking-tight text-foreground">{statusTitle}</div>
+            <div className="text-sm font-semibold tracking-tight text-foreground">
+              {statusMeta.title}
+            </div>
             <div className="flex items-center gap-2">
               {preview.lifecycleStatus ? (
                 <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">
                   {preview.lifecycleStatus}
                 </Badge>
               ) : null}
-              <Badge variant={statusTone(data.status)} className="text-[10px] uppercase tracking-wide">
+              <Badge variant={statusMeta.badgeTone} className="text-[10px] uppercase tracking-wide">
                 {data.status}
               </Badge>
             </div>
           </div>
-
-          {preview.items.length ? (
-            <div className="grid gap-2">
-              {preview.items.map((item) => {
-                if (item.kind === 'tool') {
-                  return (
-                    <div key={item.itemId} className="rounded-md border border-border/60 bg-muted/20 px-2 py-1.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="min-w-0 truncate text-xs font-medium text-foreground/90" title={item.label}>
-                          {item.label}
-                        </div>
-                        <Badge variant={toolTone(item.status)} className="text-[10px] uppercase tracking-wide">
-                          {item.status}
-                        </Badge>
-                      </div>
-                      {item.inputPreview ? (
-                        <div className="mt-1 line-clamp-2 text-[11px] text-muted-foreground" title={item.inputPreview}>
-                          {item.inputPreview}
-                        </div>
-                      ) : null}
-                    </div>
-                  );
-                }
-
-                if (item.kind === 'refusal') {
-                  return (
-                    <div key={item.itemId} className="rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1.5">
-                      <div className="line-clamp-3 whitespace-pre-wrap text-xs text-destructive/90">
-                        {item.text}
-                      </div>
-                    </div>
-                  );
-                }
-
-                return (
-                  <div key={item.itemId} className="rounded-md border border-border/60 bg-muted/10 px-2 py-1.5">
-                    <div className="line-clamp-3 whitespace-pre-wrap text-xs text-foreground/90">
-                      {item.text}
-                    </div>
-                  </div>
-                );
-              })}
-
-              {preview.overflowCount > 0 ? (
-                <div className="text-[11px] text-muted-foreground">
-                  +{preview.overflowCount} more…
-                </div>
-              ) : null}
-            </div>
-          ) : (
-            <div className="text-sm text-muted-foreground">{statusDescription}</div>
-          )}
+          <WorkflowAgentNodePreviewList preview={preview} statusDescription={statusMeta.description} />
         </BaseNodeContent>
 
         <BaseNodeFooter className="flex-row items-center justify-between gap-3 px-4 py-3">

@@ -23,7 +23,7 @@ from app.infrastructure.persistence.models.base import INT_PK_TYPE, UTC_NOW, Bas
 from app.infrastructure.persistence.types import JSONBCompat
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
-    from app.infrastructure.persistence.conversations.models import TenantAccount
+    from app.infrastructure.persistence.tenants.models import TenantAccount
 
 
 class BillingPlan(Base):
@@ -120,10 +120,7 @@ class TenantSubscription(Base):
         DateTime(timezone=True), default=UTC_NOW, nullable=False
     )
 
-    tenant: Mapped[TenantAccount] = relationship(
-        "TenantAccount",
-        back_populates="subscriptions",
-    )
+    tenant: Mapped[TenantAccount] = relationship("TenantAccount")
     plan: Mapped[BillingPlan] = relationship(back_populates="subscriptions")
     invoices: Mapped[list[SubscriptionInvoice]] = relationship(
         back_populates="subscription",

@@ -11,7 +11,7 @@
 
 ## 1. Goal
 
-Enable the AuthService CLI and backend to authenticate service-account issuance requests using Vault Transit–signed JWTs. This replaces static tokens and aligns with our security posture for staging/production. As of Nov 16 2025, the FastAPI app refuses to boot in non-local environments unless Vault (or an approved signing provider) is fully configured and `VAULT_VERIFY_ENABLED=true`.
+Enable the AuthService CLI and backend to authenticate service-account issuance requests using Vault Transit–signed JWTs. This replaces static tokens and aligns with our security posture for staging/production. As of Nov 16 2025, the FastAPI app refuses to boot in non-demo environments unless Vault (or an approved signing provider) is fully configured and `VAULT_VERIFY_ENABLED=true`.
 
 ## 2. Handshake Overview
 
@@ -49,12 +49,12 @@ AuthService
 
 To exercise this flow without provisioning a real Vault cluster, use the new dev-only helper:
 
-1. `just vault-up` – starts `hashicorp/vault` in dev mode on `http://127.0.0.1:18200`, enables the Transit engine, and prints the env vars you need to export (`VAULT_ADDR`, `VAULT_TOKEN`, `VAULT_TRANSIT_KEY`, `VAULT_VERIFY_ENABLED=true`). The backend now enforces these values whenever `ENVIRONMENT` is not one of `development/dev/local/test`.
-2. Update your shell or `apps/api-service/.env.local` with those exports so both FastAPI and the Starter CLI talk to the dev signer.
-3. Run the API (`just api`) and then `just verify-vault` to execute `starter_cli auth tokens issue-service-account` against the running backend. That command uses the Vault dev signer and will fail if the signature or backend wiring regresses.
+1. `just vault-up` – starts `hashicorp/vault` in dev mode on `http://127.0.0.1:18200`, enables the Transit engine, and prints the env vars you need to export (`VAULT_ADDR`, `VAULT_TOKEN`, `VAULT_TRANSIT_KEY`, `VAULT_VERIFY_ENABLED=true`). The backend now enforces these values whenever `ENVIRONMENT` is not one of `development/dev/demo/test`.
+2. Update your shell or `apps/api-service/.env.local` with those exports so both FastAPI and the Starter Console talk to the dev signer.
+3. Run the API (`just api`) and then `just verify-vault` to execute `starter-console auth tokens issue-service-account` against the running backend. That command uses the Vault dev signer and will fail if the signature or backend wiring regresses.
 4. When finished, `just vault-down` tears the container down; `just vault-logs` tails the Vault output for troubleshooting.
 
-> ⚠️ This Compose stack is for local testing only. The dev image stores everything in-memory, has no TLS, and uses a static root token. Production/staging deployments must still bring a hardened Vault/KMS setup per the remainder of this document.
+> ⚠️ This Compose stack is for demo testing only. The dev image stores everything in-memory, has no TLS, and uses a static root token. Production/staging deployments must still bring a hardened Vault/KMS setup per the remainder of this document.
 
 ### 2.2 Browser issuance bridge
 
@@ -119,7 +119,7 @@ Vault returns `{"data": {"valid": true}}` when verification succeeds.
   - Provides Redis-backed nonce caching (tests rely on fakeredis to avoid external dependencies).  
   - `check_and_store(nonce, ttl_seconds)` ensures each CLI payload nonce is single-use with ≤5 minute TTL.
 - `app/core/settings/__init__.py`
-  - Add settings: `vault_addr`, `vault_token`, `vault_transit_key`, `vault_verify_enabled` (feature flag for local).
+  - Add settings: `vault_addr`, `vault_token`, `vault_transit_key`, `vault_verify_enabled` (feature flag for demo).
 - Dependency injection:
   - Provide `get_vault_client()` for FastAPI dependencies.  
   - For tests, supply a mock client with deterministic responses.
@@ -130,8 +130,8 @@ Vault returns `{"data": {"valid": true}}` when verification succeeds.
   - Fetch payload metadata (account, tenant, scopes) and produce signing payload.  
   - Call Vault Transit sign endpoint using `AUTH_CLI_VAULT_ADDR`, `AUTH_CLI_VAULT_ROLE_ID`, `AUTH_CLI_VAULT_SECRET_ID`.  
   - Populate `Authorization` and `X-Vault-Payload` headers.
-- For local/development:
-  - Feature flag `AUTH_CLI_DEV_AUTH_MODE=local` bypasses Transit and uses `Bearer dev-local`.
+- For demo/development:
+  - Feature flag `AUTH_CLI_DEV_AUTH_MODE=demo` bypasses Transit and uses `Bearer dev-demo`.
 
 ## 6. Testing Strategy
 

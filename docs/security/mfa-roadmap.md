@@ -1,32 +1,25 @@
-# MFA Roadmap
+# MFA Status & Enablement Requirements
 
 _Last updated: 11 Nov 2025_
 
-This document captures the staged rollout for tenant-wide multi-factor authentication.
+Multi-factor authentication (MFA) is not enabled in this release. This document captures the requirements that any MFA enablement must satisfy so security and UX remain consistent across backend, web app, and console tooling.
 
-## Phase 1 — Foundations (Complete)
-- Identify target factors: primary passkeys (WebAuthn) with TOTP backup codes.
-- Extend auth token payload to track MFA enrollment + enforcement intent.
-- Document UX flows (dashboard + CLI) and threat model updates.
+## Required Factors
+- Primary factor: passkeys (WebAuthn).
+- Backup factor: TOTP recovery codes.
 
-## Phase 2 — Admin Preview (Target: Jan 2026)
-- Allow tenant owners to self-enroll in passkeys and generate recovery codes.
-- Surface enforcement toggle (owner-only) but keep it soft-disabled until monitoring stabilizes.
-- Add audit events + analytics for MFA enrollment/removal.
+## Enrollment & Enforcement Requirements
+- Enrollment must be scoped to tenant owners first; enforcement controls must be owner-gated.
+- Enforcement must be role-aware (owner/admin/member scopes) and auditable.
+- Onboarding and privileged actions must respect MFA enrollment state once enforcement is enabled.
 
-## Phase 3 — Tenant Enforcement (Target: Feb 2026)
-- Enable hard enforcement per tenant/role (owner/admin/member scopes).
-- Update onboarding/signup to require MFA for privileged roles.
-- Wire CLI + service-account issuance workflows to respect MFA enrollment state.
+## Audit & Telemetry Requirements
+- Emit audit events for MFA enrollment/removal.
+- Add structured logs and metrics for enrollment, enforcement toggles, and MFA challenge failures.
 
-## Phase 4 — Enterprise Enhancements (Target: Mar 2026)
-- Add optional hardware key requirement.
-- Integrate with future IdP/SAML adapters for customers that centralize MFA elsewhere.
-- Ship runbooks + incident response guidance.
+## Operational Guidance
+- Provide CLI and dashboard flows for enrollment, recovery codes, and enforcement toggles.
+- Document incident response steps and recovery flows in the security runbooks.
 
-### Tracking & Status
+## Ownership
 - Owner: Platform Foundations (Security & Auth pod)
-- Epic: `SEC-MFA-001` in Linear
-- Dependencies: Auth service support for passkeys, dashboard UI for enrollment, CLI prompts.
-
-For questions or design proposals, open a discussion in `docs/security/` or reach out in #platform-security.

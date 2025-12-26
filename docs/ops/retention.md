@@ -5,7 +5,7 @@ Defaults (env-driven)
 - `RUN_EVENTS_CLEANUP_BATCH`: 10_000 rows per delete batch.
 - `RUN_EVENTS_CLEANUP_SLEEP_MS`: 0 (set to >0 to throttle batches).
 
-Cleanup command (env-loaded via Starter CLI)
+Cleanup command (env-loaded via Starter Console)
 - Dry run: `just cleanup-run-events dry_run=true`
 - Override TTL: `just cleanup-run-events days=90`
 - Throttle: `just cleanup-run-events sleep_ms=200`

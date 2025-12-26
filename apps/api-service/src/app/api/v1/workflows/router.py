@@ -32,8 +32,11 @@ from app.api.v1.workflows.schemas import (
     WorkflowStepResultSchema,
     WorkflowSummary,
 )
+from app.domain.input_attachments import InputAttachmentNotFoundError
 from app.domain.workflows import WorkflowStatus
+from app.services.agents.container_overrides import ContainerOverrideError
 from app.services.agents.context import ConversationActorContext
+from app.services.agents.vector_store_overrides import VectorStoreOverrideError
 from app.services.conversations.ledger_recorder import get_conversation_ledger_recorder
 from app.services.workflows.catalog import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from app.services.workflows.service import WorkflowRunRequest, get_workflow_service
@@ -101,12 +104,21 @@ async def run_workflow(
             workflow_key,
             request=WorkflowRunRequest(
                 message=request.message,
+                attachments=request.attachments,
                 conversation_id=request.conversation_id,
                 location=request.location,
                 share_location=request.share_location,
+                container_overrides=request.container_overrides,
+                vector_store_overrides=request.vector_store_overrides,
             ),
             actor=actor,
         )
+    except InputAttachmentNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ContainerOverrideError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except VectorStoreOverrideError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except ValueError as exc:
         message = str(exc)
         if "not found" in message.lower():
@@ -339,12 +351,19 @@ async def run_workflow_stream(
             workflow_key,
             request=WorkflowRunRequest(
                 message=request.message,
+                attachments=request.attachments,
                 conversation_id=request.conversation_id,
                 location=request.location,
                 share_location=request.share_location,
+                container_overrides=request.container_overrides,
+                vector_store_overrides=request.vector_store_overrides,
             ),
             actor=actor,
         )
+    except ContainerOverrideError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except VectorStoreOverrideError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except ValueError as exc:
         message = str(exc)
         if "not found" in message.lower():
@@ -371,9 +390,9 @@ async def run_workflow_stream(
         try:
             async for event in stream:
                 metadata = event.metadata if isinstance(event.metadata, dict) else {}
-                if event.conversation_id:
+                if event.conversation_id and event.scope is None:
                     last_conversation_id = event.conversation_id
-                if event.response_id:
+                if event.response_id and event.scope is None:
                     last_response_id = event.response_id
 
                 now_iso = datetime.now(tz=UTC).isoformat().replace("+00:00", "Z")

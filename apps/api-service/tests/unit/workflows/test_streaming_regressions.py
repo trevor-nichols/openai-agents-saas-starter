@@ -109,6 +109,7 @@ async def test_streaming_multi_step_and_structured_propagates():
             spec,
             actor=ConversationActorContext(tenant_id="t", user_id="u"),
             message="start",
+            attachments=None,
             conversation_id="c",
         ):
             events.append(ev)
@@ -150,6 +151,7 @@ async def test_sync_propagates_structured_between_steps():
             spec,
             actor=ConversationActorContext(tenant_id="t", user_id="u"),
             message="start",
+            attachments=None,
             conversation_id="c",
         )
     finally:
@@ -201,6 +203,7 @@ async def test_stream_parallel_stage_streams_with_metadata():
             spec,
             actor=ConversationActorContext(tenant_id="t", user_id="u"),
             message="prompt",
+            attachments=None,
             conversation_id="c",
         ):
             events.append(ev)
@@ -254,6 +257,7 @@ async def test_stream_parallel_branch_error_surfaces_and_does_not_hang():
             spec,
             actor=ConversationActorContext(tenant_id="t", user_id="u"),
             message="prompt",
+            attachments=None,
             conversation_id="c",
         ):
             # Should raise before yielding anything

@@ -71,7 +71,7 @@ This document codifies how the Next.js frontend talks to the FastAPI backend. Ev
   - Keep the domain service for server-side orchestration.
   - Add a lightweight API route + fetch helper for browser access.  
 - Example: billing subscription flows now share `lib/api/billingSubscriptions.ts`, and `lib/queries/billingSubscriptions.ts` exclusively calls those helpers. Server components that need the same data can still import `lib/server/services/billing.ts`.  
-- Billing visibility: `NEXT_PUBLIC_ENABLE_BILLING` (default `false`) controls nav/pages/API routes/query `enabled` flags. The Starter CLI writes it to `apps/web-app/.env.local` alongside backend `ENABLE_BILLING` in `apps/api-service/.env.local`.
+- Billing visibility: `NEXT_PUBLIC_ENABLE_BILLING` (default `false`) controls nav/pages/API routes/query `enabled` flags. The Starter Console writes it to `apps/web-app/.env.local` alongside backend `ENABLE_BILLING` in `apps/api-service/.env.local`.
 - If a hook only ever runs in a server component, prefer a server action instead of creating a redundant `/api` route.
 
 ## Streaming Guidance
@@ -142,11 +142,11 @@ When extending the chat domain, follow the same pattern: update helpers/hooks, k
 ## Conversations Archive Flow
 
 1. **List view** – `features/conversations/ConversationsHub.tsx` consumes `useConversations()` (TanStack Query) to fetch `/api/conversations`. Local search filters the cached list client-side, and each row prefetches its detail query for snappy drawers.
-2. **Detail drawer** – `ConversationDetailDrawer` calls `useConversationDetail(conversationId)` which wraps `fetchConversationHistory` (`/api/conversations/{id}`) and caches the transcript. The drawer exposes JSON export placeholders, ID/message copy actions, and delete flows that invalidate both the list cache and the selected detail query.
+2. **Detail drawer** – `ConversationDetailDrawer` calls `useConversationDetail(conversationId)` which wraps `fetchConversationHistory` (`/api/conversations/{id}`) and caches the transcript. The drawer exposes JSON export, ID/message copy actions, and delete flows that invalidate both the list cache and the selected detail query.
 3. **Deleting** – `deleteConversationById` hits the DELETE route, and the drawer invokes `removeConversationFromList` (from the list hook) so TanStack caches stay consistent without refetching the whole table.
-4. **Exports** – Until the backend delivers CSV/PDF, the drawer generates a JSON blob for quick downloads; once servers are ready we can swap the handler to call `/api/conversations/{id}/export` without touching UI code.
+4. **Exports** – The drawer currently generates a JSON export in-browser. If server-side exports are introduced, route the handler through `/api/conversations/{id}/export` and keep the UI contract stable.
 
-This layering keeps the archive UX responsive and predictable, and the same hooks can be reused by upcoming admin/audit surfaces.
+This layering keeps the archive UX responsive and predictable, and the same hooks can be reused by admin/audit surfaces.
 
 ### Conversation Events
 
@@ -162,7 +162,7 @@ This layering keeps the archive UX responsive and predictable, and the same hook
 4. **Query layer** – `useAgents()` + `useTools()` (TanStack Query) provide cached data, loading/error flags, and refetch methods.
 5. **Feature UI** – `features/agents/AgentsOverview.tsx` renders the catalog using `GlassPanel` cards with status badges, last heartbeat, and tool lists. Rows stay keyboard-accessible, and shared toasts handle refresh/export states.
 
-This layering mirrors the conversations stack, so future agent detail pages can reuse the same hooks without touching UI components.
+This layering mirrors the conversations stack and should be reused for agent detail pages to avoid duplicating hooks.
 
 ## Auth Boundary Rules
 

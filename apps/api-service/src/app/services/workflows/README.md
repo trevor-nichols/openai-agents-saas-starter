@@ -6,12 +6,17 @@ Runtime layer that takes workflow specs from `app/workflows/**/spec.py`, runs th
 What lives here
 ---------------
 - `service.py` — public facade used by API handlers. Lists workflow catalog entries, resolves a `WorkflowSpec`, runs or streams it, surfaces run history, and issues cancel/delete operations.
-- `runner.py` — orchestration core. Wraps runs in `agents.trace`, builds runtime context, dispatches stages, handles cancellation flags, and projects session deltas to the event log.
+- `runner.py` — orchestration core. Wraps runs in `agents.trace`, dispatches stages, handles cancellation flags, and coordinates helpers.
 - `stages.py` / `streaming.py` — stage executors. Sequential and parallel fan-out/fan-in variants for non-streaming and streaming flows.
 - `execution.py` — executes a single step via `provider.runtime.run(...)`, prioritizes structured output → response text → final output, and validates step output against the declared schema.
 - `hooks.py` — loads guard/input-mapper/reducer callables from dotted paths (`module:attr` or `module.attr`) and runs them (sync or async).
 - `recording.py` — persists runs and steps through the `WorkflowRunRepository`, and emits activity log entries.
 - `catalog.py` — read-only workflow catalog with pagination and search backed by the registry.
+- `run_context.py` — bootstraps workflow runs (user input resolution, runtime context, recorder start, container context events).
+- `attachments.py` — attachment ingestion for workflow runs (streaming + non-streaming).
+- `session_events.py` — projects provider session deltas into conversation event logs.
+- `output.py` — output formatting, usage aggregation, and assistant message persistence.
+- `utils.py` — workflow helper utilities (agent key discovery).
 - `types.py` — dataclasses for `WorkflowRunResult` and `WorkflowStepResult`.
 
 Execution flow (non-streaming)

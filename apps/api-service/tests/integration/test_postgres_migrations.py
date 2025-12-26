@@ -30,7 +30,7 @@ from app.infrastructure.persistence.billing.models import (
     SubscriptionUsage as ORMSubscriptionUsage,
 )
 from app.infrastructure.persistence.billing.postgres import PostgresBillingRepository
-from app.infrastructure.persistence.conversations.models import TenantAccount
+from app.infrastructure.persistence.tenants.models import TenantAccount
 from app.infrastructure.persistence.conversations.postgres import (
     PostgresConversationRepository,
 )

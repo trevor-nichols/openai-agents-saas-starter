@@ -10,9 +10,6 @@ import type {
   AdminResetPasswordApiV1AuthPasswordResetPostData,
   AdminResetPasswordApiV1AuthPasswordResetPostErrors,
   AdminResetPasswordApiV1AuthPasswordResetPostResponses,
-  ApplyTestFixturesApiV1TestFixturesApplyPostData,
-  ApplyTestFixturesApiV1TestFixturesApplyPostErrors,
-  ApplyTestFixturesApiV1TestFixturesApplyPostResponses,
   ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostData,
   ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostErrors,
   ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostResponses,
@@ -49,6 +46,9 @@ import type {
   ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostData,
   ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostErrors,
   ConfirmWebhookChallengeApiV1StatusSubscriptionsChallengePostResponses,
+  CreateAgentInputUploadApiV1UploadsAgentInputPostData,
+  CreateAgentInputUploadApiV1UploadsAgentInputPostErrors,
+  CreateAgentInputUploadApiV1UploadsAgentInputPostResponses,
   CreateContainerApiV1ContainersPostData,
   CreateContainerApiV1ContainersPostErrors,
   CreateContainerApiV1ContainersPostResponses,
@@ -172,9 +172,6 @@ import type {
   HealthCheckHealthGetData,
   HealthCheckHealthGetErrors,
   HealthCheckHealthGetResponses,
-  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostData,
-  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors,
-  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses,
   IssueInviteApiV1AuthInvitesPostData,
   IssueInviteApiV1AuthInvitesPostErrors,
   IssueInviteApiV1AuthInvitesPostResponses,
@@ -376,6 +373,9 @@ import type {
   UpdateTenantSettingsApiV1TenantsSettingsPutData,
   UpdateTenantSettingsApiV1TenantsSettingsPutErrors,
   UpdateTenantSettingsApiV1TenantsSettingsPutResponses,
+  UploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPostData,
+  UploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPostErrors,
+  UploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPostResponses,
   UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutData,
   UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutErrors,
   UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutResponses,
@@ -2789,6 +2789,36 @@ export const attachFileApiV1VectorStoresVectorStoreIdFilesPost = <
 };
 
 /**
+ * Upload And Attach File
+ */
+export const uploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPost =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      UploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPostData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).post<
+      UploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPostResponses,
+      UploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPostErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/vector-stores/{vector_store_id}/files/upload",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    });
+  };
+
+/**
  * Delete File
  */
 export const deleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDelete = <
@@ -3031,6 +3061,37 @@ export const deleteObjectApiV1StorageObjectsObjectIdDelete = <
     ],
     url: "/api/v1/storage/objects/{object_id}",
     ...options,
+  });
+};
+
+/**
+ * Create Agent Input Upload
+ */
+export const createAgentInputUploadApiV1UploadsAgentInputPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    CreateAgentInputUploadApiV1UploadsAgentInputPostData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).post<
+    CreateAgentInputUploadApiV1UploadsAgentInputPostResponses,
+    CreateAgentInputUploadApiV1UploadsAgentInputPostErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/uploads/agent-input",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
   });
 };
 
@@ -3758,52 +3819,3 @@ export const billingEventStreamApiV1BillingStreamGet = <
     ...options,
   });
 };
-
-/**
- * Apply Test Fixtures
- */
-export const applyTestFixturesApiV1TestFixturesApplyPost = <
-  ThrowOnError extends boolean = false,
->(
-  options: Options<
-    ApplyTestFixturesApiV1TestFixturesApplyPostData,
-    ThrowOnError
-  >,
-) => {
-  return (options.client ?? client).post<
-    ApplyTestFixturesApiV1TestFixturesApplyPostResponses,
-    ApplyTestFixturesApiV1TestFixturesApplyPostErrors,
-    ThrowOnError
-  >({
-    url: "/api/v1/test-fixtures/apply",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
-};
-
-/**
- * Issue Email Verification Token
- */
-export const issueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPost =
-  <ThrowOnError extends boolean = false>(
-    options: Options<
-      IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostData,
-      ThrowOnError
-    >,
-  ) => {
-    return (options.client ?? client).post<
-      IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses,
-      IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors,
-      ThrowOnError
-    >({
-      url: "/api/v1/test-fixtures/email-verification-token",
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
-    });
-  };

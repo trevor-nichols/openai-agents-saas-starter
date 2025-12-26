@@ -1,11 +1,16 @@
+import { resolve } from "node:path";
+
 import type { NextConfig } from "next";
+
+const workspaceRoot = resolve(__dirname, "../..");
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
-  outputFileTracingRoot: __dirname,
+  output: "standalone",
+  outputFileTracingRoot: workspaceRoot,
   turbopack: {
-    // Explicitly set the project root so Next doesn't mis-infer it as app/
-    root: __dirname,
+    // Ensure Turbopack can resolve hoisted workspace dependencies in Docker/CI.
+    root: workspaceRoot,
   },
 };
 

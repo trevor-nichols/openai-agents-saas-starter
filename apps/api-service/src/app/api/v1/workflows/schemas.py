@@ -4,6 +4,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.api.v1.shared.attachments import InputAttachment
+from app.api.v1.shared.overrides import VectorStoreOverrides
 from app.api.v1.shared.streaming import MessageAttachment, PublicSseEvent
 from app.domain.workflows import WorkflowStatus
 from app.utils.tools.location import LocationHint
@@ -30,6 +32,9 @@ class WorkflowListResponse(BaseModel):
 
 class WorkflowRunRequestBody(BaseModel):
     message: str = Field(..., description="Initial user message")
+    attachments: list[InputAttachment] | None = Field(
+        default=None, description="Optional file/image inputs for the workflow run."
+    )
     conversation_id: str | None = Field(
         None, description="Optional conversation id to reuse across steps"
     )
@@ -38,6 +43,14 @@ class WorkflowRunRequestBody(BaseModel):
     )
     share_location: bool | None = Field(
         None, description="If true, forward location to hosted web search"
+    )
+    container_overrides: dict[str, str] | None = Field(
+        default=None,
+        description="Optional container overrides keyed by agent key.",
+    )
+    vector_store_overrides: VectorStoreOverrides | None = Field(
+        default=None,
+        description="Optional vector store overrides keyed by agent key.",
     )
 
 

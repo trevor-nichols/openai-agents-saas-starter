@@ -15,11 +15,13 @@ def main() -> None:
     python = sys.executable
     commands = [
         ("pyright:api-service", [python, "-m", "pyright", "--project", "apps/api-service/pyrightconfig.json"]),
-        ("pyright:starter-cli", [python, "-m", "pyright", "--project", "packages/starter_cli/pyrightconfig.json"]),
+        ("pyright:starter-console", [python, "-m", "pyright", "--project", "packages/starter_console/pyrightconfig.json"]),
         ("pyright:starter-contracts", [python, "-m", "pyright", "--project", "packages/starter_contracts/pyrightconfig.json"]),
+        ("pyright:starter-providers", [python, "-m", "pyright", "--project", "packages/starter_providers/pyrightconfig.json"]),
         ("mypy:api-service", [python, "-m", "mypy", "--config-file", "apps/api-service/pyproject.toml", "apps/api-service/src", "apps/api-service/tests"]),
-        ("mypy:starter-cli", [python, "-m", "mypy", "--config-file", "packages/starter_cli/pyproject.toml", "packages/starter_cli/src", "packages/starter_cli/tests"]),
+        ("mypy:starter-console", [python, "-m", "mypy", "--config-file", "packages/starter_console/pyproject.toml", "packages/starter_console/src", "packages/starter_console/tests"]),
         ("mypy:starter-contracts", [python, "-m", "mypy", "--config-file", "packages/starter_contracts/pyproject.toml", "packages/starter_contracts/src", "packages/starter_contracts/tests"]),
+        ("mypy:starter-providers", [python, "-m", "mypy", "--config-file", "packages/starter_providers/pyproject.toml", "packages/starter_providers/src", "packages/starter_providers/tests"]),
     ]
 
     failures: list[str] = []

@@ -8,6 +8,7 @@ import pytest
 from app.agents._shared.specs import AgentSpec
 from app.core.settings import Settings
 from app.services.agents.interaction_context import InteractionContextBuilder
+from app.services.agents.vector_store_overrides import VectorStoreOverrideError
 from app.services.vector_stores.service import VectorStoreNotFoundError, VectorStoreService
 
 
@@ -202,3 +203,67 @@ async def test_file_search_resolves_agent_tool_dependencies():
 
     assert set(resolved.keys()) == {"fs_agent", "fs_dep"}
     assert resolved["fs_dep"]["vector_store_ids"] == ["vs_dep"]
+
+
+@pytest.mark.asyncio
+async def test_per_agent_vector_store_override_takes_precedence():
+    ctx_store = _FakeStore(id="db-5", openai_id="vs_ctx", tenant_id="t1")
+    override_store = _FakeStore(id="db-6", openai_id="vs_override", tenant_id="t1")
+    builder = _builder([ctx_store, override_store], override_store, auto_create=True)
+    request = SimpleNamespace(
+        context={"vector_store_id": "vs_ctx"},
+        vector_store_overrides={"fs_agent": {"vector_store_id": "vs_override"}},
+        share_location=False,
+        location=None,
+    )
+
+    overrides = await builder._resolve_vector_store_overrides(
+        agent_keys=["fs_agent"], actor=_actor(), request=request
+    )
+    resolved = await builder._resolve_file_search_for_agents(
+        agent_keys=["fs_agent"],
+        actor=_actor(),
+        request=request,
+        overrides=overrides,
+    )
+
+    assert resolved["fs_agent"]["vector_store_ids"] == ["vs_override"]
+
+
+@pytest.mark.asyncio
+async def test_vector_store_override_rejects_unknown_agent():
+    store = _FakeStore(id="db-7", openai_id="vs_ctx", tenant_id="t1")
+    builder = _builder([store], store, auto_create=True)
+    request = SimpleNamespace(
+        vector_store_overrides={"missing_agent": {"vector_store_id": "vs_ctx"}},
+        share_location=False,
+        location=None,
+    )
+
+    with pytest.raises(VectorStoreOverrideError):
+        await builder._resolve_vector_store_overrides(
+            agent_keys=["fs_agent"], actor=_actor(), request=request
+        )
+
+
+@pytest.mark.asyncio
+async def test_vector_store_override_requires_file_search():
+    store = _FakeStore(id="db-8", openai_id="vs_ctx", tenant_id="t1")
+    builder = _builder([store], store, auto_create=True)
+    builder._spec_index["fs_agent"] = AgentSpec(
+        key="fs_agent",
+        display_name="No FS",
+        description="",
+        instructions="",
+        tool_keys=(),
+    )
+    request = SimpleNamespace(
+        vector_store_overrides={"fs_agent": {"vector_store_id": "vs_ctx"}},
+        share_location=False,
+        location=None,
+    )
+
+    with pytest.raises(VectorStoreOverrideError):
+        await builder._resolve_vector_store_overrides(
+            agent_keys=["fs_agent"], actor=_actor(), request=request
+        )

@@ -109,6 +109,10 @@ export type AgentChatRequest = {
    */
   message: string;
   /**
+   * Attachments
+   */
+  attachments?: Array<InputAttachment> | null;
+  /**
    * Conversation Id
    */
   conversation_id?: string | null;
@@ -133,6 +137,22 @@ export type AgentChatRequest = {
    * Memory Injection
    */
   memory_injection?: boolean | null;
+  /**
+   * Container Overrides
+   *
+   * Optional container overrides keyed by agent key.
+   */
+  container_overrides?: {
+    [key: string]: string;
+  } | null;
+  /**
+   * Vector Store Overrides
+   *
+   * Optional vector store overrides keyed by agent key.
+   */
+  vector_store_overrides?: {
+    [key: string]: VectorStoreOverride;
+  } | null;
 };
 
 /**
@@ -273,6 +293,10 @@ export type AgentStatus = {
    * Total number of conversations handled.
    */
   total_conversations?: number;
+  /**
+   * Tooling capability flags for UI gating.
+   */
+  tooling?: AgentToolingFlags;
 };
 
 /**
@@ -320,11 +344,73 @@ export type AgentSummary = {
    */
   model?: string | null;
   /**
+   * Tooling capability flags for UI gating.
+   */
+  tooling?: AgentToolingFlags;
+  /**
    * Last Seen At
    *
    * Last time the agent was observed handling a request.
    */
   last_seen_at?: string | null;
+};
+
+/**
+ * AgentTool
+ */
+export type AgentTool = {
+  /**
+   * Tool Type
+   */
+  tool_type: "agent";
+  /**
+   * Tool Call Id
+   */
+  tool_call_id: string;
+  /**
+   * Status
+   */
+  status: "in_progress" | "completed" | "failed";
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+};
+
+/**
+ * AgentToolingFlags
+ *
+ * Stable capability flags for UI gating.
+ */
+export type AgentToolingFlags = {
+  /**
+   * Supports Code Interpreter
+   *
+   * Whether the agent can use code_interpreter.
+   */
+  supports_code_interpreter?: boolean;
+  /**
+   * Supports File Search
+   *
+   * Whether the agent can use file_search.
+   */
+  supports_file_search?: boolean;
+  /**
+   * Supports Image Generation
+   *
+   * Whether the agent can use image_generation.
+   */
+  supports_image_generation?: boolean;
+  /**
+   * Supports Web Search
+   *
+   * Whether the agent can use web_search.
+   */
+  supports_web_search?: boolean;
 };
 
 /**
@@ -362,6 +448,7 @@ export type AgentUpdatedEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -952,6 +1039,7 @@ export type ChunkDeltaEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -1024,6 +1112,7 @@ export type ChunkDoneEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -2030,42 +2119,6 @@ export type EmailVerificationStatusResponseData = {
 };
 
 /**
- * EmailVerificationTokenRequest
- */
-export type EmailVerificationTokenRequest = {
-  /**
-   * Email
-   */
-  email: string;
-  /**
-   * Ip Address
-   */
-  ip_address?: string | null;
-  /**
-   * User Agent
-   */
-  user_agent?: string | null;
-};
-
-/**
- * EmailVerificationTokenResponse
- */
-export type EmailVerificationTokenResponse = {
-  /**
-   * Token
-   */
-  token: string;
-  /**
-   * User Id
-   */
-  user_id: string;
-  /**
-   * Expires At
-   */
-  expires_at: string;
-};
-
-/**
  * ErrorEvent
  */
 export type ErrorEvent = {
@@ -2098,6 +2151,7 @@ export type ErrorEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -2256,6 +2310,7 @@ export type FinalEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -2300,206 +2355,6 @@ export type FinalPayload = {
    */
   attachments?: Array<MessageAttachment>;
   usage?: PublicUsage | null;
-};
-
-/**
- * FixtureApplyResult
- */
-export type FixtureApplyResult = {
-  /**
-   * Tenants
-   */
-  tenants: {
-    [key: string]: FixtureTenantResult;
-  };
-  /**
-   * Generated At
-   */
-  generated_at: string;
-};
-
-/**
- * FixtureConversation
- */
-export type FixtureConversation = {
-  /**
-   * Key
-   */
-  key: string;
-  /**
-   * Agent Entrypoint
-   */
-  agent_entrypoint?: string;
-  /**
-   * Status
-   */
-  status?: "active" | "archived";
-  /**
-   * User Email
-   */
-  user_email?: string | null;
-  /**
-   * Messages
-   */
-  messages?: Array<FixtureConversationMessage>;
-};
-
-/**
- * FixtureConversationMessage
- */
-export type FixtureConversationMessage = {
-  /**
-   * Role
-   */
-  role: "user" | "assistant" | "system";
-  /**
-   * Text
-   */
-  text: string;
-};
-
-/**
- * FixtureConversationResult
- */
-export type FixtureConversationResult = {
-  /**
-   * Conversation Id
-   */
-  conversation_id: string;
-  /**
-   * Status
-   */
-  status: string;
-};
-
-/**
- * FixtureTenant
- */
-export type FixtureTenant = {
-  /**
-   * Slug
-   */
-  slug: string;
-  /**
-   * Name
-   */
-  name: string;
-  /**
-   * Plan Code
-   */
-  plan_code?: string | null;
-  /**
-   * Billing Email
-   */
-  billing_email?: string | null;
-  /**
-   * Users
-   */
-  users?: Array<FixtureUser>;
-  /**
-   * Conversations
-   */
-  conversations?: Array<FixtureConversation>;
-  /**
-   * Usage
-   */
-  usage?: Array<FixtureUsageEntry>;
-};
-
-/**
- * FixtureTenantResult
- */
-export type FixtureTenantResult = {
-  /**
-   * Tenant Id
-   */
-  tenant_id: string;
-  /**
-   * Plan Code
-   */
-  plan_code: string | null;
-  /**
-   * Users
-   */
-  users: {
-    [key: string]: FixtureUserResult;
-  };
-  /**
-   * Conversations
-   */
-  conversations: {
-    [key: string]: FixtureConversationResult;
-  };
-};
-
-/**
- * FixtureUsageEntry
- */
-export type FixtureUsageEntry = {
-  /**
-   * Feature Key
-   */
-  feature_key: string;
-  /**
-   * Quantity
-   */
-  quantity: number;
-  /**
-   * Unit
-   */
-  unit?: string;
-  /**
-   * Period Start
-   */
-  period_start: string;
-  /**
-   * Period End
-   */
-  period_end?: string | null;
-  /**
-   * Idempotency Key
-   */
-  idempotency_key?: string | null;
-};
-
-/**
- * FixtureUser
- */
-export type FixtureUser = {
-  /**
-   * Email
-   */
-  email: string;
-  /**
-   * Password
-   */
-  password: string;
-  /**
-   * Display Name
-   */
-  display_name?: string | null;
-  /**
-   * Role
-   */
-  role?: string;
-  /**
-   * Verify Email
-   */
-  verify_email?: boolean;
-};
-
-/**
- * FixtureUserResult
- */
-export type FixtureUserResult = {
-  /**
-   * User Id
-   */
-  user_id: string;
-  /**
-   * Role
-   */
-  role: string;
 };
 
 /**
@@ -2793,6 +2648,26 @@ export type IncidentSchema = {
 };
 
 /**
+ * InputAttachment
+ *
+ * Reference to a stored object that should be passed to an agent as input.
+ */
+export type InputAttachment = {
+  /**
+   * Object Id
+   *
+   * Storage object identifier
+   */
+  object_id: string;
+  /**
+   * Kind
+   *
+   * Optional override for how the object should be sent to the model.
+   */
+  kind?: "image" | "file" | null;
+};
+
+/**
  * LifecycleEvent
  */
 export type LifecycleEvent = {
@@ -2825,6 +2700,7 @@ export type LifecycleEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -2992,6 +2868,7 @@ export type MemoryCheckpointEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -3227,6 +3104,7 @@ export type MessageCitationEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -3294,6 +3172,7 @@ export type MessageDeltaEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -3475,6 +3354,7 @@ export type OutputItemAddedEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -3546,6 +3426,7 @@ export type OutputItemDoneEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -3738,16 +3619,6 @@ export type PlatformStatusResponse = {
 };
 
 /**
- * PlaywrightFixtureSpec
- */
-export type PlaywrightFixtureSpec = {
-  /**
-   * Tenants
-   */
-  tenants?: Array<FixtureTenant>;
-};
-
-/**
  * PresetDetail
  *
  * Detailed information about a guardrail preset.
@@ -3910,6 +3781,7 @@ export type ReasoningSummaryDeltaEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -3977,6 +3849,7 @@ export type ReasoningSummaryPartAddedEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -4048,6 +3921,7 @@ export type ReasoningSummaryPartDoneEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -4139,6 +4013,7 @@ export type RefusalDeltaEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -4206,6 +4081,7 @@ export type RefusalDoneEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -5332,6 +5208,28 @@ export type StreamNotice = {
 };
 
 /**
+ * StreamScope
+ */
+export type StreamScope = {
+  /**
+   * Type
+   */
+  type: "agent_tool";
+  /**
+   * Tool Call Id
+   */
+  tool_call_id: string;
+  /**
+   * Tool Name
+   */
+  tool_name?: string | null;
+  /**
+   * Agent
+   */
+  agent?: string | null;
+};
+
+/**
  * StreamingChatEvent
  */
 export type StreamingChatEvent =
@@ -5569,6 +5467,7 @@ export type ToolApprovalEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -5656,6 +5555,7 @@ export type ToolArgumentsDeltaEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -5687,7 +5587,7 @@ export type ToolArgumentsDeltaEvent = {
   /**
    * Tool Type
    */
-  tool_type: "function" | "mcp";
+  tool_type: "function" | "mcp" | "agent";
   /**
    * Tool Name
    */
@@ -5731,6 +5631,7 @@ export type ToolArgumentsDoneEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -5762,7 +5663,7 @@ export type ToolArgumentsDoneEvent = {
   /**
    * Tool Type
    */
-  tool_type: "function" | "mcp";
+  tool_type: "function" | "mcp" | "agent";
   /**
    * Tool Name
    */
@@ -5838,6 +5739,7 @@ export type ToolCodeDeltaEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -5905,6 +5807,7 @@ export type ToolCodeDoneEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -5972,6 +5875,7 @@ export type ToolOutputEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -6009,7 +5913,8 @@ export type ToolOutputEvent = {
     | "code_interpreter"
     | "image_generation"
     | "function"
-    | "mcp";
+    | "mcp"
+    | "agent";
   /**
    * Output
    */
@@ -6049,6 +5954,7 @@ export type ToolStatusEvent = {
    */
   agent?: string | null;
   workflow?: WorkflowContext | null;
+  scope?: StreamScope | null;
   /**
    * Provider Sequence Number
    */
@@ -6082,7 +5988,8 @@ export type ToolStatusEvent = {
     | CodeInterpreterTool
     | ImageGenerationTool
     | FunctionTool
-    | McpTool;
+    | McpTool
+    | AgentTool;
 };
 
 /**
@@ -6776,6 +6683,38 @@ export type VectorStoreFileResponse = {
 };
 
 /**
+ * VectorStoreFileUploadRequest
+ */
+export type VectorStoreFileUploadRequest = {
+  /**
+   * Object Id
+   */
+  object_id: string;
+  /**
+   * Agent Key
+   *
+   * Optional agent key used to gate uploads to vector stores when the upload is intended for a specific agent's file_search tool.
+   */
+  agent_key?: string | null;
+  /**
+   * Attributes
+   */
+  attributes?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Chunking Strategy
+   */
+  chunking_strategy?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Poll
+   */
+  poll?: boolean;
+};
+
+/**
  * VectorStoreListResponse
  */
 export type VectorStoreListResponse = {
@@ -6787,6 +6726,26 @@ export type VectorStoreListResponse = {
    * Total
    */
   total: number;
+};
+
+/**
+ * VectorStoreOverride
+ *
+ * Per-agent vector store override payload.
+ */
+export type VectorStoreOverride = {
+  /**
+   * Vector Store Id
+   *
+   * Single vector store id (DB UUID or OpenAI vector store id).
+   */
+  vector_store_id?: string | null;
+  /**
+   * Vector Store Ids
+   *
+   * List of vector store ids (DB UUID or OpenAI vector store ids).
+   */
+  vector_store_ids?: Array<string> | null;
 };
 
 /**
@@ -7252,6 +7211,12 @@ export type WorkflowRunRequestBody = {
    */
   message: string;
   /**
+   * Attachments
+   *
+   * Optional file/image inputs for the workflow run.
+   */
+  attachments?: Array<InputAttachment> | null;
+  /**
    * Conversation Id
    *
    * Optional conversation id to reuse across steps
@@ -7267,6 +7232,22 @@ export type WorkflowRunRequestBody = {
    * If true, forward location to hosted web search
    */
   share_location?: boolean | null;
+  /**
+   * Container Overrides
+   *
+   * Optional container overrides keyed by agent key.
+   */
+  container_overrides?: {
+    [key: string]: string;
+  } | null;
+  /**
+   * Vector Store Overrides
+   *
+   * Optional vector store overrides keyed by agent key.
+   */
+  vector_store_overrides?: {
+    [key: string]: VectorStoreOverride;
+  } | null;
 };
 
 /**
@@ -14993,6 +14974,95 @@ export type AttachFileApiV1VectorStoresVectorStoreIdFilesPostResponses = {
 export type AttachFileApiV1VectorStoresVectorStoreIdFilesPostResponse =
   AttachFileApiV1VectorStoresVectorStoreIdFilesPostResponses[keyof AttachFileApiV1VectorStoresVectorStoreIdFilesPostResponses];
 
+export type UploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPostData =
+  {
+    body: VectorStoreFileUploadRequest;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Vector Store Id
+       */
+      vector_store_id: string;
+    };
+    query?: never;
+    url: "/api/v1/vector-stores/{vector_store_id}/files/upload";
+  };
+
+export type UploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPostErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type UploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPostError =
+  UploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPostErrors[keyof UploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPostErrors];
+
+export type UploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPostResponses =
+  {
+    /**
+     * Successful Response
+     */
+    201: VectorStoreFileResponse;
+  };
+
+export type UploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPostResponse =
+  UploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPostResponses[keyof UploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPostResponses];
+
 export type DeleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDeleteData = {
   body?: never;
   headers?: {
@@ -15793,6 +15863,87 @@ export type DeleteObjectApiV1StorageObjectsObjectIdDeleteResponses = {
 
 export type DeleteObjectApiV1StorageObjectsObjectIdDeleteResponse =
   DeleteObjectApiV1StorageObjectsObjectIdDeleteResponses[keyof DeleteObjectApiV1StorageObjectsObjectIdDeleteResponses];
+
+export type CreateAgentInputUploadApiV1UploadsAgentInputPostData = {
+  body: StoragePresignUploadRequest;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path?: never;
+  query?: never;
+  url: "/api/v1/uploads/agent-input";
+};
+
+export type CreateAgentInputUploadApiV1UploadsAgentInputPostErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type CreateAgentInputUploadApiV1UploadsAgentInputPostError =
+  CreateAgentInputUploadApiV1UploadsAgentInputPostErrors[keyof CreateAgentInputUploadApiV1UploadsAgentInputPostErrors];
+
+export type CreateAgentInputUploadApiV1UploadsAgentInputPostResponses = {
+  /**
+   * Successful Response
+   */
+  201: StoragePresignUploadResponse;
+};
+
+export type CreateAgentInputUploadApiV1UploadsAgentInputPostResponse =
+  CreateAgentInputUploadApiV1UploadsAgentInputPostResponses[keyof CreateAgentInputUploadApiV1UploadsAgentInputPostResponses];
 
 export type DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetData = {
   body?: never;
@@ -17988,148 +18139,3 @@ export type BillingEventStreamApiV1BillingStreamGetResponses = {
 
 export type BillingEventStreamApiV1BillingStreamGetResponse =
   BillingEventStreamApiV1BillingStreamGetResponses[keyof BillingEventStreamApiV1BillingStreamGetResponses];
-
-export type ApplyTestFixturesApiV1TestFixturesApplyPostData = {
-  body: PlaywrightFixtureSpec;
-  path?: never;
-  query?: never;
-  url: "/api/v1/test-fixtures/apply";
-};
-
-export type ApplyTestFixturesApiV1TestFixturesApplyPostErrors = {
-  /**
-   * Bad Request
-   */
-  400: ErrorResponse;
-  /**
-   * Unauthorized
-   */
-  401: ErrorResponse;
-  /**
-   * Forbidden
-   */
-  403: ErrorResponse;
-  /**
-   * Not Found
-   */
-  404: ErrorResponse;
-  /**
-   * Conflict
-   */
-  409: ErrorResponse;
-  /**
-   * Request Entity Too Large
-   */
-  413: ErrorResponse;
-  /**
-   * Validation Error
-   */
-  422: ValidationErrorResponse;
-  /**
-   * Too Many Requests
-   */
-  429: ErrorResponse;
-  /**
-   * Internal Server Error
-   */
-  500: ErrorResponse;
-  /**
-   * Bad Gateway
-   */
-  502: ErrorResponse;
-  /**
-   * Service Unavailable
-   */
-  503: ErrorResponse;
-  /**
-   * Error Response
-   */
-  default: ErrorResponse;
-};
-
-export type ApplyTestFixturesApiV1TestFixturesApplyPostError =
-  ApplyTestFixturesApiV1TestFixturesApplyPostErrors[keyof ApplyTestFixturesApiV1TestFixturesApplyPostErrors];
-
-export type ApplyTestFixturesApiV1TestFixturesApplyPostResponses = {
-  /**
-   * Successful Response
-   */
-  201: FixtureApplyResult;
-};
-
-export type ApplyTestFixturesApiV1TestFixturesApplyPostResponse =
-  ApplyTestFixturesApiV1TestFixturesApplyPostResponses[keyof ApplyTestFixturesApiV1TestFixturesApplyPostResponses];
-
-export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostData =
-  {
-    body: EmailVerificationTokenRequest;
-    path?: never;
-    query?: never;
-    url: "/api/v1/test-fixtures/email-verification-token";
-  };
-
-export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors =
-  {
-    /**
-     * Bad Request
-     */
-    400: ErrorResponse;
-    /**
-     * Unauthorized
-     */
-    401: ErrorResponse;
-    /**
-     * Forbidden
-     */
-    403: ErrorResponse;
-    /**
-     * Not Found
-     */
-    404: ErrorResponse;
-    /**
-     * Conflict
-     */
-    409: ErrorResponse;
-    /**
-     * Request Entity Too Large
-     */
-    413: ErrorResponse;
-    /**
-     * Validation Error
-     */
-    422: ValidationErrorResponse;
-    /**
-     * Too Many Requests
-     */
-    429: ErrorResponse;
-    /**
-     * Internal Server Error
-     */
-    500: ErrorResponse;
-    /**
-     * Bad Gateway
-     */
-    502: ErrorResponse;
-    /**
-     * Service Unavailable
-     */
-    503: ErrorResponse;
-    /**
-     * Error Response
-     */
-    default: ErrorResponse;
-  };
-
-export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostError =
-  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors[keyof IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors];
-
-export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses =
-  {
-    /**
-     * Successful Response
-     */
-    201: EmailVerificationTokenResponse;
-  };
-
-export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponse =
-  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses[keyof IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses];

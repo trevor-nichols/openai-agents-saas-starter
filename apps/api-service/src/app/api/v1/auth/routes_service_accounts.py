@@ -128,9 +128,9 @@ def require_vault_signature(header_value: str, vault_payload: str | None) -> str
             )
         return "vault"
 
-    if credential == "dev-local" and not verification_enabled:
-        # Local/testing escape hatch when Vault integration is disabled.
-        return "dev-local"
+    if credential == "dev-demo" and not verification_enabled:
+        # Demo/testing escape hatch when Vault integration is disabled.
+        return "dev-demo"
 
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,

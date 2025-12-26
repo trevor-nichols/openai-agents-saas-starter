@@ -11,6 +11,7 @@ from functools import lru_cache
 from typing import Any
 
 from app.agents._shared.registry_loader import load_agent_specs
+from app.services.agents.tooling import resolve_tooling_flags
 
 
 @lru_cache(maxsize=1)
@@ -63,11 +64,20 @@ def expected_tools_by_agent() -> dict[str, set[str]]:
     return result
 
 
+def expected_tooling_flags_by_agent() -> dict[str, dict[str, bool]]:
+    """Compute tooling flags for each agent based on tool keys."""
+
+    tooling: dict[str, dict[str, bool]] = {}
+    for key, tools in expected_tools_by_agent().items():
+        tooling[key] = resolve_tooling_flags(tools)
+    return tooling
+
+
 __all__ = [
     "spec_index",
     "default_agent_key",
     "schema_agent_key",
     "expected_output_schema",
     "expected_tools_by_agent",
+    "expected_tooling_flags_by_agent",
 ]
-

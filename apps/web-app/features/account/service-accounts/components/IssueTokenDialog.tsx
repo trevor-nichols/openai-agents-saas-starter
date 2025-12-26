@@ -71,7 +71,7 @@ export function IssueTokenDialog({
             </SelectContent>
           </Select>
           <p className="text-xs text-foreground/60">
-            Browser mode signs on your behalf. Vault mode forwards the Vault Authorization + payload headers that you capture from Vault Transit or the Starter CLI.
+            Browser mode signs on your behalf. Vault mode forwards the Vault Authorization + payload headers that you capture from Vault Transit or the Starter Console.
           </p>
         </div>
         <div className="space-y-2">
@@ -146,7 +146,7 @@ export function IssueTokenDialog({
         {form.mode === 'vault' ? (
           <div className="space-y-4 rounded-lg border border-white/10 p-3">
             <p className="text-sm text-foreground/70">
-              Provide the Vault headers captured from the Starter CLI or your Vault workflow. These are forwarded verbatim to the FastAPI `/service-accounts/issue` endpoint.
+              Provide the Vault headers captured from the Starter Console or your Vault workflow. These are forwarded verbatim to the FastAPI `/service-accounts/issue` endpoint.
             </p>
             <div className="space-y-2">
               <Label htmlFor="issue-vault-authorization">Vault Authorization header</Label>
@@ -166,7 +166,7 @@ export function IssueTokenDialog({
                 onChange={(event) => updateField('vaultPayload', event.target.value)}
                 rows={3}
               />
-              <p className="text-xs text-foreground/60">Optional for dev-local mode. Required when sending real Vault signatures.</p>
+              <p className="text-xs text-foreground/60">Optional for dev-demo mode. Required when sending real Vault signatures.</p>
             </div>
           </div>
         ) : null}

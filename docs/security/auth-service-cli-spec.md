@@ -1,6 +1,6 @@
-# AuthService Service-Account Issuance CLI — Specification (Draft)
+# AuthService Service-Account Issuance CLI — Specification
 
-**Status:** Ready for review  
+**Status:** Implemented  
 **Last Updated:** 2025-11-06  
 **Owners:** Backend Auth Pod · Platform Security Guild
 
@@ -43,8 +43,7 @@ Operator / CI Job
 ### 3.1 Command Layout
 
 - Binary/entrypoint: `python -m auth_cli` (packaged alongside backend code) or dedicated script `./bin/auth`.  
-- Primary command: `auth tokens issue-service-account`.  
-- Subcommands (future): `auth tokens revoke`, `auth keys rotate`, etc.
+- Primary command: `auth tokens issue-service-account`.
 
 ### 3.2 Parameters
 
@@ -111,7 +110,7 @@ Operator / CI Job
 
 ## 5. Policy & Validation Rules
 
-- Service-account catalog stored in versioned YAML (`app/core/service_accounts.yaml`) loaded at startup; future migration to a persistent store (Postgres + admin tooling) once requirements grow.  
+- Service-account catalog stored in versioned YAML (`app/core/service_accounts.yaml`) loaded at startup.  
 - CLI validates requested scopes against catalog before making API call.  
 - AuthService enforces catalog server-side + tenant RBAC.  
 - Minimum refresh TTL: 15 minutes; maximum TTL: 30 days unless override approved.  
@@ -142,23 +141,5 @@ Operator / CI Job
 
 - CLI never logs refresh token contents by default; `--verbose` redacts secrets.  
 - Vault credentials retrieved from environment/CI secrets with minimal TTL.  
-- Enforce Vault-signed request JWTs in staging/prod; mTLS fallback limited to local/test modes.  
+- Enforce Vault-signed request JWTs in staging/prod; mTLS fallback limited to demo/test modes.  
 - Rate limit service-account issuance to prevent brute-force or misconfigured jobs; alerts fire when per-account or global caps are exceeded.
-
-## 9. Implementation Checklist
-
-1. Define service-account catalog (YAML/JSON) and loader in `app/core/service_accounts.py`.  
-2. Implement AuthService endpoint with RBAC enforcement, audit logging, and metrics.  
-3. Build CLI command module (`api-service/bin/auth_cli.py`) with Vault integration helpers.  
-4. Write unit + contract tests covering successful issuance, validation errors, and authorization failures.  
-5. Document operational steps in runbooks (rotation, revocation, emergency kill).  
-6. Provide sample pipeline integration (GitHub Actions, Jenkins, etc.) in `docs/security/examples/`.
-
-## 10. Open Questions (post-decision follow-ups)
-
-- Define persistent-store migration plan for service-account catalog (trigger criteria, tooling).  
-- Confirm alert destinations (PagerDuty vs. Slack) for rate-limit breaches.  
-- Determine backlog item for adding token revocation support to CLI (`auth tokens revoke`).  
-- Document support-console operational procedures leveraging global tokens and audit logs.
-
-> Prepared for AUTH-002 kick-off — feedback welcome before implementation locking.

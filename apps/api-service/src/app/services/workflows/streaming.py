@@ -65,6 +65,7 @@ async def stream_sequential_stage(
         step_metadata = getattr(stream_handle, "metadata", None)
         async for event in stream_handle.events():
             check_cancel()
+            is_scoped = event.scope is not None
             event.conversation_id = conversation_id
             event.agent = event.agent or step.agent_key
             event.step_name = step.display_name()
@@ -82,14 +83,14 @@ async def stream_sequential_stage(
             }
             if step_metadata is None and isinstance(event.metadata, dict):
                 step_metadata = event.metadata
-            if event.response_text:
+            if event.response_text and not is_scoped:
                 last_text = event.response_text
-            if event.text_delta:
+            if event.text_delta and not is_scoped:
                 text_buffer.append(event.text_delta)
-            if event.structured_output is not None:
+            if event.structured_output is not None and not is_scoped:
                 last_structured = event.structured_output
 
-            is_provider_terminal = event.is_terminal
+            is_provider_terminal = event.is_terminal and not is_scoped
             if is_provider_terminal:
                 # Step-level terminal events must not terminate the *workflow* stream.
                 event.is_terminal = False
@@ -221,6 +222,7 @@ async def stream_parallel_stage(
             step_metadata = getattr(stream_handle, "metadata", None)
             async for event in stream_handle.events():
                 check_cancel()
+                is_scoped = event.scope is not None
                 event.conversation_id = conversation_id
                 event.agent = event.agent or step.agent_key
                 event.step_name = step.display_name()
@@ -240,13 +242,13 @@ async def stream_parallel_stage(
                 }
                 if step_metadata is None and isinstance(event.metadata, dict):
                     step_metadata = event.metadata
-                if event.response_text:
+                if event.response_text and not is_scoped:
                     last_text = event.response_text
-                if event.text_delta:
+                if event.text_delta and not is_scoped:
                     text_buffer.append(event.text_delta)
-                if event.structured_output is not None:
+                if event.structured_output is not None and not is_scoped:
                     last_structured = event.structured_output
-                is_provider_terminal = event.is_terminal
+                is_provider_terminal = event.is_terminal and not is_scoped
                 if is_provider_terminal:
                     # Step-level terminal events must not terminate the *workflow* stream.
                     event.is_terminal = False

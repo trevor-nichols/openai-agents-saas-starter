@@ -26,7 +26,7 @@ export const ABOUT_PAGE: StaticPageContent = {
       body: 'A production-ready FastAPI + Next.js 16 stack with the OpenAI Agents SDK v0.6.1, Ed25519 JWT auth, billing rails, and ops telemetry already wired.',
       bullets: [
         'Opinionated feature directories for marketing, workspace, billing, and status',
-        'Starter CLI for env hydration, keys, and audit exports',
+        'Starter Console for env hydration, keys, and audit exports',
         'Stripe-ready metering plus provider-agnostic interfaces',
       ],
     },
@@ -62,7 +62,7 @@ export const CONTACT_PAGE: StaticPageContent = {
     },
     {
       title: 'What to include',
-      body: 'To speed up responses, share your repo link, deployment target, and which surfaces you are modifying (agents, billing, marketing, or CLI).',
+      body: 'To speed up responses, share your repo link, deployment target, and which surfaces you are modifying (agents, billing, marketing, or console).',
     },
   ],
 };

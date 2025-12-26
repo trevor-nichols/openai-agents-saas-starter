@@ -1,21 +1,31 @@
 # Contracts Package (`starter_contracts`)
 
-Source of truth for shared config/secrets/key contracts consumed by:
+Source of truth for shared config/secrets/storage/key/logging contracts consumed by:
 - Backend (`apps/api-service/...`)
-- Starter CLI (`packages/starter_cli/...`)
+- Starter Console (`packages/starter_console/...`)
 - Repo tools (`tools/cli/verify_env_inventory.py`), tests, and contract snapshots.
 
 ## Allowed import graph
 - Only the surfaces above should import `starter_contracts.*`.
-- `starter_contracts` must **not** import `app.*` (backend) or `starter_cli.*` at module import time.
+- `starter_contracts` must **not** import `app.*` (backend) or `starter_console.*` at module import time.
 - Import-time side effects are forbidden; `get_settings()` is lazy and should only fire when called.
+- Cloud SDK clients now live in `starter_providers`; contracts must remain dependency-light and not import provider SDKs.
 
 ## Modules
 - `config`: `StarterSettingsProtocol`, `get_settings()` lazy loader for backend settings.
 - `keys`: Ed25519 key material, JWKS materialization, file/secret-manager adapters.
-- `provider_validation`: Shared Stripe/Resend validation helpers.
+- `provider_validation`: Shared OpenAI/Stripe/Resend/web-search parity validation helpers.
 - `secrets.models`: Enums + dataclasses + protocols for secret providers (Vault, Infisical, AWS SM, Azure KV).
+- `storage.models`: Enums + dataclasses + protocols for object storage providers (MinIO, S3, GCS, Azure Blob).
+- `observability/logging`: Structured JSON logging config, context helpers, event emitter, and sink builders.
+- `paths`: Repo-root path resolution helpers used by logging/config tooling.
 - `vault_kv`: Minimal Vault KV v2 client + registration helper when keys live in a secret manager.
+- `doctor_v1.json`: JSON schema for CLI doctor output.
+
+## Related package: `starter_providers`
+- Houses concrete SDK clients for AWS Secrets Manager, Azure Key Vault, and Infisical.
+- May depend on provider SDKs, but must not import `app.*` or `starter_console.*` at module import time.
+- Both backend and console should import SDK clients from `starter_providers.secrets.*`.
 
 ## Snapshots (drift blockers)
 - `docs/contracts/settings.schema.json`: JSON Schema snapshot of `app.core.settings.Settings`.
@@ -61,5 +71,5 @@ PY
 Commit the updated JSON along with the change that necessitated it.
 
 ## Tests enforcing boundaries
-- `starter_contracts/tests/test_import_boundaries.py`: ensures contracts don't pull backend/CLI modules on import and are only used from approved packages.
+- `starter_contracts/tests/test_import_boundaries.py`: ensures contracts don't pull backend/console modules on import and are only used from approved packages.
 - `apps/api-service/tests/unit/test_contract_schemas_snapshot.py`: freezes settings + enum schemas.

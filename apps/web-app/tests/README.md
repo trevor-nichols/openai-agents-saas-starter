@@ -4,7 +4,7 @@ _Last updated: November 19, 2025_
 
 ## 1. Environment
 - Run `pnpm dev` (frontend) + `hatch run dev` (backend) locally or point Playwright to a deployed preview via `PLAYWRIGHT_BASE_URL`.
-- Seed deterministic fixtures with the Starter CLI (`python -m starter_cli.app seed playground --answers-file ./seeds/playwright.yaml`). The answers file should describe every tenant/user listed in the table below so tests never depend on ad-hoc state.
+- Seed deterministic fixtures with the Starter Console (`starter-console seed playground --answers-file ./seeds/playwright.yaml`). The answers file should describe every tenant/user listed in the table below so tests never depend on ad-hoc state.
 - Required env vars (set in `.env.local.playwright` or CI secrets):
   - `PLAYWRIGHT_TENANT_ADMIN_EMAIL`, `PLAYWRIGHT_TENANT_ADMIN_PASSWORD`
 - `PLAYWRIGHT_OPERATOR_EMAIL`, `PLAYWRIGHT_OPERATOR_PASSWORD`
@@ -16,9 +16,9 @@ Every Playwright flow in `app-regressions.spec.ts` assumes specific tenants, pla
 
 | Flow | Required Data / Infra | Seeding Notes |
 | --- | --- | --- |
-| Auth + chat handshake | Tenant `playwright-starter` with admin user + baseline conversations | Included in `seeds/playwright.yaml` as `tenant_admin` user; chat history populated via `starter_cli.app seed conversations`. |
+| Auth + chat handshake | Tenant `playwright-starter` with admin user + baseline conversations | Included in `seeds/playwright.yaml` as `tenant_admin` user; chat history populated via `starter-console seed conversations`. |
 | Self-serve signup + email verification | Invitation-free signup tenant plus disposable inbox token | Enable `ALLOW_PUBLIC_SIGNUP=true`, provision `signup_pending@example.com`, and rely on the `/api/v1/test-fixtures/email-verification-token` helper to mint deterministic tokens per test run. |
-| Plan upgrade/downgrade + audit | Stripe plan codes `starter`, `scale`, plus mock invoices/events | Seed via `starter_cli.app seed billing --tenant playwright-starter --plans starter,scale`. Keep `STRIPE_PRODUCT_PRICE_MAP` populated so the optimistic UI + SSE assertions reflect real plans. |
+| Plan upgrade/downgrade + audit | Stripe plan codes `starter`, `scale`, plus mock invoices/events | Seed via `starter-console seed billing --tenant playwright-starter --plans starter,scale`. Keep `STRIPE_PRODUCT_PRICE_MAP` populated so the optimistic UI + SSE assertions reflect real plans. |
 | Billing ledger & usage | Redis stream (`agents-redis`), usage rows via `/api/v1/billing/tenants/{id}/usage` | The spec emits usage via authenticated `fetch('/api/billing/.../usage')`. Ensure Redis is running and the backend started with `ENABLE_BILLING_STREAM=true` so SSE updates land instantly. |
 | Service-account issue/revoke | Operator tenant + Vault dev signer | Run `just vault-up` before tests. Seed operator `platform-ops@example.com` with `service_accounts:manage` and keep tenant admin users in place so both override + scoped issuance paths succeed. |
 | Tenant settings update | Webhook echo endpoint + billing contacts | Include a webhook echo service (e.g., `http://localhost:8787/webhook-echo`) and seed default contacts so the spec can mutate + revert them without touching production webhooks. |
@@ -60,7 +60,7 @@ Common Playwright-only helpers live under `tests/utils/` (e.g., `signup.ts` for 
 4. Use `PLAYWRIGHT_UPDATE_SNAPSHOTS=1 pnpm playwright test` whenever screenshot assertions are added.
 
 ## 5. Open Questions
-- Do we want per-tenant cleanup hooks after billing plan mutations? (Consider using the CLI release command to reset catalog state.)
+- Do we want per-tenant cleanup hooks after billing plan mutations? (Consider using the console release command to reset catalog state.)
 - Should transcript export downloads be stored under `tmp/playwright-downloads` for CI artifact uploads?
 - Do we need a mocked Vault Transit server for CI, or is the existing `just vault-up` stack sufficient?
 

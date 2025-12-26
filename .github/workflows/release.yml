@@ -11,8 +11,8 @@ jobs:
     permissions:
       contents: write
     env:
-      STARTER_CLI_SKIP_ENV: "true"
-      STARTER_CLI_SKIP_VAULT_PROBE: "true"
+      STARTER_CONSOLE_SKIP_ENV: "true"
+      STARTER_CONSOLE_SKIP_VAULT_PROBE: "true"
     steps:
       - name: Check out repository
         uses: actions/checkout@v4

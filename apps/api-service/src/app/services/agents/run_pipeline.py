@@ -16,7 +16,11 @@ from typing import Any
 
 from app.api.v1.chat.schemas import AgentChatRequest
 from app.domain.ai.models import AgentStreamEvent
-from app.domain.conversations import ConversationMessage, ConversationMetadata
+from app.domain.conversations import (
+    ConversationAttachment,
+    ConversationMessage,
+    ConversationMetadata,
+)
 from app.infrastructure.providers.openai.memory import MemoryStrategy
 from app.observability.metrics import MEMORY_COMPACTION_ITEMS_TOTAL
 from app.services.agents.context import ConversationActorContext
@@ -160,7 +164,8 @@ async def record_user_message(
     ctx: RunContext,
     request: AgentChatRequest,
     conversation_service: ConversationService,
-) -> ConversationMetadata:
+    attachments: list[ConversationAttachment] | None = None,
+) -> tuple[ConversationMetadata, int | None]:
     """Persist the inbound user message with consistent metadata."""
 
     metadata = build_metadata(
@@ -172,8 +177,10 @@ async def record_user_message(
         session_id=ctx.session_id,
         user_id=ctx.actor.user_id,
     )
-    user_message = ConversationMessage(role="user", content=request.message)
-    await conversation_service.append_message(
+    user_message = ConversationMessage(
+        role="user", content=request.message, attachments=attachments or []
+    )
+    message_id = await conversation_service.append_message(
         ctx.conversation_id,
         user_message,
         tenant_id=ctx.actor.tenant_id,
@@ -188,7 +195,7 @@ async def record_user_message(
             existed=ctx.existing_state is not None,
         )
 
-    return metadata
+    return metadata, message_id
 
 
 async def persist_assistant_message(

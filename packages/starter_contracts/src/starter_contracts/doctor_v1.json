@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://starter.openai-agents.local/schemas/doctor_v1.json",
-  "title": "Starter CLI Doctor Report v1",
+  "title": "Starter Console Doctor Report v1",
   "type": "object",
   "required": ["version", "probes", "services"],
   "properties": {
@@ -15,7 +15,7 @@
     },
     "profile": {
       "type": "string",
-      "description": "CLI profile (local/staging/production)."
+      "description": "Console profile (local/staging/production)."
     },
     "strict": {
       "type": "boolean"

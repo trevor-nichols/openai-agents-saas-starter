@@ -183,7 +183,7 @@ class BillingEventNormalizer:
             metadata = price.get("metadata") or {}
             return (
                 metadata.get("plan_code")
-                or metadata.get("starter_cli_plan_code")
+                or metadata.get("starter_console_plan_code")
                 or price.get("nickname")
                 or price.get("id")
             )
@@ -191,7 +191,7 @@ class BillingEventNormalizer:
         metadata = plan.get("metadata") or {}
         return (
             metadata.get("plan_code")
-            or metadata.get("starter_cli_plan_code")
+            or metadata.get("starter_console_plan_code")
             or plan.get("nickname")
             or plan.get("id")
         )

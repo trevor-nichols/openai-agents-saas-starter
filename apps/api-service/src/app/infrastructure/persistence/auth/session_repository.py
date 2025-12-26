@@ -21,7 +21,7 @@ from app.domain.auth import (
     UserSessionRepository,
 )
 from app.infrastructure.db import get_async_sessionmaker
-from app.infrastructure.persistence.auth.models import UserSession as UserSessionModel
+from app.infrastructure.persistence.auth.models.sessions import UserSession as UserSessionModel
 from app.infrastructure.security.cipher import build_cipher, encrypt_optional
 
 

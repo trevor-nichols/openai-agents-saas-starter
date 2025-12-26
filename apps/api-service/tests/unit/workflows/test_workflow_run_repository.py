@@ -141,6 +141,31 @@ async def test_list_runs_paginates_and_filters(repo):
 
 
 @pytest.mark.anyio
+async def test_run_metadata_round_trip(repo):
+    run = _run(
+        run_id="run-meta",
+        workflow_key="alpha",
+        tenant_id="tenant-meta",
+        status=cast(WorkflowStatus, "succeeded"),
+        started_at=datetime.now(tz=UTC),
+    )
+    run.metadata = {
+        "container_context": {
+            "triage": {
+                "source": "binding",
+                "container_id": "local-1",
+                "openai_container_id": "openai-1",
+            }
+        }
+    }
+    await repo.create_run(run)
+    await repo.create_step(_step(run.id, run.started_at))
+
+    stored, _ = await repo.get_run_with_steps(run.id)
+    assert stored.metadata == run.metadata
+
+
+@pytest.mark.anyio
 async def test_list_runs_respects_started_filters(repo):
     tenant_id = "tenant-a"
     now = datetime.now(tz=UTC)

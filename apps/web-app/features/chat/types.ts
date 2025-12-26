@@ -21,7 +21,8 @@ export interface ToolDrawerState {
 }
 
 export interface ToolMetadataPanelProps {
-  selectedAgent: string;
+  selectedAgentKey: string;
+  selectedAgentLabel?: string;
   tools: ToolRegistry;
   isLoading: boolean;
   error?: string | null;

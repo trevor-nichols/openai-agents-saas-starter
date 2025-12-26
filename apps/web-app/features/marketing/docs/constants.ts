@@ -7,7 +7,7 @@ export const DOCS_HERO = {
   eyebrow: 'Documentation',
   title: 'Guides that match the architecture',
   description:
-    'Starter CLI playbooks, auth runbooks, billing references, and status tooling live inside the repo so shipping never depends on tribal knowledge.',
+    'Starter Console playbooks, auth runbooks, billing references, and status tooling live inside the repo so shipping never depends on tribal knowledge.',
   lastUpdated: 'November 14, 2025',
 } as const;
 
@@ -22,14 +22,14 @@ export const DOC_SECTIONS: DocSectionEntry[] = [
   {
     id: 'getting-started',
     title: 'Getting started',
-    summary: 'Prep local + cloud environments with the Starter CLI, Make targets, and Docker workflow.',
+    summary: 'Prep local + cloud environments with the Starter Console, Make targets, and Docker workflow.',
     bullets: [
-      'Starter CLI env sync + answers files',
+      'Starter Console env sync + answers files',
       'Docker + Make commands for dev/prod parity',
       'Shared JWT keys, Postgres migrations, and seed data',
     ],
     badge: 'Foundation',
-    cta: { label: 'Starter CLI quickstart', href: 'https://github.com/openai/openai-agents-saas-starter/blob/main/docs/trackers/complete/MILESTONE_CLI.md', intent: 'primary' },
+    cta: { label: 'Starter Console quickstart', href: 'https://github.com/openai/openai-agents-saas-starter/blob/main/docs/trackers/complete/MILESTONE_CONSOLE.md', intent: 'primary' },
   },
   {
     id: 'auth-billing',
@@ -58,7 +58,7 @@ export const DOC_SECTIONS: DocSectionEntry[] = [
   {
     id: 'operations',
     title: 'Operations & observability',
-    summary: 'Status feeds, alert subscriptions, metrics, Vault transit, and Starter CLI ops workflows.',
+    summary: 'Status feeds, alert subscriptions, metrics, Vault transit, and Starter Console ops workflows.',
     bullets: [
       'Vault transit signing + key rotation runbook',
       'Status alert subscription API contract',
@@ -98,12 +98,12 @@ export const DOC_RESOURCES: DocResourceLink[] = [
 
 export const DOC_GUIDES: DocGuideCard[] = [
   {
-    title: 'Starter CLI playbook',
+    title: 'Starter Console playbook',
     description: 'Hydrate env files, rotate keys, and export audit bundles via interactive or headless runs.',
-    href: 'https://github.com/openai/openai-agents-saas-starter/blob/main/docs/trackers/complete/MILESTONE_CLI.md',
+    href: 'https://github.com/openai/openai-agents-saas-starter/blob/main/docs/trackers/complete/MILESTONE_CONSOLE.md',
     minutes: '10 min read',
     updated: 'Updated Nov 2025',
-    badge: 'CLI',
+    badge: 'Console',
     icon: Sparkles,
   },
   {
@@ -128,8 +128,8 @@ export const DOC_GUIDES: DocGuideCard[] = [
 
 export const DOC_METRICS: DocMetric[] = [
   { label: 'Doc tracks', value: '10 tracks', hint: 'architecture · auth · billing · ops' },
-  { label: 'Guided playbooks', value: '4 live', hint: 'CLI · billing · agents · security' },
-  { label: 'Live trackers', value: '3 dashboards', hint: 'UI milestone · issue tracker · CLI roadmap' },
+  { label: 'Guided playbooks', value: '4 live', hint: 'Console · billing · agents · security' },
+  { label: 'Live trackers', value: '3 dashboards', hint: 'UI milestone · issue tracker · Console roadmap' },
   { label: 'SDK kits', value: '10 kits', hint: 'Agents · tools · memory · handoffs' },
 ];
 
@@ -144,14 +144,14 @@ export const DOCS_FAQ: MarketingFaqItem[] = [
   },
   {
     question: 'What keeps env vars consistent?',
-    answer: 'The Starter CLI owns env generation. Use the CLI or the supplied Make targets; avoid editing `.env` files manually so CI, local, and prod stay in sync.',
+    answer: 'The Starter Console owns env generation. Use the console or the supplied Make targets; avoid editing `.env` files manually so CI, local, and prod stay in sync.',
   },
 ];
 
 export const DOCS_CTA: CtaConfig = {
   eyebrow: 'Docs',
   title: 'Build with guidance baked in.',
-  description: 'Every workflow—CLI, auth, billing, agents, ops—is documented here. Keep the docs open while you ship.',
+  description: 'Every workflow—console, auth, billing, agents, ops—is documented here. Keep the docs open while you ship.',
   primaryCta: {
     label: 'Clone the repo',
     href: 'https://github.com/openai/openai-agents-saas-starter',

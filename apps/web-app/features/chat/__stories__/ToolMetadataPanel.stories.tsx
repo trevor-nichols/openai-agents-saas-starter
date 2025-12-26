@@ -7,13 +7,18 @@ const registry: ToolRegistry = {
   total_tools: 4,
   categories: ['search', 'code_interpreter'],
   tool_names: ['file_search', 'web_search', 'code_interpreter', 'browser'],
+  per_agent: {
+    triage: ['web_search'],
+    code_assistant: ['code_interpreter', 'file_search'],
+  },
 };
 
 const meta: Meta<typeof ToolMetadataPanel> = {
   title: 'Chat/ToolMetadataPanel',
   component: ToolMetadataPanel,
   args: {
-    selectedAgent: 'triage_agent',
+    selectedAgentKey: 'triage',
+    selectedAgentLabel: 'triage',
     tools: registry,
     isLoading: false,
     error: null,

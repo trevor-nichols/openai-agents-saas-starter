@@ -15,6 +15,7 @@ from .models import (
 )
 
 AgentSessionHandle = Any
+AgentInput = str | list[dict[str, Any]]
 
 
 @runtime_checkable
@@ -48,7 +49,7 @@ class AgentRuntime(Protocol):
     async def run(
         self,
         agent_key: str,
-        message: str,
+        message: AgentInput,
         *,
         session: AgentSessionHandle | None = None,
         conversation_id: str | None = None,
@@ -60,7 +61,7 @@ class AgentRuntime(Protocol):
     def run_stream(
         self,
         agent_key: str,
-        message: str,
+        message: AgentInput,
         *,
         session: AgentSessionHandle | None = None,
         conversation_id: str | None = None,

@@ -7,6 +7,7 @@ import logging
 import os
 from collections import defaultdict
 from collections.abc import AsyncGenerator, Generator
+from typing import Callable
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -34,8 +35,8 @@ os.environ.setdefault("USAGE_GUARDRAIL_REDIS_URL", os.environ["REDIS_URL"])
 os.environ.setdefault("AUTO_RUN_MIGRATIONS", "false")
 os.environ.setdefault("ENABLE_BILLING", "false")
 os.environ.setdefault("ALLOW_PUBLIC_SIGNUP", "true")
-os.environ.setdefault("STARTER_CLI_SKIP_ENV", "true")
-os.environ.setdefault("STARTER_CLI_SKIP_VAULT_PROBE", "true")
+os.environ.setdefault("STARTER_CONSOLE_SKIP_ENV", "true")
+os.environ.setdefault("STARTER_CONSOLE_SKIP_VAULT_PROBE", "true")
 os.environ.setdefault("OPENAI_AGENTS_DISABLE_TRACING", "true")
 os.environ.setdefault("OPENAI_API_KEY", "dummy-test-key")
 
@@ -81,6 +82,7 @@ from app.infrastructure.persistence.tenants import models as _tenant_models  # n
 from app.infrastructure.persistence.vector_stores import models as _vector_store_models  # noqa: F401
 from app.infrastructure.persistence.workflows import models as _workflow_models  # noqa: F401
 from app.infrastructure.providers.openai import build_openai_provider
+from app.services.agents import AgentService, get_agent_service
 from app.services.agents.provider_registry import get_provider_registry
 from app.services.conversation_service import conversation_service
 
@@ -243,6 +245,25 @@ def _patch_redis_client(monkeypatch: pytest.MonkeyPatch) -> Generator[None, None
 
     monkeypatch.setattr("redis.asyncio.Redis.from_url", staticmethod(_fake_from_url), raising=False)
     yield
+
+
+@pytest.fixture
+def agent_service() -> AgentService:
+    """Return the configured AgentService for tests that depend on DI wiring."""
+
+    return get_agent_service()
+
+
+@pytest.fixture
+def agent_service_factory() -> Callable[[], AgentService]:
+    """Return a factory for late-binding AgentService resolution."""
+
+    def _build() -> AgentService:
+        container = get_container()
+        container.agent_service = None
+        return get_agent_service()
+
+    return _build
 
 
 class EphemeralConversationRepository(ConversationRepository):

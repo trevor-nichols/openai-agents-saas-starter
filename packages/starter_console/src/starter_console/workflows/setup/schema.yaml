@@ -1,0 +1,527 @@
+version: 1
+prompts:
+  SETUP_HOSTING_PRESET:
+    section: core
+    label: Hosting preset
+  SETUP_CLOUD_PROVIDER:
+    section: core
+    label: Cloud provider
+    when:
+      - key: SETUP_HOSTING_PRESET
+        equals: cloud_managed
+  SETUP_SHOW_ADVANCED:
+    section: core
+    label: Advanced prompts toggle
+  SECRETS_PROVIDER:
+    section: secrets
+    label: Secrets provider
+  VAULT_VERIFY_ENABLED:
+    section: secrets
+    label: Vault verification toggle
+    when:
+      - key: SECRETS_PROVIDER
+        any_of: [vault_dev, vault_hcp]
+    skip_message: "Vault prompts hidden unless Vault provider selected."
+  VAULT_ADDR:
+    section: secrets
+    when:
+      - key: SECRETS_PROVIDER
+        any_of: [vault_dev, vault_hcp]
+      - key: VAULT_VERIFY_ENABLED
+        truthy: true
+  VAULT_TOKEN:
+    section: secrets
+    when:
+      - key: SECRETS_PROVIDER
+        any_of: [vault_dev, vault_hcp]
+      - key: VAULT_VERIFY_ENABLED
+        truthy: true
+  VAULT_TRANSIT_KEY:
+    section: secrets
+    when:
+      - key: SECRETS_PROVIDER
+        any_of: [vault_dev, vault_hcp]
+      - key: VAULT_VERIFY_ENABLED
+        truthy: true
+  VAULT_NAMESPACE:
+    section: secrets
+    when:
+      - key: SECRETS_PROVIDER
+        equals: vault_hcp
+      - key: VAULT_VERIFY_ENABLED
+        truthy: true
+  LOGGING_DATADOG_API_KEY:
+    section: observability
+    when:
+      - key: LOGGING_SINK_HAS_DATADOG
+        truthy: true
+  LOGGING_DATADOG_SITE:
+    section: observability
+    when:
+      - key: LOGGING_SINK_HAS_DATADOG
+        truthy: true
+  LOGGING_FILE_PATH:
+    section: observability
+    when:
+      - key: LOGGING_SINK_HAS_FILE
+        truthy: true
+  LOGGING_FILE_MAX_MB:
+    section: observability
+    when:
+      - key: LOGGING_SINK_HAS_FILE
+        truthy: true
+  LOGGING_FILE_BACKUPS:
+    section: observability
+    when:
+      - key: LOGGING_SINK_HAS_FILE
+        truthy: true
+  LOGGING_OTLP_ENDPOINT:
+    section: observability
+    when:
+      - key: LOGGING_SINK_HAS_OTLP
+        truthy: true
+  LOGGING_OTLP_HEADERS:
+    section: observability
+    when:
+      - key: LOGGING_SINK_HAS_OTLP
+        truthy: true
+  ENABLE_OTEL_COLLECTOR:
+    section: observability
+    when:
+      - key: LOGGING_SINK_HAS_OTLP
+        truthy: true
+  OTEL_EXPORTER_SENTRY_ENABLED:
+    section: observability
+    when:
+      - key: LOGGING_SINK_HAS_OTLP
+        truthy: true
+  OTEL_EXPORTER_SENTRY_ENDPOINT:
+    section: observability
+    when:
+      - key: LOGGING_SINK_HAS_OTLP
+        truthy: true
+  OTEL_EXPORTER_SENTRY_AUTH_HEADER:
+    section: observability
+    when:
+      - key: LOGGING_SINK_HAS_OTLP
+        truthy: true
+  OTEL_EXPORTER_SENTRY_HEADERS:
+    section: observability
+    when:
+      - key: LOGGING_SINK_HAS_OTLP
+        truthy: true
+  OTEL_EXPORTER_DATADOG_ENABLED:
+    section: observability
+    when:
+      - key: LOGGING_SINK_HAS_OTLP
+        truthy: true
+  OTEL_EXPORTER_DATADOG_API_KEY:
+    section: observability
+    when:
+      - key: LOGGING_SINK_HAS_OTLP
+        truthy: true
+  OTEL_EXPORTER_DATADOG_SITE:
+    section: observability
+    when:
+      - key: LOGGING_SINK_HAS_OTLP
+        truthy: true
+  GEOIP_IPINFO_TOKEN:
+    section: observability
+    when:
+      - key: GEOIP_PROVIDER
+        equals: ipinfo
+  GEOIP_IP2LOCATION_API_KEY:
+    section: observability
+    when:
+      - key: GEOIP_PROVIDER
+        equals: ip2location
+  GEOIP_MAXMIND_LICENSE_KEY:
+    section: observability
+    when:
+      - key: GEOIP_PROVIDER
+        equals: maxmind_db
+  GEOIP_MAXMIND_DB_PATH:
+    section: observability
+    when:
+      - key: GEOIP_PROVIDER
+        equals: maxmind_db
+  GEOIP_MAXMIND_DOWNLOAD:
+    section: observability
+    when:
+      - key: GEOIP_PROVIDER
+        equals: maxmind_db
+  GEOIP_IP2LOCATION_DB_PATH:
+    section: observability
+    when:
+      - key: GEOIP_PROVIDER
+        equals: ip2location_db
+  SLACK_STATUS_BOT_TOKEN:
+    section: integrations
+    when:
+      - key: ENABLE_SLACK_STATUS_NOTIFICATIONS
+        truthy: true
+  SLACK_STATUS_DEFAULT_CHANNELS:
+    section: integrations
+    when:
+      - key: ENABLE_SLACK_STATUS_NOTIFICATIONS
+        truthy: true
+  SLACK_STATUS_TENANT_CHANNEL_MAP:
+    section: integrations
+    when:
+      - key: ENABLE_SLACK_STATUS_NOTIFICATIONS
+        truthy: true
+  SLACK_STATUS_SEND_TEST:
+    section: integrations
+    when:
+      - key: ENABLE_SLACK_STATUS_NOTIFICATIONS
+        truthy: true
+  STRIPE_SECRET_KEY:
+    section: providers
+    when:
+      - key: ENABLE_BILLING
+        truthy: true
+  STRIPE_WEBHOOK_SECRET:
+    section: providers
+    when:
+      - key: ENABLE_BILLING
+        truthy: true
+  STRIPE_PRODUCT_PRICE_MAP:
+    section: providers
+    when:
+      - key: ENABLE_BILLING
+        truthy: true
+  RUN_STRIPE_SEED:
+    section: providers
+    when:
+      - key: ENABLE_BILLING
+        truthy: true
+  RESEND_API_KEY:
+    section: providers
+    when:
+      - key: RESEND_EMAIL_ENABLED
+        truthy: true
+  RESEND_DEFAULT_FROM:
+    section: providers
+    when:
+      - key: RESEND_EMAIL_ENABLED
+        truthy: true
+  RESEND_EMAIL_VERIFICATION_TEMPLATE_ID:
+    section: providers
+    when:
+      - key: RESEND_EMAIL_ENABLED
+        truthy: true
+  RESEND_PASSWORD_RESET_TEMPLATE_ID:
+    section: providers
+    when:
+      - key: RESEND_EMAIL_ENABLED
+        truthy: true
+  ENABLE_BILLING_STREAM_REPLAY:
+    section: signup
+    when:
+      - key: BILLING_RETRY_DEPLOYMENT_MODE
+        equals: inline
+  ENABLE_FRONTEND_LOG_INGEST:
+    section: observability
+  NEXT_PUBLIC_LOG_LEVEL:
+    section: frontend
+  NEXT_PUBLIC_LOG_SINK:
+    section: frontend
+  ENABLE_USAGE_GUARDRAILS:
+    section: usage
+    when:
+      - key: ENABLE_BILLING
+        truthy: true
+  DATABASE_ECHO:
+    section: core
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  DATABASE_POOL_SIZE:
+    section: core
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  DATABASE_MAX_OVERFLOW:
+    section: core
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  DATABASE_POOL_RECYCLE:
+    section: core
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  DATABASE_POOL_TIMEOUT:
+    section: core
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  DATABASE_HEALTH_TIMEOUT:
+    section: core
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  ALLOWED_METHODS:
+    section: core
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  ALLOWED_HEADERS:
+    section: core
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  AUTH_IP_LOCKOUT_THRESHOLD:
+    section: security
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  AUTH_IP_LOCKOUT_WINDOW_MINUTES:
+    section: security
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  AUTH_IP_LOCKOUT_DURATION_MINUTES:
+    section: security
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  AUTH_LOCKOUT_THRESHOLD:
+    section: security
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  AUTH_LOCKOUT_WINDOW_MINUTES:
+    section: security
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  AUTH_LOCKOUT_DURATION_MINUTES:
+    section: security
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  AUTH_PASSWORD_HISTORY_COUNT:
+    section: security
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  AUTH_REFRESH_TOKEN_TTL_MINUTES:
+    section: security
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  ACCESS_TOKEN_EXPIRE_MINUTES:
+    section: security
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  AUTH_JWKS_CACHE_SECONDS:
+    section: security
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  AUTH_JWKS_MAX_AGE_SECONDS:
+    section: security
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  AUTH_JWKS_ETAG_SALT:
+    section: security
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  EMAIL_VERIFICATION_TOKEN_TTL_MINUTES:
+    section: security
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  EMAIL_VERIFICATION_EMAIL_RATE_LIMIT_PER_HOUR:
+    section: security
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  EMAIL_VERIFICATION_IP_RATE_LIMIT_PER_HOUR:
+    section: security
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  PASSWORD_RESET_EMAIL_RATE_LIMIT_PER_HOUR:
+    section: security
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  PASSWORD_RESET_IP_RATE_LIMIT_PER_HOUR:
+    section: security
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  PASSWORD_RESET_TOKEN_TTL_MINUTES:
+    section: security
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  STATUS_SUBSCRIPTION_EMAIL_RATE_LIMIT_PER_HOUR:
+    section: security
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  STATUS_SUBSCRIPTION_IP_RATE_LIMIT_PER_HOUR:
+    section: security
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  STATUS_SUBSCRIPTION_TOKEN_TTL_MINUTES:
+    section: security
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  STATUS_SUBSCRIPTION_WEBHOOK_TIMEOUT_SECONDS:
+    section: security
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  CHAT_RATE_LIMIT_PER_MINUTE:
+    section: security
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  CHAT_STREAM_RATE_LIMIT_PER_MINUTE:
+    section: security
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  CHAT_STREAM_CONCURRENT_LIMIT:
+    section: security
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  BILLING_STREAM_RATE_LIMIT_PER_MINUTE:
+    section: security
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  BILLING_STREAM_CONCURRENT_LIMIT:
+    section: security
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  RATE_LIMIT_KEY_PREFIX:
+    section: security
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  RATE_LIMIT_REDIS_URL:
+    section: providers
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  AUTH_CACHE_REDIS_URL:
+    section: providers
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  SECURITY_TOKEN_REDIS_URL:
+    section: providers
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  BILLING_EVENTS_REDIS_URL:
+    section: providers
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  IMAGE_DEFAULT_SIZE:
+    section: storage
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  IMAGE_DEFAULT_QUALITY:
+    section: storage
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  IMAGE_DEFAULT_FORMAT:
+    section: storage
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  IMAGE_DEFAULT_BACKGROUND:
+    section: storage
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  IMAGE_DEFAULT_COMPRESSION:
+    section: storage
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  IMAGE_OUTPUT_MAX_MB:
+    section: storage
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  IMAGE_MAX_PARTIAL_IMAGES:
+    section: storage
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  GEOIP_CACHE_TTL_SECONDS:
+    section: observability
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  GEOIP_CACHE_MAX_ENTRIES:
+    section: observability
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  GEOIP_HTTP_TIMEOUT_SECONDS:
+    section: observability
+    when:
+      - key: SETUP_SHOW_ADVANCED
+        truthy: true
+  USAGE_GUARDRAIL_CACHE_TTL_SECONDS:
+    section: usage
+    when:
+      - key: ENABLE_USAGE_GUARDRAILS
+        truthy: true
+  USAGE_GUARDRAIL_SOFT_LIMIT_MODE:
+    section: usage
+    when:
+      - key: ENABLE_USAGE_GUARDRAILS
+        truthy: true
+  USAGE_GUARDRAIL_CACHE_BACKEND:
+    section: usage
+    when:
+      - key: ENABLE_USAGE_GUARDRAILS
+        truthy: true
+  USAGE_GUARDRAIL_REDIS_URL:
+    section: usage
+    when:
+      - key: USAGE_GUARDRAIL_CACHE_BACKEND
+        equals: redis
+
+  # Dev user seeding
+  DEV_USER_EMAIL:
+    section: dev_user
+    label: Dev user email
+  DEV_USER_DISPLAY_NAME:
+    section: dev_user
+    label: Dev user display name
+  DEV_USER_TENANT_SLUG:
+    section: dev_user
+    label: Dev user tenant slug
+  DEV_USER_TENANT_NAME:
+    section: dev_user
+    label: Dev user tenant name
+  DEV_USER_ROLE:
+    section: dev_user
+    label: Dev user tenant role
+  DEV_USER_PASSWORD:
+    section: dev_user
+    label: Dev user password
+    skip_message: "Password will be generated if left blank."
+  DEV_USER_LOCKED:
+    section: dev_user
+    label: Dev user locked flag

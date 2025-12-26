@@ -25,6 +25,7 @@ from app.core.provider_validation import (
 )
 from app.core.settings import (
     Settings,
+    enforce_key_storage_backend,
     enforce_secret_overrides,
     enforce_vault_verification,
     get_settings,
@@ -63,7 +64,7 @@ from app.infrastructure.persistence.tenants import PostgresTenantSettingsReposit
 from app.infrastructure.providers.openai import build_openai_provider
 from app.infrastructure.redis.factory import get_redis_factory
 from app.infrastructure.redis_types import RedisBytesClient
-from app.infrastructure.security.vault_kv import configure_vault_secret_manager
+from app.infrastructure.security.secret_manager import configure_secret_manager_client
 from app.middleware.logging import LoggingMiddleware
 from app.observability.logging import configure_logging
 from app.presentation import health as health_routes
@@ -71,7 +72,7 @@ from app.presentation import metrics as metrics_routes
 from app.presentation import well_known as well_known_routes
 from app.presentation.webhooks import stripe as stripe_webhook
 from app.services.activity import ActivityService
-from app.services.agent_service import build_agent_service
+from app.services.agents import build_agent_service
 from app.services.agents.provider_registry import get_provider_registry
 from app.services.auth.builders import (
     build_service_account_token_service,
@@ -88,7 +89,7 @@ from app.services.signup.signup_request_service import build_signup_request_serv
 from app.services.signup.signup_service import build_signup_service
 from app.services.status.status_alert_dispatcher import build_status_alert_dispatcher
 from app.services.status.status_subscription_service import build_status_subscription_service
-from app.services.usage_policy_service import build_usage_policy_service
+from app.services.usage.policy_service import build_usage_policy_service
 from app.services.users import build_user_service
 from app.services.vector_stores import (
     VectorLimitResolver,
@@ -174,8 +175,9 @@ async def lifespan(app: FastAPI):
                 settings.environment,
                 "; ".join(warnings),
             )
+    enforce_key_storage_backend(settings)
     enforce_vault_verification(settings)
-    configure_vault_secret_manager(settings)
+    configure_secret_manager_client(settings)
 
     stripe_repo: StripeEventRepository | None = None
     redis_factory = get_redis_factory(settings)
@@ -421,14 +423,17 @@ async def lifespan(app: FastAPI):
     logger.debug("Startup checkpoint: billing stack configured")
 
     # Vector store service (OpenAI vector stores + file search)
+    wire_storage_service(container)
+    if container.storage_service is None:  # pragma: no cover - defensive
+        raise RuntimeError("Storage service failed to initialize")
     container.vector_store_service = VectorStoreService(
         session_factory,
         get_settings,
         limit_resolver=container.vector_limit_resolver,
+        storage_service=container.storage_service,
     )
 
     # Agent service (after vector store is finalized)
-    wire_storage_service(container)
     wire_title_service(container)
     container.agent_service = build_agent_service(
         conversation_service=container.conversation_service,
