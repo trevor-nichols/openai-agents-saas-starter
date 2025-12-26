@@ -151,8 +151,8 @@ You are a professional engineer and developer in charge of the OpenAI Agent SaaS
 - All local logs live under `var/log/<YYYY-MM-DD>/` at the repo root (`var/log/current` points to today).
 - Backend (FastAPI): `var/log/current/api/all.log` and `error.log` (requires `LOGGING_SINKS=file`, set in `apps/api-service/.env.local`).
 - Frontend (Next dev): `var/log/current/frontend/all.log` and `error.log` via the bundled log tee used by `pnpm dev`.
-- Console (detached runs): `var/log/current/cli/*.log` per process when started with `just start-dev -- --detached`.
-- Quick tail: `starter-console logs tail --service api --service frontend --errors`.
+- Console (CLI/TUI): `var/log/current/starter-console/all.log` and `error.log` when `CONSOLE_LOGGING_SINKS` includes `file` (default); Textual debug logs additionally write to `starter-console/textual.log` when `TEXTUAL_LOG` is set.
+- Quick tail: `starter-console logs tail --service api --service frontend --service starter-console --errors`.
 
 # Codebase Patterns
 <patterns>

@@ -17,7 +17,15 @@ from starter_console.services.infra import ops_models
 from starter_console.services.infra.compose import detect_compose_command
 
 DEFAULT_LINES = 200
-SERVICE_CHOICES = ("all", "api", "frontend", "collector", "postgres", "redis")
+SERVICE_CHOICES = (
+    "all",
+    "api",
+    "frontend",
+    "starter-console",
+    "collector",
+    "postgres",
+    "redis",
+)
 
 
 @dataclass(slots=True)
@@ -167,6 +175,51 @@ def plan_targets(
                 )
                 notes.append(("info", message))
 
+    # Starter console log file (structured file sink)
+    if "starter-console" in normalized:
+        sink_raw = env_value("CONSOLE_LOGGING_SINKS") or "file"
+        sinks = [part.strip().lower() for part in (sink_raw or "file").split(",") if part.strip()]
+        sink_primary = sinks[0] if sinks else "file"
+        sink_has_file = "file" in sinks
+
+        resolved_sink = "file" if sink_has_file else sink_primary
+
+        log_path = resolve_console_log_path(
+            ctx,
+            sink=resolved_sink,
+            base_root=base_root,
+            preferred_date_root=resolved_root if resolved_root.exists() else date_root,
+            explicit_path=env_value("CONSOLE_LOGGING_FILE_PATH"),
+            errors_only=errors_only,
+        )
+
+        if log_path:
+            cmd = ["tail"]
+            if follow:
+                cmd.append("-f")
+            cmd.extend(["-n", str(lines), str(log_path)])
+            targets.append(TailTarget(name="starter-console", command=cmd, cwd=ctx.project_root))
+        else:
+            if sink_has_file or resolved_sink == "file":
+                message = (
+                    "Console file sink enabled but no log file found yet; run a console "
+                    "command or check LOG_ROOT/CONSOLE_LOGGING_FILE_PATH."
+                )
+                notes.append(("warn", message))
+            elif errors_only:
+                notes.append(
+                    (
+                        "info",
+                        "Console error log not found; try without --errors or enable file sink.",
+                    )
+                )
+            else:
+                message = (
+                    "Console is not writing to a file sink. Set CONSOLE_LOGGING_SINKS to "
+                    "include 'file' to enable tailing."
+                )
+                notes.append(("info", message))
+
     # Frontend guidance
     if "frontend" in normalized:
         ingest_enabled = env_bool("ENABLE_FRONTEND_LOG_INGEST", False)
@@ -229,6 +282,49 @@ def resolve_api_log_path(
     return None
 
 
+def resolve_console_log_path(
+    ctx: CLIContext,
+    *,
+    sink: str,
+    base_root: Path,
+    preferred_date_root: Path | None,
+    explicit_path: str | None,
+    errors_only: bool,
+) -> Path | None:
+    # 1) Respect explicit CONSOLE_LOGGING_FILE_PATH if set
+    if explicit_path:
+        candidate = Path(explicit_path)
+        if not candidate.is_absolute():
+            candidate = (ctx.project_root / candidate).resolve()
+        if errors_only:
+            error_candidate = candidate.parent / "error.log"
+            if error_candidate.exists():
+                return error_candidate
+        if candidate.exists():
+            return candidate
+
+    # 2) Dated layout: base_root/(current|YYYY-MM-DD)/starter-console/(error|all).log
+    candidate_name = "error.log" if errors_only else "all.log"
+    if preferred_date_root and preferred_date_root.exists():
+        candidate = preferred_date_root / "starter-console" / candidate_name
+        if candidate.exists():
+            return candidate
+
+    if not base_root.exists():
+        return None
+
+    dated_dirs = sorted(
+        [p for p in base_root.iterdir() if p.is_dir() and p.name != "current"],
+        reverse=True,
+    )
+    for root in dated_dirs:
+        path = root / "starter-console" / candidate_name
+        if path.exists():
+            return path
+
+    return None
+
+
 def normalize_services(
     requested: Iterable[str],
     *,
@@ -237,7 +333,7 @@ def normalize_services(
 ) -> set[str]:
     requested_set = {svc.lower() for svc in requested}
     if "all" in requested_set:
-        base = {"api", "frontend", "postgres", "redis"}
+        base = {"api", "frontend", "starter-console", "postgres", "redis"}
         if enable_collector:
             base.add("collector")
         return base
@@ -392,6 +488,7 @@ __all__ = [
     "normalize_services",
     "plan_targets",
     "resolve_api_log_path",
+    "resolve_console_log_path",
     "resolve_tail_settings",
     "start_stream",
     "stop_streams",

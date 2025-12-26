@@ -47,7 +47,10 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
 
     tail_parser = logs_subparsers.add_parser(
         "tail",
-        help="Stream logs for selected services (api/frontend/collector/postgres/redis).",
+        help=(
+            "Stream logs for selected services "
+            "(api/frontend/starter-console/collector/postgres/redis)."
+        ),
     )
     tail_parser.add_argument(
         "--service",

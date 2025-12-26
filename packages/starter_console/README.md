@@ -65,3 +65,20 @@ OPENAPI_INPUT=../api-service/.artifacts/openapi-fixtures.json pnpm generate:fixt
 - Wizard prompts are declared in `setup/schema.yaml`; extend there to add new setup items.
 - Each wizard run writes a redacted snapshot + diff under `var/reports/setup-snapshot.json` and `var/reports/setup-diff.md` for auditability.
 - Hosting preset guidance lives in `docs/ops/setup-wizard-presets.md`.
+
+## Console logging overrides (runbook)
+The setup wizard writes backend `LOGGING_*` values into `apps/api-service/.env.local`. The Starter Console uses those values as defaults, but you can override console-only logging without touching the backend by setting `CONSOLE_LOGGING_*` env vars in any loaded env file (or inline on the command).
+
+Common overrides:
+- `CONSOLE_LOGGING_SINKS` (defaults to `file` for console runs)
+- `CONSOLE_LOG_ROOT` (defaults to `LOG_ROOT` when set)
+- `CONSOLE_LOGGING_FILE_PATH`, `CONSOLE_LOGGING_FILE_MAX_MB`, `CONSOLE_LOGGING_FILE_BACKUPS`
+- `CONSOLE_LOGGING_OTLP_ENDPOINT`, `CONSOLE_LOGGING_OTLP_HEADERS`
+- `CONSOLE_LOGGING_DATADOG_API_KEY`, `CONSOLE_LOGGING_DATADOG_SITE`
+
+Example (console-only OTLP without changing backend logs):
+```bash
+CONSOLE_LOGGING_SINKS=otlp \
+CONSOLE_LOGGING_OTLP_ENDPOINT=http://otel-collector:4318/v1/logs \
+starter-console setup wizard
+```

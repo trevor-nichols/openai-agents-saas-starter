@@ -60,17 +60,19 @@ def collect_log_entries(log_dir: Path) -> list[LogEntry]:
         "api/error.log": log_dir / "api" / "error.log",
         "frontend/all.log": log_dir / "frontend" / "all.log",
         "frontend/error.log": log_dir / "frontend" / "error.log",
+        "starter-console/all.log": log_dir / "starter-console" / "all.log",
+        "starter-console/error.log": log_dir / "starter-console" / "error.log",
     }
     for name, path in candidates.items():
         entries.append(LogEntry(name=name, path=path, exists=path.exists()))
 
-    cli_dir = log_dir / "cli"
-    cli_files = list(cli_dir.glob("*.log")) if cli_dir.exists() else []
+    console_dir = log_dir / "starter-console"
+    console_files = list(console_dir.glob("*.log")) if console_dir.exists() else []
     entries.append(
         LogEntry(
-            name="cli/*.log",
-            path=cli_dir,
-            exists=bool(cli_files),
+            name="starter-console/*.log",
+            path=console_dir,
+            exists=bool(console_files),
         )
     )
     return entries

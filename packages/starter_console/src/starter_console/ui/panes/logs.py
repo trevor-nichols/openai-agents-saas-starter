@@ -62,7 +62,7 @@ class LogsPane(Vertical):
                 yield Static("Services", classes="wizard-control-label")
                 yield Input(
                     id="logs-services",
-                    placeholder="all, api, frontend, postgres, redis",
+                    placeholder="all, api, frontend, starter-console, collector, postgres, redis",
                 )
                 yield Static("Lines", classes="wizard-control-label")
                 yield Input(id="logs-lines", value="")

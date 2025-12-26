@@ -18,7 +18,7 @@ from .models import LaunchResult
 class LogLayout:
     base_root: Path
     date_root: Path
-    cli_root: Path
+    console_root: Path
 
 
 def resolve_log_root(
@@ -33,19 +33,19 @@ def resolve_log_root(
 def ensure_log_layout(base_root: Path, *, today: datetime.date | None = None) -> LogLayout:
     date_value = today or datetime.date.today()
     date_root = base_root / date_value.isoformat()
-    cli_root = date_root / "cli"
+    console_root = date_root / "starter-console"
     try:
         base_root.mkdir(parents=True, exist_ok=True)
         date_root.mkdir(parents=True, exist_ok=True)
-        cli_root.mkdir(parents=True, exist_ok=True)
+        console_root.mkdir(parents=True, exist_ok=True)
         current_link = base_root / "current"
         if current_link.exists() or current_link.is_symlink():
             current_link.unlink()
         current_link.symlink_to(date_root, target_is_directory=True)
     except OSError:
         # Non-fatal; fall back to base_root when symlink fails
-        cli_root = base_root
-    return LogLayout(base_root=base_root, date_root=date_root, cli_root=cli_root)
+        console_root = base_root
+    return LogLayout(base_root=base_root, date_root=date_root, console_root=console_root)
 
 
 def rotate_log(path: Path, *, max_bytes: int = 5_000_000, keep: int = 3) -> None:
@@ -76,7 +76,7 @@ class LogSession:
         base_root = resolve_log_root(project_root, env, override=override)
         layout = ensure_log_layout(base_root)
         self.base_log_root = layout.base_root
-        self.log_dir = layout.cli_root
+        self.log_dir = layout.console_root
         self._log_files: list[IO[str]] = []
 
     def open_log(self, label: str) -> tuple[Path, IO[str]]:

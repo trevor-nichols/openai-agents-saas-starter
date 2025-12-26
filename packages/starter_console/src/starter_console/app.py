@@ -10,6 +10,7 @@ from .commands import register_all
 from .container import ApplicationContainer, build_container
 from .core import CLIContext, CLIError
 from .core.context import resolve_env_files, should_skip_env_loading
+from .observability import configure_console_logging, configure_textual_logging
 
 Handler = Callable[[argparse.Namespace, CLIContext], int]
 
@@ -83,6 +84,7 @@ def main(argv: list[str] | None = None, *, container: ApplicationContainer | Non
     else:
         ctx = _load_environment(app_container, args)
 
+    configure_console_logging(ctx)
     handler: Handler | None = getattr(args, "handler", None)
     if handler is None:
         return _launch_tui(ctx, initial_screen="home")
@@ -95,6 +97,7 @@ def main(argv: list[str] | None = None, *, container: ApplicationContainer | Non
 
 
 def _launch_tui(ctx: CLIContext, *, initial_screen: str) -> int:
+    configure_textual_logging(ctx)
     try:
         from starter_console.ui import StarterTUI
 

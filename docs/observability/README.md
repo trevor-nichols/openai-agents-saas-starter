@@ -48,6 +48,7 @@ The collector image is pinned to `otel/opentelemetry-collector-contrib:0.139.0`,
 - When `LOG_ROOT` is set (or when `LOGGING_SINKS=file`), FastAPI writes JSON logs to dated folders: `LOG_ROOT/YYYY-MM-DD/api/all.log` and `error.log`. A helper symlink `LOG_ROOT/current` points at the latest folder.
 - `starter-console start dev --detached` and the new `starter-console logs tail` respect this layout; `--errors` tails `error.log`.
 - Retention: set `LOGGING_MAX_DAYS` to prune old dated folders on startup; `starter-console logs archive --days N` can zip+prune manually.
+- Starter Console emits structured logs under `LOG_ROOT/YYYY-MM-DD/starter-console/all.log` and `error.log`. Textual debug logs are bridged into the structured stream and also write to `starter-console/textual.log` when `TEXTUAL_LOG` is set.
 
 ### Frontend log ingest
 
@@ -105,6 +106,7 @@ You should see structured JSON logs coming from FastAPI and mirrored by the coll
 ### Log Tailing Notes
 
 - `logs tail` reads the backend rotating file sink when `LOGGING_SINKS=file` (set via the wizard). For stdout-only deployments, run the API in a separate terminal instead.
+- Use `starter-console logs tail --service starter-console` to stream console logs (requires `CONSOLE_LOGGING_SINKS` to include `file`).
 - When `ENABLE_FRONTEND_LOG_INGEST=true`, the Next.js beacon transport forwards browser events to `/api/v1/logs`; they appear as `frontend.log` entries in backend tails. Without ingest, view the Next.js dev server stdout.
 
 ### Automated Smoke Test
