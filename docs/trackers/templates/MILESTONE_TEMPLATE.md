@@ -2,7 +2,7 @@
 # <Milestone: Short Name>
 
 _Last updated: YYYY-MM-DD_  
-**Status:** Planned | In Progress | Completed | Archived  
+**Status:** Planned | In Progress | Completed  
 **Owner:** @handle or team name  
 **Domain:** Backend | Frontend | Console | Infra | Cross-cutting  
 **ID / Links:** [Issue/Linear/Jira], [Docs], [Related trackers]
