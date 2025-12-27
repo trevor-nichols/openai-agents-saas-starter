@@ -17,13 +17,13 @@ Keep it in sync with `apps/api-service/src/app/api/v1/router.py` and the smoke s
 | `/api/v1/conversations` | `test_conversations_smoke.py` | List/search/detail/events + delete idempotently | Requires seeded conversation via fixtures. |
 | `/api/v1/conversations/ledger` | `test_conversations_smoke.py` | Ledger events list + stream yield `public_sse_v1` | `SMOKE_ENABLE_AI=1` (requires streaming chat to seed ledger). |
 | `/api/v1/tools` | `test_tools_smoke.py` | Tool catalog returns lists/maps | Requires `tools:read` scope on token. |
-| `/api/v1/activity` | Planned | Activity list/stream + mark read | Requires seeded activity events + `activity:read` scope; Workstream E1. |
+| `/api/v1/activity` | `test_activity_smoke.py` | List + receipts (read/dismiss/mark-all); stream handshake | Requires `activity:read` scope; stream gated by `SMOKE_ENABLE_ACTIVITY_STREAM`. |
 | `/api/v1/containers` | Planned | Create/list/detail/delete + agent bind/unbind | `SMOKE_ENABLE_CONTAINERS=1`; Workstream D6. |
 | `/api/v1/vector_stores` | Planned | Create/list/detail/query/delete | `SMOKE_ENABLE_VECTOR=1`; Workstream D5. |
 | `/api/v1/storage` | `test_storage_smoke.py` | Upload-url + list returns items | Storage provider configured; download/delete in Workstream D1. |
 | `/api/v1/uploads` | Planned | Agent-input upload returns URL | Storage provider configured; Workstream D2. |
 | `/api/v1/openai` (files) | Planned | Proxy download returns bytes | `SMOKE_ENABLE_OPENAI_FILES=1`; Workstream D4. |
-| `/api/v1/contact` | Planned | Contact submission returns 202 | `SMOKE_ENABLE_CONTACT=1`; Workstream E6. |
+| `/api/v1/contact` | `test_contact_smoke.py` | Contact submission returns 202 + response payload | `SMOKE_ENABLE_CONTACT=1`. |
 | `/api/v1/status` | `test_status_smoke.py` | Snapshot contains `overview` + `incidents`; RSS returns XML | Subscriptions gated separately by `SMOKE_ENABLE_STATUS_SUBSCRIPTIONS`; Workstream E5 (subscriptions pending). |
 | `/api/v1/tenants` | `test_tenants_smoke.py` | Settings GET/PUT roundtrip | Requires owner token. |
 | `/api/v1/users` | `test_users_smoke.py` | Profile + consents + notification prefs | Requires authenticated user with tenant context. |

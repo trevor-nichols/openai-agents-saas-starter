@@ -35,6 +35,7 @@ class SmokeConfig:
     enable_billing: bool
     enable_billing_stream: bool
     enable_ai: bool
+    enable_activity_stream: bool
     enable_auth_signup: bool
     enable_auth_extended: bool
     enable_auth_mfa: bool
@@ -68,6 +69,7 @@ def load_config() -> SmokeConfig:
         enable_billing=_env_bool("SMOKE_ENABLE_BILLING", False),
         enable_billing_stream=_env_bool("SMOKE_ENABLE_BILLING_STREAM", False),
         enable_ai=_env_bool("SMOKE_ENABLE_AI", False),
+        enable_activity_stream=_env_bool("SMOKE_ENABLE_ACTIVITY_STREAM", False),
         enable_auth_signup=_env_bool("SMOKE_ENABLE_AUTH_SIGNUP", False),
         enable_auth_extended=_env_bool("SMOKE_ENABLE_AUTH_EXTENDED", False),
         enable_auth_mfa=_env_bool("SMOKE_ENABLE_AUTH_MFA", False),

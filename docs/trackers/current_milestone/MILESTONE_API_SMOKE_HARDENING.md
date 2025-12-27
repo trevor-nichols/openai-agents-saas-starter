@@ -363,12 +363,12 @@ The list below enumerates endpoints not yet covered by the HTTP smoke suite. Eac
 
 | ID | Area | Description | Owner | Status |
 |----|------|-------------|-------|--------|
-| E1 | Activity | Add activity list + stream smoke. | TBD | Planned |
+| E1 | Activity | Add activity list + stream smoke. | TBD | ✅ |
 | E2 | Guardrails | Add guardrails list/presets smoke. | TBD | ✅ |
 | E3 | Tools | Add tools catalog smoke. | TBD | ✅ |
 | E4 | Usage | Add usage counters smoke (requires seeded usage). | TBD | ✅ |
 | E5 | Status | Add platform status + RSS smoke; subscription flows gated by env/config. | TBD | ✅ |
-| E6 | Contact | Add /contact smoke with delivery disabled or stubbed provider. | TBD | Planned |
+| E6 | Contact | Add /contact smoke with delivery disabled or stubbed provider. | TBD | ✅ |
 
 ### Workstream F - Billing expansion (optional gate)
 
@@ -383,7 +383,7 @@ The list below enumerates endpoints not yet covered by the HTTP smoke suite. Eac
 
 | Phase | Scope | Exit Criteria | Status |
 | ----- | ----- | ------------- | ------ |
-| P0 - Alignment | Confirm smoke criteria, gates, and data seeding strategy | Coverage matrix signed off | Planned |
+| P0 - Alignment | Confirm smoke criteria, gates, and data seeding strategy | Coverage matrix signed off | ✅ |
 | P1 - Core coverage | Auth, tenants, users, status, tools, guardrails, usage | Workstreams B + E complete | Planned |
 | P2 - AI and streaming | Chat/workflow streaming + ledger/replay | Workstream C complete | ✅ |
 | P3 - Provider-dependent | Billing, assets, storage, uploads, vector, containers, openai_files | Workstreams D + F complete | Planned |
@@ -438,6 +438,7 @@ The list below enumerates endpoints not yet covered by the HTTP smoke suite. Eac
 
 - 2025-12-27 - Completed Workstream C (chat stream, conversation ledger, workflow stream/detail/cancel/replay smoke); updated smoke docs/coverage; lint/typecheck/test green.
 - 2025-12-27 - Completed Workstream B1 (auth signup/sessions/email/password/MFA/invites/service accounts) with new fixtures and password-reset test token endpoint; lint/typecheck/test green.
+- 2025-12-27 - Completed Workstream E1 + E6 (activity list/receipts + stream smoke, contact submission smoke); updated smoke docs/coverage.
 - 2025-12-27 - Completed Workstream A (coverage matrix, standardized smoke gates, SSE/cleanup helpers, fixture seeding for usage/assets); lint/typecheck/test green.
 - 2025-12-27 - Added smoke coverage for status, tools, guardrails, usage, users, and tenant settings; updated README.
 - 2025-12-27 - Created milestone and initial coverage gap inventory.
