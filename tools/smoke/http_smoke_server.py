@@ -12,6 +12,7 @@ sys.path.insert(0, str(ROOT / "apps" / "api-service" / "src"))
 sys.path.insert(0, str(ROOT / "apps" / "api-service"))
 sys.path.insert(0, str(ROOT))
 
+from agents import set_tracing_disabled  # noqa: E402
 from tests.utils.stub_agent_provider import build_stub_provider  # noqa: E402
 
 import main  # noqa: E402
@@ -26,6 +27,7 @@ def create_app():
 
 def main_smoke() -> None:
     os.environ.setdefault("OPENAI_API_KEY", "dummy-smoke-key")
+    set_tracing_disabled(True)
     host = os.getenv("SMOKE_HOST", "127.0.0.1")
     port = int(os.getenv("SMOKE_PORT", "8000"))
     log_level = os.getenv("SMOKE_LOG_LEVEL", "info")

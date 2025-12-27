@@ -139,7 +139,13 @@ class StubAgentProvider(AgentProvider):
         return self._default_key
 
     def tool_overview(self):
-        return {key: [] for key in self._descriptors}
+        per_agent = {key: [] for key in self._descriptors}
+        return {
+            "total_tools": 0,
+            "tool_names": [],
+            "categories": [],
+            "per_agent": per_agent,
+        }
 
     def mark_seen(self, agent_key: str, ts: datetime) -> None:
         descriptor = self._descriptors.get(agent_key)
