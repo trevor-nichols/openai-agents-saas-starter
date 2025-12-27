@@ -18,6 +18,9 @@ export const ACCOUNT_COPY = {
   },
 };
 
+export const SERVICE_ACCOUNTS_DOC_URL =
+  'https://github.com/openai/openai-agents-saas-starter/blob/main/docs/frontend/features/account-service-accounts.md';
+
 export const PASSWORD_POLICY_RULES = [
   '14+ characters with upper, lower, number, and symbol.',
   'No reuse of the last 5 passwords.',

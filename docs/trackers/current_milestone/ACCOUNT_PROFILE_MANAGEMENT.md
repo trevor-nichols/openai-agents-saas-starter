@@ -1,18 +1,18 @@
 <!-- SECTION: Metadata -->
-# Milestone: Account & Profile Management (Users API)
+# Milestone: Account & Profile Management (Users API + Web App)
 
 _Last updated: 2025-12-27_  
 **Status:** Completed  
 **Owner:** OpenAI Agents SaaS Starter Team  
-**Domain:** Backend  
-**ID / Links:** [Reviewer comment], `apps/api-service/src/app/api/v1/users/routes_profile.py`
+**Domain:** Backend + Frontend  
+**ID / Links:** [Reviewer comment], `apps/api-service/src/app/api/v1/users/routes_profile.py`, `apps/web-app/features/account/components/ProfilePanel.tsx`
 
 ---
 
 <!-- SECTION: Objective -->
 ## Objective
 
-Deliver first-class, self-service account/profile management in the API service: profile updates, email change with verification, and account disablement, implemented with clean architecture boundaries and auditable security events.
+Deliver end-to-end, self-service account/profile management: API endpoints plus a web app experience for profile updates, email changes with verification, and account disablement, all implemented with clean architecture boundaries and auditable security controls.
 
 ---
 
@@ -24,8 +24,12 @@ Deliver first-class, self-service account/profile management in the API service:
 - `POST /users/me/disable` disables the account and revokes sessions (blocked if last tenant owner)
 - User repository + service layers expose clean domain methods for profile update, email change, and owner checks
 - Security events recorded for email change + account disable
-- Unit tests added for repository, service, and routes
+- Web app BFF routes proxy the new endpoints (`/api/v1/users/me/profile`, `/email`, `/disable`)
+- Client fetchers + TanStack Query hooks added for profile update, email change, and disable
+- Account Profile UI supports profile edits, timezone/locale, email change with verification messaging, and disable
+- Storybook mocks updated for account/profile queries
 - `hatch run lint` and `hatch run typecheck` pass for backend
+- `pnpm lint`, `pnpm type-check`, and `pnpm test:unit` pass for frontend
 - Docs/trackers updated
 
 ---
@@ -40,11 +44,13 @@ Deliver first-class, self-service account/profile management in the API service:
 - Block disable/email change if user is the last tenant owner
 - Repository + service contracts for profile/email/ownership checks
 - Security event logging for sensitive actions
+- Web app BFF routes, client fetchers, and React Query hooks for new endpoints
+- Account Profile UI for profile updates, email change, and account disable
 
 ### Out of Scope
 - Hard delete or data erasure workflows
 - Admin-managed user lifecycle or tenant role reassignment
-- Frontend UI work
+- Avatar upload tooling (URL-only for now)
 
 ---
 
@@ -53,10 +59,10 @@ Deliver first-class, self-service account/profile management in the API service:
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| Architecture/design | ✅ | Clear layering (API → service → repo) with existing auth/session patterns to reuse. |
-| Implementation | ✅ | Profile updates, email change, and account disable flows implemented. |
-| Tests & QA | ✅ | Repository/service/routes covered with unit tests. |
-| Docs & runbooks | ✅ | Users service README + tracker updated. |
+| Architecture/design | ✅ | Clear layering (API → service → repo → BFF → client hooks → UI). |
+| Implementation | ✅ | Backend and frontend flows implemented. |
+| Tests & QA | ✅ | Backend + frontend lint/typecheck/tests green. |
+| Docs & runbooks | ✅ | Tracker updated with frontend completion details. |
 
 ---
 
@@ -68,6 +74,8 @@ Deliver first-class, self-service account/profile management in the API service:
 - Use soft-disable (`UserStatus.DISABLED`) for self-service delete; block if user is last tenant owner.
 - Trigger email verification on change and clear `email_verified_at`.
 - Record security events for email change and disable.
+- Web app follows the SDK → server services → BFF → client fetchers → TanStack hooks → feature UI layering.
+- Profile UI composes account session metadata with the user profile endpoint for editable fields.
 
 ---
 
@@ -107,6 +115,31 @@ Deliver first-class, self-service account/profile management in the API service:
 | D3 | Tests | Route tests for new endpoints + error mapping | Team | ✅ |
 | D4 | Docs | Update users service README and trackers | Team | ✅ |
 
+### Workstream E – Web App Data Access
+
+| ID | Area | Description | Owner | Status |
+|----|------|-------------|-------|--------|
+| E1 | BFF | Add `/api/v1/users/me/profile`, `/email`, `/disable` route handlers | Team | ✅ |
+| E2 | Services | Extend `lib/server/services/users` for update/email/disable | Team | ✅ |
+| E3 | Client | Add `lib/api/users` fetchers + `lib/queries/users` mutations | Team | ✅ |
+
+### Workstream F – Web App UX
+
+| ID | Area | Description | Owner | Status |
+|----|------|-------------|-------|--------|
+| F1 | UI | Profile edit form (display name, avatar URL, names, timezone, locale) | Team | ✅ |
+| F2 | UI | Email change form with verification messaging | Team | ✅ |
+| F3 | UI | Account disable dialog + last-owner warning copy | Team | ✅ |
+| F4 | UX | Resend verification CTA remains visible | Team | ✅ |
+
+### Workstream G – Web App Tests & QA
+
+| ID | Area | Description | Owner | Status |
+|----|------|-------------|-------|--------|
+| G1 | Tests | Unit tests for profile form mapping utilities | Team | ✅ |
+| G2 | Storybook | Update mocks for account + users queries | Team | ✅ |
+| G3 | QA | `pnpm lint`, `pnpm type-check`, `pnpm test:unit` | Team | ✅ |
+
 ---
 
 <!-- SECTION: Phases (optional if simple) -->
@@ -118,6 +151,9 @@ Deliver first-class, self-service account/profile management in the API service:
 | P1 – Domain/Repo | Domain + repository methods | Repo tests green | ✅ |
 | P2 – Service/API | Service + routes wired | Route tests green | ✅ |
 | P3 – QA/Docs | Lint/typecheck + docs | All checks green | ✅ |
+| P4 – Web App Data | BFF + services + hooks | Data access verified | ✅ |
+| P5 – Web App UI | Account profile UX | UI flows complete | ✅ |
+| P6 – Web App QA | Lint/typecheck/tests | Frontend checks green | ✅ |
 
 ---
 
@@ -126,6 +162,7 @@ Deliver first-class, self-service account/profile management in the API service:
 
 - Postgres and Redis configured for auth subsystem (existing dependency)
 - Email verification service + token store (already in use)
+- Web app BFF routing + generated SDK updated from OpenAPI
 
 ---
 
@@ -137,6 +174,7 @@ Deliver first-class, self-service account/profile management in the API service:
 | Last-owner lockout gaps | High | Explicit repository query + service-level check before disable. |
 | Email uniqueness conflict | Med | Normalize + catch integrity error with explicit domain error. |
 | Session revocation coupling | Low | Keep revocation in routes, not in user service. |
+| UX confusion after email change | Med | Inline copy + forced logout after successful change. |
 
 ---
 
@@ -148,6 +186,9 @@ Deliver first-class, self-service account/profile management in the API service:
 - `cd apps/api-service && hatch run test tests/unit/accounts/test_user_repository.py`
 - `cd apps/api-service && hatch run test tests/unit/accounts/test_user_service.py`
 - `cd apps/api-service && hatch run test tests/unit/api/test_user_profile_routes.py`
+- `cd apps/web-app && pnpm lint`
+- `cd apps/web-app && pnpm type-check`
+- `cd apps/web-app && pnpm test:unit`
 
 ---
 
@@ -157,11 +198,14 @@ Deliver first-class, self-service account/profile management in the API service:
 - No migrations expected (profile table exists).
 - No feature flags; endpoints are immediately available.
 - Soft-disable uses existing `UserStatus.DISABLED` behavior.
+- Email change and account disable flows should log the user out immediately after success.
 
 ---
 
 <!-- SECTION: Changelog -->
 ## Changelog
 
-- 2025-12-27 — Tracker created and plan approved.
-- 2025-12-27 — Domain, repository, service, and API updates implemented with tests + QA runs.
+- 2025-12-27 — Tracker created and plan approved (backend).
+- 2025-12-27 — Backend domain, repository, service, and API updates implemented with tests + QA runs.
+- 2025-12-27 — Frontend plan added (data access + profile management UX).
+- 2025-12-27 — Frontend data access + UI implemented; lint/typecheck/test:unit green.

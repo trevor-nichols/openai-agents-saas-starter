@@ -16,10 +16,10 @@ export async function getAppShellLayoutModel(): Promise<{
   navItems: AppNavItem[];
   accountNav: AppNavItem[];
   subtitle: string;
-  profile: Awaited<ReturnType<typeof getCurrentUserProfile>>;
+  profile: Awaited<ReturnType<typeof getCurrentUserProfile>> | null;
 }> {
   const session = await getSessionMetaFromCookies();
-  let profile: Awaited<ReturnType<typeof getCurrentUserProfile>> = null;
+  let profile: Awaited<ReturnType<typeof getCurrentUserProfile>> | null = null;
   if (session) {
     try {
       profile = await getCurrentUserProfile();

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { SERVICE_ACCOUNTS_DOC_URL } from '../../constants';
 
 export function ServiceAccountGuidance() {
   return (
@@ -15,7 +16,7 @@ export function ServiceAccountGuidance() {
         </p>
         <p>
           Latest rollout status lives in
-          <Link className="ml-1 underline" href="/docs/frontend/features/account-service-accounts.md">
+          <Link className="ml-1 underline" href={SERVICE_ACCOUNTS_DOC_URL} target="_blank" rel="noreferrer">
             docs/frontend/features/account-service-accounts.md
           </Link>
           .

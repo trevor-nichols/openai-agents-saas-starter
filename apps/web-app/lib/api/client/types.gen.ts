@@ -2035,6 +2035,18 @@ export type CurrentUserProfileResponseData = {
    */
   avatar_url?: string | null;
   /**
+   * Timezone
+   *
+   * Optional IANA timezone for the user.
+   */
+  timezone?: string | null;
+  /**
+   * Locale
+   *
+   * Optional locale for the user.
+   */
+  locale?: string | null;
+  /**
    * Role
    *
    * Tenant role associated with the session.
@@ -2116,6 +2128,42 @@ export type EmailVerificationStatusResponseData = {
    * Whether the user's email address is verified.
    */
   email_verified: boolean;
+};
+
+/**
+ * EmailVerificationTokenRequest
+ */
+export type EmailVerificationTokenRequest = {
+  /**
+   * Email
+   */
+  email: string;
+  /**
+   * Ip Address
+   */
+  ip_address?: string | null;
+  /**
+   * User Agent
+   */
+  user_agent?: string | null;
+};
+
+/**
+ * EmailVerificationTokenResponse
+ */
+export type EmailVerificationTokenResponse = {
+  /**
+   * Token
+   */
+  token: string;
+  /**
+   * User Id
+   */
+  user_id: string;
+  /**
+   * Expires At
+   */
+  expires_at: string;
 };
 
 /**
@@ -2355,6 +2403,341 @@ export type FinalPayload = {
    */
   attachments?: Array<MessageAttachment>;
   usage?: PublicUsage | null;
+};
+
+/**
+ * FixtureApplyResult
+ */
+export type FixtureApplyResult = {
+  /**
+   * Tenants
+   */
+  tenants: {
+    [key: string]: FixtureTenantResult;
+  };
+  /**
+   * Generated At
+   */
+  generated_at: string;
+};
+
+/**
+ * FixtureAsset
+ */
+export type FixtureAsset = {
+  /**
+   * Key
+   */
+  key: string;
+  /**
+   * Asset Type
+   */
+  asset_type?: "image" | "file";
+  /**
+   * Source Tool
+   */
+  source_tool?:
+    | "image_generation"
+    | "code_interpreter"
+    | "user_upload"
+    | "unknown"
+    | null;
+  /**
+   * Filename
+   */
+  filename: string;
+  /**
+   * Mime Type
+   */
+  mime_type?: string | null;
+  /**
+   * Size Bytes
+   */
+  size_bytes?: number | null;
+  /**
+   * Agent Key
+   */
+  agent_key?: string | null;
+  /**
+   * Conversation Key
+   */
+  conversation_key?: string | null;
+  /**
+   * Message Id
+   */
+  message_id?: number | null;
+  /**
+   * Tool Call Id
+   */
+  tool_call_id?: string | null;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Container Id
+   */
+  container_id?: string | null;
+  /**
+   * Openai File Id
+   */
+  openai_file_id?: string | null;
+  /**
+   * User Email
+   */
+  user_email?: string | null;
+  /**
+   * Metadata
+   */
+  metadata?: {
+    [key: string]: unknown;
+  };
+};
+
+/**
+ * FixtureAssetResult
+ */
+export type FixtureAssetResult = {
+  /**
+   * Asset Id
+   */
+  asset_id: string;
+  /**
+   * Storage Object Id
+   */
+  storage_object_id: string;
+};
+
+/**
+ * FixtureConversation
+ */
+export type FixtureConversation = {
+  /**
+   * Key
+   */
+  key: string;
+  /**
+   * Agent Entrypoint
+   */
+  agent_entrypoint?: string;
+  /**
+   * Status
+   */
+  status?: "active" | "archived";
+  /**
+   * User Email
+   */
+  user_email?: string | null;
+  /**
+   * Messages
+   */
+  messages?: Array<FixtureConversationMessage>;
+};
+
+/**
+ * FixtureConversationMessage
+ */
+export type FixtureConversationMessage = {
+  /**
+   * Role
+   */
+  role: "user" | "assistant" | "system";
+  /**
+   * Text
+   */
+  text: string;
+};
+
+/**
+ * FixtureConversationResult
+ */
+export type FixtureConversationResult = {
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Status
+   */
+  status: string;
+};
+
+/**
+ * FixtureTenant
+ */
+export type FixtureTenant = {
+  /**
+   * Slug
+   */
+  slug: string;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Plan Code
+   */
+  plan_code?: string | null;
+  /**
+   * Billing Email
+   */
+  billing_email?: string | null;
+  /**
+   * Users
+   */
+  users?: Array<FixtureUser>;
+  /**
+   * Conversations
+   */
+  conversations?: Array<FixtureConversation>;
+  /**
+   * Usage
+   */
+  usage?: Array<FixtureUsageEntry>;
+  /**
+   * Usage Counters
+   */
+  usage_counters?: Array<FixtureUsageCounter>;
+  /**
+   * Assets
+   */
+  assets?: Array<FixtureAsset>;
+};
+
+/**
+ * FixtureTenantResult
+ */
+export type FixtureTenantResult = {
+  /**
+   * Tenant Id
+   */
+  tenant_id: string;
+  /**
+   * Plan Code
+   */
+  plan_code: string | null;
+  /**
+   * Users
+   */
+  users: {
+    [key: string]: FixtureUserResult;
+  };
+  /**
+   * Conversations
+   */
+  conversations: {
+    [key: string]: FixtureConversationResult;
+  };
+  /**
+   * Assets
+   */
+  assets?: {
+    [key: string]: FixtureAssetResult;
+  };
+};
+
+/**
+ * FixtureUsageCounter
+ */
+export type FixtureUsageCounter = {
+  /**
+   * Period Start
+   */
+  period_start: string;
+  /**
+   * Granularity
+   */
+  granularity?: "day" | "month";
+  /**
+   * Input Tokens
+   */
+  input_tokens?: number;
+  /**
+   * Output Tokens
+   */
+  output_tokens?: number;
+  /**
+   * Requests
+   */
+  requests?: number;
+  /**
+   * Storage Bytes
+   */
+  storage_bytes?: number;
+  /**
+   * User Email
+   */
+  user_email?: string | null;
+};
+
+/**
+ * FixtureUsageEntry
+ */
+export type FixtureUsageEntry = {
+  /**
+   * Feature Key
+   */
+  feature_key: string;
+  /**
+   * Quantity
+   */
+  quantity: number;
+  /**
+   * Unit
+   */
+  unit?: string;
+  /**
+   * Period Start
+   */
+  period_start: string;
+  /**
+   * Period End
+   */
+  period_end?: string | null;
+  /**
+   * Idempotency Key
+   */
+  idempotency_key?: string | null;
+};
+
+/**
+ * FixtureUser
+ */
+export type FixtureUser = {
+  /**
+   * Email
+   */
+  email: string;
+  /**
+   * Password
+   */
+  password: string;
+  /**
+   * Display Name
+   */
+  display_name?: string | null;
+  /**
+   * Role
+   */
+  role?: string;
+  /**
+   * Verify Email
+   */
+  verify_email?: boolean;
+};
+
+/**
+ * FixtureUserResult
+ */
+export type FixtureUserResult = {
+  /**
+   * User Id
+   */
+  user_id: string;
+  /**
+   * Role
+   */
+  role: string;
 };
 
 /**
@@ -3564,6 +3947,42 @@ export type PasswordResetRequest = {
 };
 
 /**
+ * PasswordResetTokenRequest
+ */
+export type PasswordResetTokenRequest = {
+  /**
+   * Email
+   */
+  email: string;
+  /**
+   * Ip Address
+   */
+  ip_address?: string | null;
+  /**
+   * User Agent
+   */
+  user_agent?: string | null;
+};
+
+/**
+ * PasswordResetTokenResponse
+ */
+export type PasswordResetTokenResponse = {
+  /**
+   * Token
+   */
+  token: string;
+  /**
+   * User Id
+   */
+  user_id: string;
+  /**
+   * Expires At
+   */
+  expires_at: string;
+};
+
+/**
  * PlanFeatureResponse
  */
 export type PlanFeatureResponse = {
@@ -3616,6 +4035,16 @@ export type PlatformStatusResponse = {
    * Uptime Metrics
    */
   uptime_metrics: Array<UptimeMetricSchema>;
+};
+
+/**
+ * PlaywrightFixtureSpec
+ */
+export type PlaywrightFixtureSpec = {
+  /**
+   * Tenants
+   */
+  tenants?: Array<FixtureTenant>;
 };
 
 /**
@@ -6183,6 +6612,134 @@ export type UsageRecordRequest = {
 };
 
 /**
+ * UserAccountDisableRequest
+ */
+export type UserAccountDisableRequest = {
+  /**
+   * Current Password
+   *
+   * Current password for verification.
+   */
+  current_password: string;
+};
+
+/**
+ * UserAccountDisableResponseData
+ */
+export type UserAccountDisableResponseData = {
+  /**
+   * User Id
+   *
+   * Current authenticated user id.
+   */
+  user_id: string;
+  /**
+   * Disabled
+   *
+   * Whether the account is now disabled.
+   */
+  disabled: boolean;
+  /**
+   * Revoked Sessions
+   *
+   * Number of sessions revoked after disabling the account.
+   */
+  revoked_sessions: number;
+};
+
+/**
+ * UserAccountDisableSuccessResponse
+ */
+export type UserAccountDisableSuccessResponse = {
+  /**
+   * Success
+   *
+   * Operation success status flag.
+   */
+  success?: boolean;
+  /**
+   * Message
+   *
+   * Human-readable summary of the result.
+   */
+  message: string;
+  /**
+   * Account disable result payload.
+   */
+  data?: UserAccountDisableResponseData | null;
+};
+
+/**
+ * UserEmailChangeRequest
+ */
+export type UserEmailChangeRequest = {
+  /**
+   * Current Password
+   *
+   * Current password for verification.
+   */
+  current_password: string;
+  /**
+   * New Email
+   *
+   * Replacement email address.
+   */
+  new_email: string;
+};
+
+/**
+ * UserEmailChangeResponseData
+ */
+export type UserEmailChangeResponseData = {
+  /**
+   * User Id
+   *
+   * Current authenticated user id.
+   */
+  user_id: string;
+  /**
+   * Email
+   *
+   * Updated email address.
+   */
+  email: string;
+  /**
+   * Email Verified
+   *
+   * Whether the updated email is verified.
+   */
+  email_verified: boolean;
+  /**
+   * Verification Sent
+   *
+   * Whether a verification email was dispatched after the change.
+   */
+  verification_sent: boolean;
+};
+
+/**
+ * UserEmailChangeSuccessResponse
+ */
+export type UserEmailChangeSuccessResponse = {
+  /**
+   * Success
+   *
+   * Operation success status flag.
+   */
+  success?: boolean;
+  /**
+   * Message
+   *
+   * Human-readable summary of the result.
+   */
+  message: string;
+  /**
+   * Email change result payload.
+   */
+  data?: UserEmailChangeResponseData | null;
+};
+
+/**
  * UserLoginRequest
  *
  * Human user login payload.
@@ -6220,6 +6777,36 @@ export type UserLogoutRequest = {
    * Refresh token to revoke for the current user.
    */
   refresh_token: string;
+};
+
+/**
+ * UserProfileUpdateRequest
+ */
+export type UserProfileUpdateRequest = {
+  /**
+   * Display Name
+   */
+  display_name?: string | null;
+  /**
+   * Given Name
+   */
+  given_name?: string | null;
+  /**
+   * Family Name
+   */
+  family_name?: string | null;
+  /**
+   * Avatar Url
+   */
+  avatar_url?: string | null;
+  /**
+   * Timezone
+   */
+  timezone?: string | null;
+  /**
+   * Locale
+   */
+  locale?: string | null;
 };
 
 /**
@@ -17349,6 +17936,219 @@ export type GetCurrentUserProfileApiV1UsersMeGetResponses = {
 export type GetCurrentUserProfileApiV1UsersMeGetResponse =
   GetCurrentUserProfileApiV1UsersMeGetResponses[keyof GetCurrentUserProfileApiV1UsersMeGetResponses];
 
+export type UpdateCurrentUserProfileApiV1UsersMeProfilePatchData = {
+  body: UserProfileUpdateRequest;
+  path?: never;
+  query?: never;
+  url: "/api/v1/users/me/profile";
+};
+
+export type UpdateCurrentUserProfileApiV1UsersMeProfilePatchErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type UpdateCurrentUserProfileApiV1UsersMeProfilePatchError =
+  UpdateCurrentUserProfileApiV1UsersMeProfilePatchErrors[keyof UpdateCurrentUserProfileApiV1UsersMeProfilePatchErrors];
+
+export type UpdateCurrentUserProfileApiV1UsersMeProfilePatchResponses = {
+  /**
+   * Successful Response
+   */
+  200: CurrentUserProfileSuccessResponse;
+};
+
+export type UpdateCurrentUserProfileApiV1UsersMeProfilePatchResponse =
+  UpdateCurrentUserProfileApiV1UsersMeProfilePatchResponses[keyof UpdateCurrentUserProfileApiV1UsersMeProfilePatchResponses];
+
+export type ChangeCurrentUserEmailApiV1UsersMeEmailPatchData = {
+  body: UserEmailChangeRequest;
+  path?: never;
+  query?: never;
+  url: "/api/v1/users/me/email";
+};
+
+export type ChangeCurrentUserEmailApiV1UsersMeEmailPatchErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type ChangeCurrentUserEmailApiV1UsersMeEmailPatchError =
+  ChangeCurrentUserEmailApiV1UsersMeEmailPatchErrors[keyof ChangeCurrentUserEmailApiV1UsersMeEmailPatchErrors];
+
+export type ChangeCurrentUserEmailApiV1UsersMeEmailPatchResponses = {
+  /**
+   * Successful Response
+   */
+  200: UserEmailChangeSuccessResponse;
+};
+
+export type ChangeCurrentUserEmailApiV1UsersMeEmailPatchResponse =
+  ChangeCurrentUserEmailApiV1UsersMeEmailPatchResponses[keyof ChangeCurrentUserEmailApiV1UsersMeEmailPatchResponses];
+
+export type DisableCurrentUserAccountApiV1UsersMeDisablePostData = {
+  body: UserAccountDisableRequest;
+  path?: never;
+  query?: never;
+  url: "/api/v1/users/me/disable";
+};
+
+export type DisableCurrentUserAccountApiV1UsersMeDisablePostErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type DisableCurrentUserAccountApiV1UsersMeDisablePostError =
+  DisableCurrentUserAccountApiV1UsersMeDisablePostErrors[keyof DisableCurrentUserAccountApiV1UsersMeDisablePostErrors];
+
+export type DisableCurrentUserAccountApiV1UsersMeDisablePostResponses = {
+  /**
+   * Successful Response
+   */
+  200: UserAccountDisableSuccessResponse;
+};
+
+export type DisableCurrentUserAccountApiV1UsersMeDisablePostResponse =
+  DisableCurrentUserAccountApiV1UsersMeDisablePostResponses[keyof DisableCurrentUserAccountApiV1UsersMeDisablePostResponses];
+
 export type ListUsageApiV1UsageGetData = {
   body?: never;
   headers?: {
@@ -18139,3 +18939,222 @@ export type BillingEventStreamApiV1BillingStreamGetResponses = {
 
 export type BillingEventStreamApiV1BillingStreamGetResponse =
   BillingEventStreamApiV1BillingStreamGetResponses[keyof BillingEventStreamApiV1BillingStreamGetResponses];
+
+export type ApplyTestFixturesApiV1TestFixturesApplyPostData = {
+  body: PlaywrightFixtureSpec;
+  path?: never;
+  query?: never;
+  url: "/api/v1/test-fixtures/apply";
+};
+
+export type ApplyTestFixturesApiV1TestFixturesApplyPostErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type ApplyTestFixturesApiV1TestFixturesApplyPostError =
+  ApplyTestFixturesApiV1TestFixturesApplyPostErrors[keyof ApplyTestFixturesApiV1TestFixturesApplyPostErrors];
+
+export type ApplyTestFixturesApiV1TestFixturesApplyPostResponses = {
+  /**
+   * Successful Response
+   */
+  201: FixtureApplyResult;
+};
+
+export type ApplyTestFixturesApiV1TestFixturesApplyPostResponse =
+  ApplyTestFixturesApiV1TestFixturesApplyPostResponses[keyof ApplyTestFixturesApiV1TestFixturesApplyPostResponses];
+
+export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostData =
+  {
+    body: EmailVerificationTokenRequest;
+    path?: never;
+    query?: never;
+    url: "/api/v1/test-fixtures/email-verification-token";
+  };
+
+export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostError =
+  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors[keyof IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors];
+
+export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses =
+  {
+    /**
+     * Successful Response
+     */
+    201: EmailVerificationTokenResponse;
+  };
+
+export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponse =
+  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses[keyof IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses];
+
+export type IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostData =
+  {
+    body: PasswordResetTokenRequest;
+    path?: never;
+    query?: never;
+    url: "/api/v1/test-fixtures/password-reset-token";
+  };
+
+export type IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostError =
+  IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostErrors[keyof IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostErrors];
+
+export type IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostResponses =
+  {
+    /**
+     * Successful Response
+     */
+    201: PasswordResetTokenResponse;
+  };
+
+export type IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostResponse =
+  IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostResponses[keyof IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostResponses];
