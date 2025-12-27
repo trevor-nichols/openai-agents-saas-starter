@@ -6,12 +6,28 @@ Fast, deterministic checks that hit a running api-service over HTTP. Designed fo
 - Health/ready, JWKS, Prometheus metrics
 - Auth login/refresh/me
 - Agents catalog/status
+- Status snapshot + RSS
+- Activity list + receipts (read/dismiss/mark-all)
+- Tools catalog
+- Guardrails catalog + presets
 - Conversations list/detail/search/events + delete
-- Workflows list/runs
-- Storage presign + list
+- Usage counters
+- User profile, consents, and notification preferences
+- Tenant settings (get + update)
+- Workflows list/runs + descriptors
+- Storage presign + list + download/delete
+- Uploads agent-input presign
+- Assets list/detail/download/thumbnail/delete (gated)
 - Logs ingestion
-- Optional: Billing plans/subscription (`SMOKE_ENABLE_BILLING=1`)
-- Optional: Chat + workflow run (`SMOKE_ENABLE_AI=1` and model key available)
+- Optional: Billing plans + subscription lifecycle + usage/events (and stream with `SMOKE_ENABLE_BILLING_STREAM=1`)
+- Optional: Chat + workflow run + run-stream (`SMOKE_ENABLE_AI=1` and model key available)
+- Optional: Conversation ledger events/stream + workflow replay (requires streaming, `SMOKE_ENABLE_AI=1`)
+- Optional: Activity stream (`SMOKE_ENABLE_ACTIVITY_STREAM=1`)
+- Optional: OpenAI file download proxy (`SMOKE_ENABLE_OPENAI_FILES=1` + file id)
+- Optional: Vector stores CRUD + search (`SMOKE_ENABLE_VECTOR=1`)
+- Optional: Containers create/list/bind/unbind/delete (`SMOKE_ENABLE_CONTAINERS=1`)
+
+See `COVERAGE_MATRIX.md` for the router-to-test mapping and planned coverage.
 
 ## Prereqs
 - api-service running locally on `SMOKE_BASE_URL` (default `http://localhost:8000`)
@@ -34,8 +50,20 @@ SMOKE_BASE_URL=http://localhost:8000 pytest -m smoke tests/smoke/http --maxfail=
 - `SMOKE_BASE_URL` (default `http://localhost:8000`)
 - `SMOKE_TENANT_SLUG`, `SMOKE_USER_EMAIL`, `SMOKE_USER_PASSWORD` (fixture seed)
 - `SMOKE_ENABLE_BILLING` (1/0) — exercise billing endpoints
-- `SMOKE_ENABLE_AI` (1/0) — exercise chat + workflow run (needs model key)
-- `SMOKE_ENABLE_VECTOR`, `SMOKE_ENABLE_CONTAINERS` — reserved for future optional paths
+- `SMOKE_ENABLE_AI` (1/0) — exercise chat + workflow run/stream + ledger/replay (needs model key)
+- `SMOKE_ENABLE_BILLING_STREAM` (1/0) — billing SSE stream
+- `SMOKE_ENABLE_ACTIVITY_STREAM` (1/0) — activity SSE stream
+- `SMOKE_ENABLE_AUTH_SIGNUP` (1/0) — public signup flows
+- `SMOKE_ENABLE_AUTH_EXTENDED` (1/0) — email verification, password reset/change, session management
+- `SMOKE_ENABLE_AUTH_MFA` (1/0) — MFA enroll/verify flows
+- `SMOKE_ENABLE_SERVICE_ACCOUNTS` (1/0) — service account issuance/token management
+- `SMOKE_ENABLE_CONTACT` (1/0) — contact form endpoint
+- `SMOKE_ENABLE_STATUS_SUBSCRIPTIONS` (1/0) — status subscription management + resend
+- `SMOKE_ENABLE_OPENAI_FILES` (1/0) — OpenAI file/container download proxy
+- `SMOKE_OPENAI_FILE_ID` — OpenAI file id seeded in the API DB for download proxy smoke
+- `SMOKE_ENABLE_ASSETS` (1/0) — assets list/detail/download/thumbnail/delete
+- `SMOKE_ENABLE_VECTOR`, `SMOKE_ENABLE_CONTAINERS` (1/0) — provider-backed storage/runtime tests
+- Optional fixture user overrides: `SMOKE_OPERATOR_EMAIL`, `SMOKE_UNVERIFIED_EMAIL`, `SMOKE_MFA_EMAIL`, `SMOKE_PASSWORD_RESET_EMAIL`, `SMOKE_PASSWORD_CHANGE_EMAIL` (use `SMOKE_USER_PASSWORD`).
 
 ## CI usage
 Backend CI job `http-smoke` runs `just smoke-http` with sqlite + redis, auto-migrations on, and fixtures enabled. Optional gates stay off unless env overrides are set in the workflow.

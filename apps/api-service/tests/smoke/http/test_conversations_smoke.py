@@ -7,10 +7,35 @@ import pytest
 
 from tests.smoke.http.auth import auth_headers
 from tests.smoke.http.config import SmokeConfig
+from tests.smoke.http.helpers import fetch_sse_event_json, require_enabled
 from tests.smoke.http.state import SmokeState
 
 
 pytestmark = [pytest.mark.smoke, pytest.mark.asyncio]
+
+
+async def _start_chat_stream(
+    http_client: httpx.AsyncClient,
+    smoke_config: SmokeConfig,
+    smoke_state: SmokeState,
+) -> dict[str, str]:
+    require_enabled(smoke_config.enable_ai, reason="SMOKE_ENABLE_AI not enabled")
+
+    payload = {
+        "message": "Hello",
+        "agent_type": "triage",
+    }
+    event = await fetch_sse_event_json(
+        http_client,
+        "POST",
+        "/api/v1/chat/stream",
+        json=payload,
+        headers=auth_headers(smoke_state),
+        timeout_seconds=smoke_config.request_timeout,
+    )
+    conversation_id = event.get("conversation_id")
+    assert isinstance(conversation_id, str) and conversation_id
+    return {"conversation_id": conversation_id}
 
 
 async def test_conversation_list_and_detail(
@@ -92,3 +117,43 @@ async def test_conversation_delete_on_fresh_seed(
         f"/api/v1/conversations/{convo_id}", headers=auth_headers(smoke_state)
     )
     assert delete.status_code == 204
+
+
+async def test_conversation_ledger_events(
+    http_client: httpx.AsyncClient,
+    smoke_config: SmokeConfig,
+    smoke_state: SmokeState,
+) -> None:
+    session = await _start_chat_stream(http_client, smoke_config, smoke_state)
+    conversation_id = session["conversation_id"]
+
+    headers = auth_headers(smoke_state)
+    resp = await http_client.get(
+        f"/api/v1/conversations/{conversation_id}/ledger/events", headers=headers
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body.get("conversation_id") == conversation_id
+    items = body.get("items", [])
+    assert isinstance(items, list)
+    assert items
+
+
+async def test_conversation_ledger_stream(
+    http_client: httpx.AsyncClient,
+    smoke_config: SmokeConfig,
+    smoke_state: SmokeState,
+) -> None:
+    session = await _start_chat_stream(http_client, smoke_config, smoke_state)
+    conversation_id = session["conversation_id"]
+
+    headers = auth_headers(smoke_state)
+    event = await fetch_sse_event_json(
+        http_client,
+        "GET",
+        f"/api/v1/conversations/{conversation_id}/ledger/stream",
+        headers=headers,
+        timeout_seconds=smoke_config.request_timeout,
+    )
+    assert event.get("schema") == "public_sse_v1"
+    assert event.get("conversation_id") == conversation_id

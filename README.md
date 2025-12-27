@@ -4,6 +4,42 @@ Starter kit for building AI Agent SaaS products. The repo bundles a FastAPI back
 
 <img src="docs/assets/media/web-app.png" alt="OpenAI Agent Starter screenshots" width="1200" />
 
+## Quick Start (choose one)
+
+| Setup mode | Best for | Entry point |
+| --- | --- | --- |
+| Demo | Fast local demo | `just setup-demo-lite` (or `just setup-demo-full`) |
+| Wizard | Dev/staging/production | `starter-console setup wizard --profile demo|staging|production` |
+| Manual | Power users | Copy `.env` examples + run `just dev-up` / `just migrate` / `just api` (see “Guided Setup” below) |
+
+### 1) Fast demo (local)
+Best for a quick, runnable demo with sensible defaults.
+
+```bash
+just python-bootstrap
+just dev-install
+just setup-demo-lite
+just api
+```
+
+Optional: `just setup-demo-full` for all automation toggles, and `just issue-demo-token` after the API is running.
+
+### 2) Guided wizard (demo / staging / production)
+Use this when you want something beyond a demo or need staging/production fidelity. Profiles: `demo` (local dev), `staging`, `production`.
+
+```bash
+starter-console setup wizard --profile demo
+# or: --profile staging | --profile production
+```
+
+Headless/CI: `starter-console setup wizard --non-interactive --answers-file ./answers.json`.
+Repo shortcuts: `just setup-staging` and `just setup-production`.
+Alternate startup: `starter-console start dev --detached` (or `just start-dev`) after env files exist.
+
+### 3) Just browse the repo
+If you only want to read the code/docs, clone and explore:
+`README.md`, `SNAPSHOT.md`, and `packages/starter_console/README.md`.
+
 ## Architecture At A Glance
 - **Backend** (`apps/api-service/`): FastAPI, async SQLAlchemy, Postgres + Redis (refresh-token cache, rate limits, billing streams), Ed25519 JWT auth, Alembic migrations, OpenAI Agents SDK integrations, Stripe billing services.
 - **Frontend** (`apps/web-app/`): Next.js 16 App Router with BFF routes under `app/api/v1`, TanStack Query, Shadcn UI, HeyAPI-generated client under `lib/api/client`, Storybook, Playwright/Vitest tests.
@@ -82,29 +118,31 @@ See `docs/architecture/repo-layout.md` for rules and ownership. Hosting referenc
 
 > Tip: macOS users can run `brew install just`; Ubuntu runners can use `sudo apt-get install just`.
 
-## First-Time Setup
-1. **Bootstrap tooling**  
+## Guided Setup (wizard details)
+If you’re going beyond a demo, use the wizard so env files and audit artifacts stay consistent across environments. Profiles: `demo` (local dev), `staging`, `production`.
+
+1. **Bootstrap tooling**
    ```bash
    just python-bootstrap   # installs Python 3.11 + Hatch (via uv)
    just bootstrap          # creates/refreshes the Hatch environment
    pnpm install            # inside apps/web-app/
    ```
-2. **Create local compose defaults**  
+2. **Create local compose defaults**
    ```bash
    cp .env.compose.example .env.compose
    ```
    `.env.compose` is gitignored and holds non-sensitive defaults for local helpers (ports, toggles, etc.).
-3. **Run prerequisite check**  
+3. **Run prerequisite check**
    ```bash
    just cli cmd="infra deps --format table"
    ```
-4. **Guided environment wizard**  
+4. **Run the wizard (interactive or headless)**
    ```bash
    starter-console setup wizard --profile demo
    # OR from repo root: just cli cmd="setup wizard --profile demo"
-   ```  
+   ```
    The wizard writes `apps/api-service/.env.local` (backend) and `apps/web-app/.env.local`, covering secrets, providers, tenants, signup policy, and frontend runtime config. Use `--non-interactive`, `--answers-file`, and `--summary-path` for headless or auditable runs.
-5. **Bring up local infrastructure**  
+5. **Bring up local infrastructure**
    ```bash
    just dev-up        # Postgres + Redis
    just vault-up      # optional: dev Vault signer for auth flows

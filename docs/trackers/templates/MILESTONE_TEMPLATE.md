@@ -2,7 +2,7 @@
 # <Milestone: Short Name>
 
 _Last updated: YYYY-MM-DD_  
-**Status:** Planned | In Progress | Completed | Archived  
+**Status:** Planned | In Progress | Completed  
 **Owner:** @handle or team name  
 **Domain:** Backend | Frontend | Console | Infra | Cross-cutting  
 **ID / Links:** [Issue/Linear/Jira], [Docs], [Related trackers]
@@ -65,6 +65,18 @@ If there’s a full design doc, just summarize and link it.
 
 ---
 
+<!-- SECTION: Smoke Philosophy (optional) -->
+## Smoke Philosophy (Optional)
+
+Use this section when a milestone changes or expands smoke tests. Keep it short and action-oriented:
+
+- Smoke tests are shallow, fast, end-to-end checks for service wiring and happy paths.
+- Streaming/SSE smoke should verify connection + first event + clean termination only; contract shape is covered elsewhere.
+- Provider-dependent smoke tests are gated behind explicit env flags; default CI stays deterministic.
+- Prefer deterministic fixtures for baseline state; use public APIs to create/clean up when those APIs are in scope.
+
+---
+
 <!-- SECTION: Workstreams & Tasks -->
 ## Workstreams & Tasks
 
@@ -86,7 +98,7 @@ Top-level workstreams, each with its own mini checklist.
 <!-- SECTION: Phases (optional if simple) -->
 ## Phases
 
-Use when the milestone is multi-stage or time-based.
+Use when the milestone is multi-stage.
 
 | Phase | Scope | Exit Criteria | Status |
 | ----- | ----- | ------------- | ------ |

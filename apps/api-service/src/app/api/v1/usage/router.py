@@ -17,9 +17,16 @@ def _service() -> UsageCounterService:
     return get_usage_counter_service()
 
 
+_ALLOWED_VIEWER_ROLES: tuple[TenantRole, ...] = (
+    TenantRole.VIEWER,
+    TenantRole.ADMIN,
+    TenantRole.OWNER,
+)
+
+
 @router.get("", response_model=list[UsageCounterView])
 async def list_usage(
-    context: TenantContext = Depends(require_tenant_role(TenantRole.VIEWER)),
+    context: TenantContext = Depends(require_tenant_role(*_ALLOWED_VIEWER_ROLES)),
 ) -> list[UsageCounterView]:
     service = _service()
     counters = await service.list_for_tenant(

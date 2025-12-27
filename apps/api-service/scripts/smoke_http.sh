@@ -24,6 +24,7 @@ SMOKE_ENABLE_BILLING="${SMOKE_ENABLE_BILLING:-0}"
 SMOKE_ENABLE_AI="${SMOKE_ENABLE_AI:-0}"
 SMOKE_ENABLE_VECTOR="${SMOKE_ENABLE_VECTOR:-0}"
 SMOKE_ENABLE_CONTAINERS="${SMOKE_ENABLE_CONTAINERS:-0}"
+SMOKE_USE_STUB_PROVIDER="${SMOKE_USE_STUB_PROVIDER:-1}"
 
 export USE_TEST_FIXTURES
 export AUTO_RUN_MIGRATIONS
@@ -48,6 +49,7 @@ export SMOKE_ENABLE_BILLING
 export SMOKE_ENABLE_AI
 export SMOKE_ENABLE_VECTOR
 export SMOKE_ENABLE_CONTAINERS
+export SMOKE_USE_STUB_PROVIDER
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 project_dir="$(cd "${script_dir}/.." && pwd)"
@@ -55,7 +57,11 @@ AUTH_KEY_STORAGE_PATH="${AUTH_KEY_STORAGE_PATH:-${project_dir}/tests/fixtures/ke
 export AUTH_KEY_STORAGE_PATH
 cd "${project_dir}"
 
-python -m hatch run serve >/tmp/api-smoke.log 2>&1 &
+if [ "${SMOKE_USE_STUB_PROVIDER}" = "1" ] || [ "${SMOKE_USE_STUB_PROVIDER}" = "true" ]; then
+  hatch run python ../../tools/smoke/http_smoke_server.py >/tmp/api-smoke.log 2>&1 &
+else
+  hatch run serve >/tmp/api-smoke.log 2>&1 &
+fi
 api_pid=$!
 trap "kill ${api_pid}" EXIT
 
@@ -81,7 +87,7 @@ if [ "${health_ok}" != "true" ]; then
   exit 1
 fi
 
-if ! python -m hatch run pytest -m smoke tests/smoke/http --maxfail=1 -q; then
+if ! hatch run pytest -m smoke tests/smoke/http --maxfail=1 -q; then
   echo "Smoke tests failed; tailing /tmp/api-smoke.log" >&2
   tail -n 200 /tmp/api-smoke.log || true
   exit 1

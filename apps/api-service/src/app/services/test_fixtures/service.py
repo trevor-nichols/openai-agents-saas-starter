@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Literal, cast
-from uuid import UUID, uuid4
+from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 from pydantic import BaseModel, EmailStr, Field, ValidationInfo, field_validator
 from sqlalchemy import delete, select
@@ -13,6 +14,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.bootstrap.container import ApplicationContainer, get_container
 from app.core.security import PASSWORD_HASH_VERSION, get_password_hash
+from app.core.settings import get_settings
+from app.domain.assets import AssetSourceTool, AssetType
+from app.domain.storage import StorageProviderLiteral
+from app.infrastructure.persistence.assets.models import AgentAsset
 from app.infrastructure.persistence.auth.models.membership import TenantUserMembership
 from app.infrastructure.persistence.auth.models.user import (
     PasswordHistory,
@@ -27,11 +32,17 @@ from app.infrastructure.persistence.billing.models import (
 )
 from app.infrastructure.persistence.conversations.ledger_models import ConversationLedgerSegment
 from app.infrastructure.persistence.conversations.models import AgentConversation, AgentMessage
+from app.infrastructure.persistence.storage.models import StorageBucket, StorageObject
 from app.infrastructure.persistence.tenants.models import TenantAccount
+from app.infrastructure.persistence.usage.models import UsageCounter, UsageCounterGranularity
+from app.infrastructure.storage.registry import get_storage_provider
 
 
 class TestFixtureError(RuntimeError):
     """Raised when deterministic seed application fails."""
+
+
+_SAFE_CHARS = re.compile(r"[^A-Za-z0-9._-]+")
 
 
 class FixtureConversationMessage(BaseModel):
@@ -68,6 +79,33 @@ class FixtureUsageEntry(BaseModel):
         return value
 
 
+class FixtureUsageCounter(BaseModel):
+    period_start: date
+    granularity: Literal["day", "month"] = "day"
+    input_tokens: int = Field(default=0, ge=0)
+    output_tokens: int = Field(default=0, ge=0)
+    requests: int = Field(default=0, ge=0)
+    storage_bytes: int = Field(default=0, ge=0)
+    user_email: EmailStr | None = None
+
+
+class FixtureAsset(BaseModel):
+    key: str = Field(min_length=1)
+    asset_type: AssetType = Field(default="file")
+    source_tool: AssetSourceTool | None = None
+    filename: str = Field(min_length=1)
+    mime_type: str | None = None
+    size_bytes: int | None = Field(default=None, ge=0)
+    agent_key: str | None = Field(default=None, max_length=64)
+    conversation_key: str | None = None
+    message_id: int | None = Field(default=None, ge=1)
+    tool_call_id: str | None = None
+    response_id: str | None = None
+    container_id: str | None = None
+    openai_file_id: str | None = None
+    user_email: EmailStr | None = None
+    metadata: dict[str, object] = Field(default_factory=dict)
+
 class FixtureUser(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
@@ -84,6 +122,8 @@ class FixtureTenant(BaseModel):
     users: list[FixtureUser] = Field(default_factory=list)
     conversations: list[FixtureConversation] = Field(default_factory=list)
     usage: list[FixtureUsageEntry] = Field(default_factory=list)
+    usage_counters: list[FixtureUsageCounter] = Field(default_factory=list)
+    assets: list[FixtureAsset] = Field(default_factory=list)
 
 
 class PlaywrightFixtureSpec(BaseModel):
@@ -100,11 +140,17 @@ class FixtureConversationResult(BaseModel):
     status: str
 
 
+class FixtureAssetResult(BaseModel):
+    asset_id: str
+    storage_object_id: str
+
+
 class FixtureTenantResult(BaseModel):
     tenant_id: str
     plan_code: str | None
     users: dict[str, FixtureUserResult]
     conversations: dict[str, FixtureConversationResult]
+    assets: dict[str, FixtureAssetResult] = Field(default_factory=dict)
 
 
 class FixtureApplyResult(BaseModel):
@@ -119,6 +165,7 @@ class _TenantContext:
     subscription: TenantSubscription | None
     user_results: dict[str, FixtureUserResult]
     conversation_results: dict[str, FixtureConversationResult]
+    asset_results: dict[str, FixtureAssetResult]
 
 
 class TestFixtureService:
@@ -143,6 +190,7 @@ class TestFixtureService:
                 plan_code=context.plan_code,
                 users=context.user_results,
                 conversations=context.conversation_results,
+                assets=context.asset_results,
             )
 
         return FixtureApplyResult(tenants=results, generated_at=datetime.now(UTC))
@@ -182,6 +230,24 @@ class TestFixtureService:
                         conversations=tenant_spec.conversations,
                     )
 
+                if tenant_spec.usage_counters:
+                    await self._ensure_usage_counters(
+                        session=session,
+                        tenant=tenant,
+                        user_results=user_results,
+                        usage_counters=tenant_spec.usage_counters,
+                    )
+
+                asset_results: dict[str, FixtureAssetResult] = {}
+                if tenant_spec.assets:
+                    asset_results = await self._ensure_assets(
+                        session=session,
+                        tenant=tenant,
+                        user_results=user_results,
+                        conversation_results=conversation_results,
+                        assets=tenant_spec.assets,
+                    )
+
                 if tenant_spec.usage and subscription is not None:
                     await self._ensure_usage_records(
                         session=session,
@@ -195,6 +261,7 @@ class TestFixtureService:
             subscription=subscription,
             user_results=user_results,
             conversation_results=conversation_results,
+            asset_results=asset_results,
         )
 
     async def _ensure_tenant(
@@ -243,6 +310,8 @@ class TestFixtureService:
             user.status = UserStatus.ACTIVE
             if user_spec.verify_email:
                 user.email_verified_at = now
+            else:
+                user.email_verified_at = None
 
         profile = await session.scalar(
             select(UserProfile).where(UserProfile.user_id == user.id)
@@ -473,6 +542,190 @@ class TestFixtureService:
                     )
                 )
 
+    async def _ensure_usage_counters(
+        self,
+        session: AsyncSession,
+        tenant: TenantAccount,
+        user_results: dict[str, FixtureUserResult],
+        usage_counters: list[FixtureUsageCounter],
+    ) -> None:
+        now = datetime.now(UTC)
+        for entry in usage_counters:
+            user_id = (
+                self._resolve_user_id(entry.user_email, user_results)
+                if entry.user_email
+                else None
+            )
+            granularity = UsageCounterGranularity(entry.granularity)
+            stmt = select(UsageCounter).where(
+                UsageCounter.tenant_id == tenant.id,
+                UsageCounter.period_start == entry.period_start,
+                UsageCounter.granularity == granularity,
+            )
+            if user_id is None:
+                stmt = stmt.where(UsageCounter.user_id.is_(None))
+            else:
+                stmt = stmt.where(UsageCounter.user_id == user_id)
+
+            existing = await session.scalar(stmt)
+            if existing:
+                existing.input_tokens = entry.input_tokens
+                existing.output_tokens = entry.output_tokens
+                existing.requests = entry.requests
+                existing.storage_bytes = entry.storage_bytes
+                existing.updated_at = now
+            else:
+                session.add(
+                    UsageCounter(
+                        id=uuid4(),
+                        tenant_id=tenant.id,
+                        user_id=user_id,
+                        period_start=entry.period_start,
+                        granularity=granularity,
+                        input_tokens=entry.input_tokens,
+                        output_tokens=entry.output_tokens,
+                        requests=entry.requests,
+                        storage_bytes=entry.storage_bytes,
+                        created_at=now,
+                        updated_at=now,
+                    )
+                )
+
+    async def _ensure_assets(
+        self,
+        session: AsyncSession,
+        tenant: TenantAccount,
+        user_results: dict[str, FixtureUserResult],
+        conversation_results: dict[str, FixtureConversationResult],
+        assets: list[FixtureAsset],
+    ) -> dict[str, FixtureAssetResult]:
+        if not assets:
+            return {}
+
+        settings = get_settings()
+        provider = get_storage_provider(settings)
+        bucket_name = self._bucket_name(settings, tenant.id)
+        region = self._bucket_region(settings)
+        await provider.ensure_bucket(
+            bucket_name,
+            region=region,
+            create_if_missing=self._should_auto_create_bucket(settings),
+        )
+
+        bucket = await session.scalar(
+            select(StorageBucket).where(
+                StorageBucket.tenant_id == tenant.id,
+                StorageBucket.bucket_name == bucket_name,
+            )
+        )
+        if bucket is None:
+            bucket = StorageBucket(
+                tenant_id=tenant.id,
+                provider=settings.storage_provider.value,
+                bucket_name=bucket_name,
+                region=region,
+                prefix=settings.storage_bucket_prefix,
+                is_default=True,
+                status="ready",
+            )
+            session.add(bucket)
+
+        results: dict[str, FixtureAssetResult] = {}
+        for asset in assets:
+            if asset.key in results:
+                raise TestFixtureError(f"Duplicate asset fixture key '{asset.key}'.")
+
+            conversation_id = self._resolve_conversation_id(
+                asset.conversation_key, conversation_results
+            )
+            user_id = (
+                self._resolve_user_id(asset.user_email, user_results)
+                if asset.user_email
+                else None
+            )
+
+            storage_object_id = uuid5(
+                NAMESPACE_URL, f"fixture-storage:{tenant.id}:{asset.key}"
+            )
+            asset_id = uuid5(NAMESPACE_URL, f"fixture-asset:{tenant.id}:{asset.key}")
+            safe_filename = _safe_filename(asset.filename)
+            object_key = f"{tenant.id}/{asset.key}/{safe_filename}"
+            mime_type = asset.mime_type or "application/octet-stream"
+            size_bytes = asset.size_bytes if asset.size_bytes is not None else 0
+
+            storage_obj = await session.scalar(
+                select(StorageObject).where(StorageObject.id == storage_object_id)
+            )
+            if storage_obj is None:
+                storage_obj = StorageObject(
+                    id=storage_object_id,
+                    tenant_id=tenant.id,
+                    bucket_id=bucket.id,
+                    object_key=object_key,
+                    filename=asset.filename,
+                    mime_type=mime_type,
+                    size_bytes=size_bytes,
+                    checksum_sha256=None,
+                    status="ready",
+                    created_by_user_id=user_id,
+                    agent_key=asset.agent_key,
+                    conversation_id=conversation_id,
+                    metadata_json=asset.metadata,
+                    expires_at=None,
+                )
+                session.add(storage_obj)
+            else:
+                storage_obj.bucket_id = bucket.id
+                storage_obj.object_key = object_key
+                storage_obj.filename = asset.filename
+                storage_obj.mime_type = mime_type
+                storage_obj.size_bytes = size_bytes
+                storage_obj.status = storage_obj.status or "ready"
+                storage_obj.created_by_user_id = user_id
+                storage_obj.agent_key = asset.agent_key
+                storage_obj.conversation_id = conversation_id
+                storage_obj.metadata_json = asset.metadata
+                storage_obj.deleted_at = None
+
+            asset_row = await session.scalar(
+                select(AgentAsset).where(AgentAsset.id == asset_id)
+            )
+            if asset_row is None:
+                asset_row = AgentAsset(
+                    id=asset_id,
+                    tenant_id=tenant.id,
+                    storage_object_id=storage_object_id,
+                    asset_type=asset.asset_type,
+                    source_tool=asset.source_tool,
+                    conversation_id=conversation_id,
+                    message_id=asset.message_id,
+                    tool_call_id=asset.tool_call_id,
+                    response_id=asset.response_id,
+                    container_id=asset.container_id,
+                    openai_file_id=asset.openai_file_id,
+                    metadata_json=asset.metadata,
+                )
+                session.add(asset_row)
+            else:
+                asset_row.storage_object_id = storage_object_id
+                asset_row.asset_type = asset.asset_type
+                asset_row.source_tool = asset.source_tool
+                asset_row.conversation_id = conversation_id
+                asset_row.message_id = asset.message_id
+                asset_row.tool_call_id = asset.tool_call_id
+                asset_row.response_id = asset.response_id
+                asset_row.container_id = asset.container_id
+                asset_row.openai_file_id = asset.openai_file_id
+                asset_row.metadata_json = asset.metadata
+                asset_row.deleted_at = None
+
+            results[asset.key] = FixtureAssetResult(
+                asset_id=str(asset_id),
+                storage_object_id=str(storage_object_id),
+            )
+
+        return results
+
     @staticmethod
     def _resolve_user_id(
         email: str | None, user_results: dict[str, FixtureUserResult]
@@ -484,11 +737,58 @@ class TestFixtureService:
             raise TestFixtureError(f"Conversation references unknown user '{email}'.")
         return UUID(entry.user_id)
 
+    @staticmethod
+    def _resolve_conversation_id(
+        key: str | None, conversation_results: dict[str, FixtureConversationResult]
+    ) -> UUID | None:
+        if key is None:
+            return None
+        entry = conversation_results.get(key)
+        if entry is None:
+            raise TestFixtureError(f"Asset references unknown conversation '{key}'.")
+        return UUID(entry.conversation_id)
+
+    @staticmethod
+    def _bucket_name(settings, tenant_id: UUID) -> str:
+        if settings.storage_provider == StorageProviderLiteral.GCS and settings.gcs_bucket:
+            return settings.gcs_bucket
+        if settings.storage_provider == StorageProviderLiteral.S3 and settings.s3_bucket:
+            return settings.s3_bucket
+        if (
+            settings.storage_provider == StorageProviderLiteral.AZURE_BLOB
+            and settings.azure_blob_container
+        ):
+            return settings.azure_blob_container
+        prefix = settings.storage_bucket_prefix or "agent-data"
+        tenant_token = str(tenant_id).replace("-", "")
+        return f"{prefix}-{tenant_token}"
+
+    @staticmethod
+    def _bucket_region(settings) -> str | None:
+        if settings.storage_provider == StorageProviderLiteral.MINIO:
+            return settings.minio_region
+        if settings.storage_provider == StorageProviderLiteral.S3:
+            return settings.s3_region
+        return None
+
+    @staticmethod
+    def _should_auto_create_bucket(settings) -> bool:
+        return settings.storage_provider not in {
+            StorageProviderLiteral.GCS,
+            StorageProviderLiteral.S3,
+            StorageProviderLiteral.AZURE_BLOB,
+        }
+
 
 def _ensure_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=UTC)
     return value.astimezone(UTC)
+
+
+def _safe_filename(filename: str) -> str:
+    cleaned = _SAFE_CHARS.sub("-", filename).strip("-")
+    return cleaned or "file"
 __all__ = [
     "FixtureApplyResult",
     "PlaywrightFixtureSpec",

@@ -6,11 +6,16 @@ from tests.smoke.http.config import SmokeConfig
 
 
 async def login_for_tokens(
-    client: httpx.AsyncClient, cfg: SmokeConfig, tenant_id: str
+    client: httpx.AsyncClient,
+    cfg: SmokeConfig,
+    tenant_id: str,
+    *,
+    email: str | None = None,
+    password: str | None = None,
 ) -> dict[str, str]:
     payload = {
-        "email": cfg.admin_email,
-        "password": cfg.admin_password,
+        "email": email or cfg.admin_email,
+        "password": password or cfg.admin_password,
         "tenant_id": tenant_id,
     }
     headers = {
@@ -31,4 +36,8 @@ def auth_headers(state, *, tenant_role: str = "owner") -> dict[str, str]:
     }
 
 
-__all__ = ["login_for_tokens", "auth_headers"]
+def bearer_headers(access_token: str) -> dict[str, str]:
+    return {"Authorization": f"Bearer {access_token}"}
+
+
+__all__ = ["login_for_tokens", "auth_headers", "bearer_headers"]

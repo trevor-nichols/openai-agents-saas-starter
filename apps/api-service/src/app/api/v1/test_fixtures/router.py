@@ -13,6 +13,11 @@ from app.services.signup.email_verification_service import (
     EmailVerificationTokenIssueResult,
     get_email_verification_service,
 )
+from app.services.signup.password_recovery_service import (
+    PasswordRecoveryError,
+    PasswordResetTokenIssueResult,
+    get_password_recovery_service,
+)
 from app.services.test_fixtures import (
     FixtureApplyResult,
     PlaywrightFixtureSpec,
@@ -77,6 +82,44 @@ async def issue_email_verification_token(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     return EmailVerificationTokenResponse(
+        token=result.token,
+        user_id=str(result.user_id),
+        expires_at=result.expires_at,
+    )
+
+
+class PasswordResetTokenRequest(BaseModel):
+    email: EmailStr
+    ip_address: str | None = None
+    user_agent: str | None = None
+
+
+class PasswordResetTokenResponse(BaseModel):
+    token: str
+    user_id: str
+    expires_at: datetime
+
+
+@router.post(
+    "/password-reset-token",
+    response_model=PasswordResetTokenResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def issue_password_reset_token(
+    payload: PasswordResetTokenRequest,
+    _settings: Settings = Depends(require_test_fixture_mode),
+) -> PasswordResetTokenResponse:
+    service = get_password_recovery_service()
+    try:
+        result: PasswordResetTokenIssueResult = await service.issue_token_for_testing(
+            email=payload.email,
+            ip_address=payload.ip_address,
+            user_agent=payload.user_agent,
+        )
+    except PasswordRecoveryError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    return PasswordResetTokenResponse(
         token=result.token,
         user_id=str(result.user_id),
         expires_at=result.expires_at,

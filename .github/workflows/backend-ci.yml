@@ -4,6 +4,18 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+    inputs:
+      run_stripe_replay:
+        description: "Run Stripe replay integration suite"
+        type: boolean
+        required: false
+        default: false
+      run_otlp_integration:
+        description: "Run OTLP collector integration suite"
+        type: boolean
+        required: false
+        default: false
 
 jobs:
   cli-guardrails:
@@ -250,9 +262,10 @@ jobs:
       ENABLE_RESEND_EMAIL_DELIVERY: "false"
       ALLOW_PUBLIC_SIGNUP: "true"
       SMOKE_ENABLE_BILLING: "0"
-      SMOKE_ENABLE_AI: "0"
+      SMOKE_ENABLE_AI: "1"
       SMOKE_ENABLE_VECTOR: "0"
       SMOKE_ENABLE_CONTAINERS: "0"
+      SMOKE_USE_STUB_PROVIDER: "1"
       STARTER_CONSOLE_SKIP_ENV: "true"
       STARTER_CONSOLE_SKIP_VAULT_PROBE: "true"
     services:
@@ -291,3 +304,75 @@ jobs:
 
       - name: Run HTTP smoke suite
         run: just smoke-http
+
+  stripe-replay:
+    name: backend-stripe-replay
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.run_stripe_replay == 'true') || vars.RUN_STRIPE_REPLAY == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      STARTER_CONSOLE_SKIP_ENV: "true"
+      STARTER_CONSOLE_SKIP_VAULT_PROBE: "true"
+      STRIPE_SECRET_KEY: "sk_test_ci"
+      STRIPE_WEBHOOK_SECRET: "whsec_ci"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install just
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y just
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Hatch
+        run: |
+          python -m pip install --upgrade pip
+          pip install hatch
+
+      - name: Create Hatch environment
+        working-directory: apps/api-service
+        run: hatch env create
+
+      - name: Run Stripe replay integration tests
+        working-directory: apps/api-service
+        run: hatch run pytest -m stripe_replay --enable-stripe-replay tests/integration
+
+  otlp-integration:
+    name: backend-otlp-integration
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.run_otlp_integration == 'true') || vars.RUN_OTLP_INTEGRATION == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      STARTER_CONSOLE_SKIP_ENV: "true"
+      STARTER_CONSOLE_SKIP_VAULT_PROBE: "true"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install just
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y just
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Hatch
+        run: |
+          python -m pip install --upgrade pip
+          pip install hatch
+
+      - name: Create Hatch environment
+        working-directory: apps/api-service
+        run: hatch env create
+
+      - name: Run OTLP integration test
+        working-directory: apps/api-service
+        run: hatch run pytest tests/integration/test_observability_collector.py -m integration

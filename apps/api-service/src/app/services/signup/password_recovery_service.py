@@ -8,7 +8,7 @@ import secrets
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Protocol
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from app.core.settings import Settings, get_settings
 from app.domain.password_reset import PasswordResetTokenRecord, PasswordResetTokenStore
@@ -54,6 +54,13 @@ class PasswordResetNotifier(Protocol):
         expires_at: datetime,
     ) -> None:
         ...
+
+
+@dataclass(slots=True)
+class PasswordResetTokenIssueResult:
+    token: str
+    user_id: UUID
+    expires_at: datetime
 
 
 @dataclass(slots=True)
@@ -167,6 +174,33 @@ class PasswordRecoveryService:
             result="queued",
             user_id=str(user.id),
             token_id=record.token_id,
+        )
+
+    async def issue_token_for_testing(
+        self,
+        *,
+        email: str,
+        ip_address: str | None,
+        user_agent: str | None,
+    ) -> PasswordResetTokenIssueResult:
+        normalized_email = email.strip().lower()
+        user = await self._repository.get_user_by_email(normalized_email)
+        if not user:
+            raise PasswordRecoveryError("User not found for password reset token issuance.")
+
+        token, record = self._mint_token(user, ip_address, user_agent)
+        ttl_seconds = self._token_ttl_seconds()
+        await self._token_store.save(record, ttl_seconds=ttl_seconds)
+        log_event(
+            "auth.password_reset_token",
+            result="test_issued",
+            user_id=str(user.id),
+            token_id=record.token_id,
+        )
+        return PasswordResetTokenIssueResult(
+            token=token,
+            user_id=user.id,
+            expires_at=record.expires_at,
         )
 
     async def confirm_password_reset(
@@ -311,6 +345,7 @@ def build_password_recovery_service(
 __all__ = [
     "InvalidPasswordResetTokenError",
     "PasswordResetDeliveryError",
+    "PasswordResetTokenIssueResult",
     "PasswordRecoveryError",
     "PasswordRecoveryService",
     "build_password_recovery_service",

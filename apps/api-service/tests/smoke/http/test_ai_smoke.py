@@ -5,6 +5,7 @@ import pytest
 
 from tests.smoke.http.auth import auth_headers
 from tests.smoke.http.config import SmokeConfig
+from tests.smoke.http.helpers import require_enabled
 from tests.smoke.http.state import SmokeState
 
 
@@ -14,8 +15,7 @@ pytestmark = [pytest.mark.smoke, pytest.mark.asyncio]
 async def test_chat_and_workflow_run(
     http_client: httpx.AsyncClient, smoke_config: SmokeConfig, smoke_state: SmokeState
 ) -> None:
-    if not smoke_config.enable_ai:
-        pytest.skip("SMOKE_ENABLE_AI not enabled")
+    require_enabled(smoke_config.enable_ai, reason="SMOKE_ENABLE_AI not enabled")
 
     headers = auth_headers(smoke_state)
 

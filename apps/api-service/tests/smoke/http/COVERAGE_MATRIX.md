@@ -1,0 +1,41 @@
+# HTTP Smoke Coverage Matrix (API v1)
+
+This matrix maps each API v1 router to its smoke coverage, the minimal assertion, and any gating requirements.
+Keep it in sync with `apps/api-service/src/app/api/v1/router.py` and the smoke suite under `apps/api-service/tests/smoke/http`.
+
+## API v1 routers
+
+| Router prefix | Smoke test(s) | Minimal assertion(s) | Gate / Notes |
+| --- | --- | --- | --- |
+| `/api/v1/auth` | `test_auth_smoke.py`, `test_auth_sessions_smoke.py`, `test_auth_email_password_smoke.py`, `test_auth_mfa_smoke.py`, `test_auth_signup_smoke.py`, `test_service_accounts_smoke.py` | Login/refresh/me, session management, signup/invites/requests/register, email verification + password flows, MFA TOTP, service-account issuance + token admin | Gates: `SMOKE_ENABLE_AUTH_SIGNUP`, `SMOKE_ENABLE_AUTH_EXTENDED`, `SMOKE_ENABLE_AUTH_MFA`, `SMOKE_ENABLE_SERVICE_ACCOUNTS`; fixtures seed operator/unverified/MFA users + password-reset token endpoint. |
+| `/api/v1/chat` | `test_ai_smoke.py`, `test_ai_stream_smoke.py` | `/chat` returns 200 with `conversation_id`; `/chat/stream` yields a `public_sse_v1` event | `SMOKE_ENABLE_AI=1` + model key. |
+| `/api/v1/agents` | `test_agents_smoke.py` | Catalog includes `triage`; status endpoint returns `active` | Requires seeded auth user. |
+| `/api/v1/assets` | `test_assets_smoke.py` | List/detail/download/thumbnail/delete for seeded asset | `SMOKE_ENABLE_ASSETS=1` + fixtures seed asset metadata. |
+| `/api/v1/guardrails` | `test_guardrails_smoke.py` | Guardrails + presets list and optional detail lookups | Requires `tools:read` scope on token. |
+| `/api/v1/workflows` | `test_workflows_smoke.py`, `test_ai_smoke.py` | Catalog list + runs list; `/workflows/{key}/run` returns run id; descriptor returns stages; run detail + cancel reachable; `/run-stream` yields `public_sse_v1` | `SMOKE_ENABLE_AI=1` for run + stream; cancel may return 202/409 depending on run state. |
+| `/api/v1/workflows/replay` | `test_workflows_smoke.py` | Replay events list + stream yield `public_sse_v1` | `SMOKE_ENABLE_AI=1` (requires streaming run to seed ledger). |
+| `/api/v1/conversations` | `test_conversations_smoke.py` | List/search/detail/events + delete idempotently | Requires seeded conversation via fixtures. |
+| `/api/v1/conversations/ledger` | `test_conversations_smoke.py` | Ledger events list + stream yield `public_sse_v1` | `SMOKE_ENABLE_AI=1` (requires streaming chat to seed ledger). |
+| `/api/v1/tools` | `test_tools_smoke.py` | Tool catalog returns lists/maps | Requires `tools:read` scope on token. |
+| `/api/v1/activity` | `test_activity_smoke.py` | List + receipts (read/dismiss/mark-all); stream handshake | Requires `activity:read` scope; stream gated by `SMOKE_ENABLE_ACTIVITY_STREAM`. |
+| `/api/v1/containers` | `test_containers_smoke.py` | Create/list/detail/delete + agent bind/unbind | `SMOKE_ENABLE_CONTAINERS=1` + OpenAI containers enabled. |
+| `/api/v1/vector-stores` | `test_vector_stores_smoke.py` | Create/list/detail/search/delete | `SMOKE_ENABLE_VECTOR=1` + OpenAI vector stores enabled. |
+| `/api/v1/storage` | `test_storage_smoke.py` | Upload-url + list + download-url + delete (idempotent) | Storage provider configured. |
+| `/api/v1/uploads` | `test_uploads_smoke.py` | Agent-input upload returns URL | Storage provider configured. |
+| `/api/v1/openai` (files) | `test_openai_files_smoke.py` | Proxy download returns bytes | `SMOKE_ENABLE_OPENAI_FILES=1` + `SMOKE_OPENAI_FILE_ID` seeded. |
+| `/api/v1/contact` | `test_contact_smoke.py` | Contact submission returns 202 + response payload | `SMOKE_ENABLE_CONTACT=1`. |
+| `/api/v1/status` | `test_status_smoke.py` | Snapshot contains `overview` + `incidents`; RSS returns XML | Subscriptions gated separately by `SMOKE_ENABLE_STATUS_SUBSCRIPTIONS`; Workstream E5 (subscriptions pending). |
+| `/api/v1/tenants` | `test_tenants_smoke.py` | Settings GET/PUT roundtrip | Requires owner token. |
+| `/api/v1/users` | `test_users_smoke.py` | Profile + consents + notification prefs | Requires authenticated user with tenant context. |
+| `/api/v1/usage` | `test_usage_smoke.py` | List returns array (may be empty) | Requires tenant context. |
+| `/api/v1/billing` | `test_billing_smoke.py` | Plans list + subscription lifecycle (start/update/cancel) + usage record + events list + stream handshake | `SMOKE_ENABLE_BILLING=1`; stream requires `SMOKE_ENABLE_BILLING_STREAM=1`. |
+| `/api/v1/logs` | `test_observability_smoke.py` | Ingest endpoint returns 202 | Requires `ENABLE_FRONTEND_LOG_INGEST=1` in api-service. |
+| `/api/v1/test-fixtures` | `fixtures.py`, `test_conversations_smoke.py` | Fixture apply returns 201 | Requires `USE_TEST_FIXTURES=true`; harness-only. |
+
+## Non-v1 endpoints covered
+
+| Endpoint | Smoke test(s) | Minimal assertion(s) |
+| --- | --- | --- |
+| `/health`, `/health/ready` | `test_health_smoke.py` | `status` is `healthy` / `ready` |
+| `/.well-known/jwks.json` | `test_readiness_smoke.py` | JWKS contains keys with `kid` |
+| `/metrics` | `test_readiness_smoke.py` | Prometheus scrape includes auth metrics |
