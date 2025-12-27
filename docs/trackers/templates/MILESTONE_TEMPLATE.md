@@ -84,8 +84,8 @@ Top-level workstreams, each with its own mini checklist.
 
 ### Workstream A – <Name>
 
-| ID | Area | Description | Owner | Status |
-|----|------|-------------|-------|--------|
+| ID | Area | Description | Status |
+|----|------|-------------|-------|
 | A1 | API | … | … | ✅ |
 | A2 | Tests | … | … | ⏳ |
 
