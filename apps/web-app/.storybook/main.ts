@@ -37,6 +37,7 @@ const config: StorybookConfig = {
       '@/lib/queries/account': path.resolve(__dirname, './mocks/account-queries.ts'),
       '@/lib/queries/accountSecurity': path.resolve(__dirname, './mocks/accountSecurity-queries.ts'),
       '@/lib/queries/accountSessions': path.resolve(__dirname, './mocks/accountSessions-queries.ts'),
+      '@/lib/queries/users': path.resolve(__dirname, './mocks/users-queries.ts'),
       '@/lib/queries/accountServiceAccounts': path.resolve(
         __dirname,
         './mocks/accountServiceAccounts-queries.ts'

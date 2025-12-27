@@ -32,8 +32,10 @@ from app.infrastructure.persistence.auth.user_repository import (
 )
 from app.infrastructure.persistence.tenants.models import TenantAccount
 from app.services.users import (
+    EmailAlreadyInUseError,
     InvalidCredentialsError,
     IpThrottledError,
+    LastOwnerRemovalError,
     MembershipNotFoundError,
     NullLoginThrottle,
     PasswordPolicyViolationError,
@@ -150,6 +152,23 @@ async def _register_user(service: UserService, tenant_id, email: str, password: 
     await service.register_user(create_payload)
 
 
+async def _register_user_with_role(
+    service: UserService,
+    tenant_id,
+    email: str,
+    password: str,
+    role: str,
+) -> None:
+    create_payload = UserCreate(
+        email=email,
+        password=password,
+        tenant_id=tenant_id,
+        role=role,
+        display_name="Owner",
+    )
+    await service.register_user(create_payload)
+
+
 @pytest.mark.asyncio
 async def test_authenticate_success(user_service: UserService, tenant_id) -> None:
     await _register_user(user_service, tenant_id, "service@example.com", STRONG_PASSWORD)
@@ -245,6 +264,86 @@ async def test_change_password_updates_hash_and_enforces_history(
             current_password="SparrowMeadow??462",
             new_password=STRONG_PASSWORD,
         )
+
+
+@pytest.mark.asyncio
+async def test_change_email_updates_and_clears_verification(
+    user_service: UserService,
+    tenant_id,
+) -> None:
+    await _register_user(user_service, tenant_id, "email-change@example.com", STRONG_PASSWORD)
+    user = await user_service._repository.get_user_by_email("email-change@example.com")
+    assert user is not None
+
+    result = await user_service.change_email(
+        user_id=user.id,
+        current_password=STRONG_PASSWORD,
+        new_email="new-email@example.com",
+    )
+
+    assert result.changed is True
+    assert result.user.email == "new-email@example.com"
+    assert result.user.email_verified_at is None
+
+
+@pytest.mark.asyncio
+async def test_change_email_rejects_conflict(
+    user_service: UserService,
+    tenant_id,
+) -> None:
+    await _register_user(user_service, tenant_id, "alpha@example.com", STRONG_PASSWORD)
+    await _register_user(user_service, tenant_id, "beta@example.com", STRONG_PASSWORD)
+    user = await user_service._repository.get_user_by_email("beta@example.com")
+    assert user is not None
+
+    with pytest.raises(EmailAlreadyInUseError):
+        await user_service.change_email(
+            user_id=user.id,
+            current_password=STRONG_PASSWORD,
+            new_email="alpha@example.com",
+        )
+
+
+@pytest.mark.asyncio
+async def test_disable_account_blocks_last_owner(
+    user_service: UserService,
+    tenant_id,
+) -> None:
+    await _register_user_with_role(
+        user_service, tenant_id, "owner@example.com", STRONG_PASSWORD, role="owner"
+    )
+    user = await user_service._repository.get_user_by_email("owner@example.com")
+    assert user is not None
+
+    with pytest.raises(LastOwnerRemovalError):
+        await user_service.disable_account(
+            user_id=user.id,
+            current_password=STRONG_PASSWORD,
+        )
+
+
+@pytest.mark.asyncio
+async def test_disable_account_marks_user_disabled(
+    user_service: UserService,
+    tenant_id,
+) -> None:
+    await _register_user_with_role(
+        user_service, tenant_id, "owner1@example.com", STRONG_PASSWORD, role="owner"
+    )
+    await _register_user_with_role(
+        user_service, tenant_id, "owner2@example.com", STRONG_PASSWORD, role="owner"
+    )
+    user = await user_service._repository.get_user_by_email("owner1@example.com")
+    assert user is not None
+
+    await user_service.disable_account(
+        user_id=user.id,
+        current_password=STRONG_PASSWORD,
+    )
+
+    refreshed = await user_service._repository.get_user_by_id(user.id)
+    assert refreshed is not None
+    assert refreshed.status == UserStatus.DISABLED
 
 
 @pytest.mark.asyncio

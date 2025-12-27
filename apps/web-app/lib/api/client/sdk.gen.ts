@@ -10,6 +10,9 @@ import type {
   AdminResetPasswordApiV1AuthPasswordResetPostData,
   AdminResetPasswordApiV1AuthPasswordResetPostErrors,
   AdminResetPasswordApiV1AuthPasswordResetPostResponses,
+  ApplyTestFixturesApiV1TestFixturesApplyPostData,
+  ApplyTestFixturesApiV1TestFixturesApplyPostErrors,
+  ApplyTestFixturesApiV1TestFixturesApplyPostResponses,
   ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostData,
   ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostErrors,
   ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostResponses,
@@ -31,6 +34,9 @@ import type {
   CancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPostData,
   CancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPostErrors,
   CancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPostResponses,
+  ChangeCurrentUserEmailApiV1UsersMeEmailPatchData,
+  ChangeCurrentUserEmailApiV1UsersMeEmailPatchErrors,
+  ChangeCurrentUserEmailApiV1UsersMeEmailPatchResponses,
   ChangePasswordApiV1AuthPasswordChangePostData,
   ChangePasswordApiV1AuthPasswordChangePostErrors,
   ChangePasswordApiV1AuthPasswordChangePostResponses,
@@ -85,6 +91,9 @@ import type {
   DeleteWorkflowRunApiV1WorkflowsRunsRunIdDeleteData,
   DeleteWorkflowRunApiV1WorkflowsRunsRunIdDeleteErrors,
   DeleteWorkflowRunApiV1WorkflowsRunsRunIdDeleteResponses,
+  DisableCurrentUserAccountApiV1UsersMeDisablePostData,
+  DisableCurrentUserAccountApiV1UsersMeDisablePostErrors,
+  DisableCurrentUserAccountApiV1UsersMeDisablePostResponses,
   DismissActivityApiV1ActivityEventIdDismissPostData,
   DismissActivityApiV1ActivityEventIdDismissPostErrors,
   DismissActivityApiV1ActivityEventIdDismissPostResponses,
@@ -172,9 +181,15 @@ import type {
   HealthCheckHealthGetData,
   HealthCheckHealthGetErrors,
   HealthCheckHealthGetResponses,
+  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostData,
+  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors,
+  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses,
   IssueInviteApiV1AuthInvitesPostData,
   IssueInviteApiV1AuthInvitesPostErrors,
   IssueInviteApiV1AuthInvitesPostResponses,
+  IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostData,
+  IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostErrors,
+  IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostResponses,
   IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostData,
   IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostErrors,
   IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostResponses,
@@ -367,6 +382,9 @@ import type {
   UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchData,
   UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchErrors,
   UpdateConversationTitleApiV1ConversationsConversationIdTitlePatchResponses,
+  UpdateCurrentUserProfileApiV1UsersMeProfilePatchData,
+  UpdateCurrentUserProfileApiV1UsersMeProfilePatchErrors,
+  UpdateCurrentUserProfileApiV1UsersMeProfilePatchResponses,
   UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchData,
   UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchErrors,
   UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchResponses,
@@ -3566,6 +3584,105 @@ export const getCurrentUserProfileApiV1UsersMeGet = <
 };
 
 /**
+ * Update Current User Profile
+ *
+ * Update profile metadata for the current authenticated user.
+ */
+export const updateCurrentUserProfileApiV1UsersMeProfilePatch = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    UpdateCurrentUserProfileApiV1UsersMeProfilePatchData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).patch<
+    UpdateCurrentUserProfileApiV1UsersMeProfilePatchResponses,
+    UpdateCurrentUserProfileApiV1UsersMeProfilePatchErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/users/me/profile",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Change Current User Email
+ *
+ * Change the current user's email and trigger verification.
+ */
+export const changeCurrentUserEmailApiV1UsersMeEmailPatch = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    ChangeCurrentUserEmailApiV1UsersMeEmailPatchData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).patch<
+    ChangeCurrentUserEmailApiV1UsersMeEmailPatchResponses,
+    ChangeCurrentUserEmailApiV1UsersMeEmailPatchErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/users/me/email",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Disable Current User Account
+ *
+ * Disable the current user's account (soft delete).
+ */
+export const disableCurrentUserAccountApiV1UsersMeDisablePost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    DisableCurrentUserAccountApiV1UsersMeDisablePostData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).post<
+    DisableCurrentUserAccountApiV1UsersMeDisablePostResponses,
+    DisableCurrentUserAccountApiV1UsersMeDisablePostErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/users/me/disable",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
  * List Usage
  */
 export const listUsageApiV1UsageGet = <ThrowOnError extends boolean = false>(
@@ -3817,5 +3934,79 @@ export const billingEventStreamApiV1BillingStreamGet = <
     ],
     url: "/api/v1/billing/stream",
     ...options,
+  });
+};
+
+/**
+ * Apply Test Fixtures
+ */
+export const applyTestFixturesApiV1TestFixturesApplyPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    ApplyTestFixturesApiV1TestFixturesApplyPostData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).post<
+    ApplyTestFixturesApiV1TestFixturesApplyPostResponses,
+    ApplyTestFixturesApiV1TestFixturesApplyPostErrors,
+    ThrowOnError
+  >({
+    url: "/api/v1/test-fixtures/apply",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Issue Email Verification Token
+ */
+export const issueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPost =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).post<
+      IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses,
+      IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors,
+      ThrowOnError
+    >({
+      url: "/api/v1/test-fixtures/email-verification-token",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    });
+  };
+
+/**
+ * Issue Password Reset Token
+ */
+export const issuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).post<
+    IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostResponses,
+    IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostErrors,
+    ThrowOnError
+  >({
+    url: "/api/v1/test-fixtures/password-reset-token",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
   });
 };

@@ -110,3 +110,10 @@
     color: hsl(var(--accent-foreground));
   }
 }
+
+@layer utilities {
+  .hide-password-toggle::-ms-reveal,
+  .hide-password-toggle::-ms-clear {
+    display: none;
+  }
+}

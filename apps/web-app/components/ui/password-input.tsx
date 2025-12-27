@@ -47,12 +47,6 @@ const PasswordInput = React.forwardRef<HTMLInputElement, React.ComponentProps<"i
             </TooltipContent>
           </Tooltip>
         </div>
-        <style jsx>{`
-          .hide-password-toggle::-ms-reveal,
-          .hide-password-toggle::-ms-clear {
-            display: none;
-          }
-        `}</style>
       </div>
     )
   }

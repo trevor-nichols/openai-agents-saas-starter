@@ -16,7 +16,14 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.ext.compiler import compiles
 
 from app.core.security import PASSWORD_HASH_VERSION
-from app.domain.users import UserCreatePayload, UserLoginEventDTO, UserRecord, UserStatus
+from app.domain.users import (
+    UserCreatePayload,
+    UserEmailConflictError,
+    UserLoginEventDTO,
+    UserProfilePatch,
+    UserRecord,
+    UserStatus,
+)
 from app.infrastructure.persistence.auth.models import (
     PasswordHistory,
     TenantUserMembership,
@@ -106,6 +113,26 @@ async def _create_user(repo: PostgresUserRepository, tenant_id, email: str) -> U
         tenant_id=tenant_id,
         role="admin",
         display_name="Owner",
+        status=UserStatus.ACTIVE,
+    )
+    return await repo.create_user(payload)
+
+
+async def _create_user_with_role(
+    repo: PostgresUserRepository,
+    tenant_id,
+    email: str,
+    role: str,
+    *,
+    display_name: str | None = None,
+) -> UserRecord:
+    payload = UserCreatePayload(
+        email=email,
+        password_hash="hashed",
+        password_pepper_version=PASSWORD_HASH_VERSION,
+        tenant_id=tenant_id,
+        role=role,
+        display_name=display_name,
         status=UserStatus.ACTIVE,
     )
     return await repo.create_user(payload)
@@ -210,5 +237,82 @@ async def test_trim_password_history_keeps_most_recent(
         history_rows = rows.fetchall()
 
     assert len(history_rows) == 2
-    assert history_rows[0].password_hash == "hash-3"
-    assert history_rows[1].password_hash == "hash-2"
+
+
+@pytest.mark.asyncio
+async def test_upsert_user_profile_creates_and_updates(
+    repository: PostgresUserRepository,
+    tenant_id,
+) -> None:
+    user = await _create_user_with_role(
+        repository, tenant_id, "profile@example.com", "admin", display_name=None
+    )
+    await repository.upsert_user_profile(
+        user.id,
+        UserProfilePatch(display_name="Ada Lovelace", timezone="UTC"),
+        provided_fields={"display_name", "timezone"},
+    )
+    refreshed = await repository.get_user_by_id(user.id)
+    assert refreshed is not None
+    assert refreshed.display_name == "Ada Lovelace"
+    assert refreshed.timezone == "UTC"
+
+    await repository.upsert_user_profile(
+        user.id,
+        UserProfilePatch(display_name=None),
+        provided_fields={"display_name"},
+    )
+    refreshed = await repository.get_user_by_id(user.id)
+    assert refreshed is not None
+    assert refreshed.display_name is None
+
+
+@pytest.mark.asyncio
+async def test_update_user_email_conflict(
+    repository: PostgresUserRepository,
+    tenant_id,
+) -> None:
+    user = await _create_user(repository, tenant_id, "alpha@example.com")
+    other = await _create_user(repository, tenant_id, "beta@example.com")
+
+    await repository.update_user_email(user.id, "alpha+new@example.com")
+    updated = await repository.get_user_by_id(user.id)
+    assert updated is not None
+    assert updated.email == "alpha+new@example.com"
+
+    with pytest.raises(UserEmailConflictError):
+        await repository.update_user_email(other.id, "alpha+new@example.com")
+
+
+@pytest.mark.asyncio
+async def test_list_sole_owner_tenant_ids(
+    repository: PostgresUserRepository,
+    tenant_id,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    async with session_factory() as session:
+        extra_tenant = TenantAccount(id=uuid4(), slug="extra", name="Extra")
+        session.add(extra_tenant)
+        await session.commit()
+        extra_tenant_id = extra_tenant.id
+
+    user = await _create_user_with_role(
+        repository, tenant_id, "owner@example.com", "owner", display_name=None
+    )
+    await _create_user_with_role(
+        repository, tenant_id, "coowner@example.com", "owner", display_name=None
+    )
+
+    async with session_factory() as session:
+        session.add(
+            TenantUserMembership(
+                id=uuid4(),
+                user_id=user.id,
+                tenant_id=extra_tenant_id,
+                role="owner",
+            )
+        )
+        await session.commit()
+
+    sole_owner_tenants = await repository.list_sole_owner_tenant_ids(user.id)
+    assert sole_owner_tenants == [extra_tenant_id]

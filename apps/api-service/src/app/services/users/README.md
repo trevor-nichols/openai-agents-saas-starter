@@ -7,10 +7,12 @@ Orchestrates account authentication and password lifecycle on top of the shared 
 - Password lifecycle: creation, user-initiated changes, admin resets, token-based resets, hashing/rehash (`PASSWORD_HASH_VERSION`), history checks, and strength validation.
 - Tenant context: resolves memberships and raises when a tenant is missing or ambiguous, then maps roles → scopes.
 - Status enforcement: blocks disabled/pending/locked users and clears lock state after successful authentication.
+- Profile lifecycle: updates profile attributes and resolves summary views for the current user.
+- Email lifecycle: validates current password, updates email, and clears verification state.
 - Observability: persists login events with hashed IPs and optionally streams activity logs.
 
 ## Key pieces
-- `UserService` (`service.py`): main façade used by the auth routes and `AuthService`. Methods: `authenticate`, `load_active_user`, `change_password`, `admin_reset_password`, `reset_password_via_token`, `register_user`.
+- `UserService` (`service.py`): main façade used by the auth routes and `AuthService`. Methods: `authenticate`, `load_active_user`, `change_password`, `admin_reset_password`, `reset_password_via_token`, `register_user`, `update_user_profile`, `change_email`, `disable_account`.
 - `build_user_service` / `get_user_service` (`factory.py`): wire dependencies from the container (`Settings`, `UserRepository`, activity service, IP throttler). This is what API routes call.
 - Collaborators:
   - `UserRepository` (Postgres + Redis-backed) for users, password history, lock counters, login events, and status.
@@ -22,7 +24,7 @@ Orchestrates account authentication and password lifecycle on top of the shared 
   - Errors in `errors.py`: `InvalidCredentialsError`, `IpThrottledError`, `UserLockedError`, `UserDisabledError`, `MembershipNotFoundError`, `TenantContextRequiredError`, `PasswordPolicyViolationError`.
 
 ## Where it is used
-- API: `app/api/v1/auth/routes_passwords.py` (`/password/change`, `/password/reset`) and other auth flows reach it through `get_user_service`.
+- API: `app/api/v1/auth/routes_passwords.py` (`/password/change`, `/password/reset`) and user profile/account routes (`app/api/v1/users/routes_profile.py`) reach it through `get_user_service`.
 - Auth token issuance: `app/services/auth_service.py` uses `UserService.authenticate` to validate credentials before issuing tokens.
 - Password recovery: `signup/password_recovery_service.py` calls `reset_password_via_token`.
 

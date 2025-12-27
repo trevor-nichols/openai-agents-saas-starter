@@ -18,6 +18,27 @@ async def test_user_profile(http_client: httpx.AsyncClient, smoke_state: SmokeSt
     assert data.get("user_id") == smoke_state.user_id
 
 
+async def test_user_profile_update(
+    http_client: httpx.AsyncClient, smoke_state: SmokeState
+) -> None:
+    payload = {"timezone": "UTC", "locale": "en-US"}
+    update = await http_client.patch(
+        "/api/v1/users/me/profile",
+        json=payload,
+        headers=auth_headers(smoke_state),
+    )
+    assert update.status_code == 200, update.text
+    updated = update.json().get("data") or {}
+    assert updated.get("timezone") == payload["timezone"]
+    assert updated.get("locale") == payload["locale"]
+
+    confirm = await http_client.get("/api/v1/users/me", headers=auth_headers(smoke_state))
+    assert confirm.status_code == 200
+    confirmed = confirm.json().get("data") or {}
+    assert confirmed.get("timezone") == payload["timezone"]
+    assert confirmed.get("locale") == payload["locale"]
+
+
 async def test_user_consents(http_client: httpx.AsyncClient, smoke_state: SmokeState) -> None:
     payload = {"policy_key": "terms-of-service", "version": "v1"}
     record = await http_client.post(

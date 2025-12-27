@@ -16,7 +16,7 @@ export default function StoragePage() {
 
 async function StorageContent() {
   const session = await getSessionMetaFromCookies();
-  let profile: Awaited<ReturnType<typeof getCurrentUserProfile>> = null;
+  let profile: Awaited<ReturnType<typeof getCurrentUserProfile>> | null = null;
   if (session) {
     try {
       profile = await getCurrentUserProfile();

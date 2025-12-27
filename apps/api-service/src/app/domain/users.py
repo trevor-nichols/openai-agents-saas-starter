@@ -87,8 +87,16 @@ class UserRecord:
     given_name: str | None
     family_name: str | None
     avatar_url: str | None
+    timezone: str | None
+    locale: str | None
     memberships: list[TenantMembershipDTO]
     email_verified_at: datetime | None
+
+
+@dataclass(slots=True)
+class UserEmailChangeResult:
+    user: UserRecord
+    changed: bool
 
 
 @dataclass(slots=True)
@@ -100,8 +108,20 @@ class UserProfileSummary:
     given_name: str | None
     family_name: str | None
     avatar_url: str | None
+    timezone: str | None
+    locale: str | None
     role: str
     email_verified: bool
+
+
+@dataclass(slots=True)
+class UserProfilePatch:
+    display_name: str | None = None
+    given_name: str | None = None
+    family_name: str | None = None
+    avatar_url: str | None = None
+    timezone: str | None = None
+    locale: str | None = None
 
 
 @dataclass(slots=True)
@@ -131,9 +151,19 @@ class UserRepository(Protocol):
 
     async def update_user_status(self, user_id: UUID, status: UserStatus) -> None: ...
 
+    async def upsert_user_profile(
+        self,
+        user_id: UUID,
+        update: UserProfilePatch,
+        *,
+        provided_fields: set[str],
+    ) -> None: ...
+
     async def get_user_by_email(self, email: str) -> UserRecord | None: ...
 
     async def get_user_by_id(self, user_id: UUID) -> UserRecord | None: ...
+
+    async def update_user_email(self, user_id: UUID, new_email: str) -> None: ...
 
     async def record_login_event(self, event: UserLoginEventDTO) -> None: ...
 
@@ -165,6 +195,8 @@ class UserRepository(Protocol):
 
     async def mark_email_verified(self, user_id: UUID, *, timestamp: datetime) -> None: ...
 
+    async def list_sole_owner_tenant_ids(self, user_id: UUID) -> list[UUID]: ...
+
 
 class UserRepositoryError(RuntimeError):
     """Base error for user repository operations."""
@@ -172,6 +204,10 @@ class UserRepositoryError(RuntimeError):
 
 class UserNotFoundError(UserRepositoryError):
     """Raised when a user lookup fails."""
+
+
+class UserEmailConflictError(UserRepositoryError):
+    """Raised when a requested email is already assigned to another user."""
 
 
 class PasswordReuseError(UserRepositoryError):
@@ -188,7 +224,10 @@ __all__ = [
     "UserLoginEventDTO",
     "UserRead",
     "UserRecord",
+    "UserEmailChangeResult",
     "UserProfileSummary",
+    "UserProfilePatch",
+    "UserEmailConflictError",
     "UserRepository",
     "UserRepositoryError",
     "UserStatus",
