@@ -27,8 +27,16 @@ class MembershipNotFoundError(UserServiceError):
     """Raised when a tenant is not associated with the user."""
 
 
+class EmailAlreadyInUseError(UserServiceError):
+    """Raised when attempting to reuse an email address that is already registered."""
+
+
 class PasswordPolicyViolationError(UserServiceError):
     """Raised when a password fails the configured policy."""
+
+
+class LastOwnerRemovalError(UserServiceError):
+    """Raised when attempting to disable the last owner of a tenant."""
 
 
 class IpThrottledError(UserServiceError):
@@ -38,7 +46,9 @@ class IpThrottledError(UserServiceError):
 __all__ = [
     "InvalidCredentialsError",
     "IpThrottledError",
+    "LastOwnerRemovalError",
     "MembershipNotFoundError",
+    "EmailAlreadyInUseError",
     "PasswordPolicyViolationError",
     "TenantContextRequiredError",
     "UserDisabledError",

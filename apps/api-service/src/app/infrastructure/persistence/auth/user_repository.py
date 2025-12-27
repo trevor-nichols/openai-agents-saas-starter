@@ -7,7 +7,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Protocol, cast
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
@@ -17,7 +17,9 @@ from app.domain.users import (
     PasswordHistoryEntry,
     TenantMembershipDTO,
     UserCreatePayload,
+    UserEmailConflictError,
     UserLoginEventDTO,
+    UserProfilePatch,
     UserRecord,
     UserRepository,
     UserRepositoryError,
@@ -171,6 +173,41 @@ class PostgresUserRepository(UserRepository):
             )
             await session.commit()
 
+    async def upsert_user_profile(
+        self,
+        user_id: uuid.UUID,
+        update: UserProfilePatch,
+        *,
+        provided_fields: set[str],
+    ) -> None:
+        allowed_fields = {
+            "display_name",
+            "given_name",
+            "family_name",
+            "avatar_url",
+            "timezone",
+            "locale",
+        }
+        fields = [field for field in provided_fields if field in allowed_fields]
+        if not fields:
+            return
+        async with self._session_factory() as session:
+            profile = await session.scalar(
+                select(UserProfile).where(UserProfile.user_id == user_id)
+            )
+            if profile is None:
+                profile = UserProfile(id=uuid.uuid4(), user_id=user_id)
+                session.add(profile)
+
+            for field in fields:
+                setattr(profile, field, getattr(update, field))
+            profile.updated_at = datetime.now(UTC)
+            try:
+                await session.commit()
+            except IntegrityError as exc:  # pragma: no cover - defensive
+                await session.rollback()
+                raise UserRepositoryError("Failed to update user profile.") from exc
+
     async def get_user_by_email(self, email: str) -> UserRecord | None:
         normalized = email.strip().lower()
         async with self._session_factory() as session:
@@ -185,6 +222,21 @@ class PostgresUserRepository(UserRepository):
             if not user:
                 return None
             return self._to_record(user)
+
+    async def update_user_email(self, user_id: uuid.UUID, new_email: str) -> None:
+        normalized = new_email.strip().lower()
+        now = datetime.now(UTC)
+        async with self._session_factory() as session:
+            try:
+                await session.execute(
+                    update(UserAccount)
+                    .where(UserAccount.id == user_id)
+                    .values(email=normalized, email_verified_at=None, updated_at=now)
+                )
+                await session.commit()
+            except IntegrityError as exc:
+                await session.rollback()
+                raise UserEmailConflictError("Email already registered.") from exc
 
     async def record_login_event(self, event: UserLoginEventDTO) -> None:
         async with self._session_factory() as session:
@@ -333,6 +385,8 @@ class PostgresUserRepository(UserRepository):
         given_name = user.profile.given_name if user.profile else None
         family_name = user.profile.family_name if user.profile else None
         avatar_url = user.profile.avatar_url if user.profile else None
+        timezone = user.profile.timezone if user.profile else None
+        locale = user.profile.locale if user.profile else None
         raw_status = user.status.value if hasattr(user.status, "value") else str(user.status)
         status = UserStatus(raw_status)
         return UserRecord(
@@ -347,6 +401,8 @@ class PostgresUserRepository(UserRepository):
             given_name=given_name,
             family_name=family_name,
             avatar_url=avatar_url,
+            timezone=timezone,
+            locale=locale,
             memberships=memberships,
             email_verified_at=user.email_verified_at,
         )
@@ -361,6 +417,24 @@ class PostgresUserRepository(UserRepository):
                 user.status = DBUserStatus.ACTIVE
             user.updated_at = timestamp
             await session.commit()
+
+    async def list_sole_owner_tenant_ids(self, user_id: uuid.UUID) -> list[uuid.UUID]:
+        owner_role = "owner"
+        async with self._session_factory() as session:
+            sole_owner_tenants = (
+                select(TenantUserMembership.tenant_id)
+                .where(func.lower(TenantUserMembership.role) == owner_role)
+                .group_by(TenantUserMembership.tenant_id)
+                .having(func.count(TenantUserMembership.user_id) == 1)
+                .subquery()
+            )
+            stmt = select(TenantUserMembership.tenant_id).where(
+                TenantUserMembership.user_id == user_id,
+                func.lower(TenantUserMembership.role) == owner_role,
+                TenantUserMembership.tenant_id.in_(select(sole_owner_tenants.c.tenant_id)),
+            )
+            result = await session.execute(stmt)
+            return [row[0] for row in result.all()]
 
 
 def build_lockout_store(settings: Settings) -> LockoutStore:

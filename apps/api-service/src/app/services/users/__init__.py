@@ -5,8 +5,10 @@ from __future__ import annotations
 from app.domain.users import PasswordReuseError
 
 from .errors import (
+    EmailAlreadyInUseError,
     InvalidCredentialsError,
     IpThrottledError,
+    LastOwnerRemovalError,
     MembershipNotFoundError,
     PasswordPolicyViolationError,
     TenantContextRequiredError,
@@ -21,9 +23,11 @@ from .throttling import LoginThrottle, NullLoginThrottle, RedisLoginThrottle, bu
 __all__ = [
     "build_ip_throttler",
     "build_user_service",
+    "EmailAlreadyInUseError",
     "get_user_service",
     "InvalidCredentialsError",
     "IpThrottledError",
+    "LastOwnerRemovalError",
     "LoginThrottle",
     "MembershipNotFoundError",
     "NullLoginThrottle",

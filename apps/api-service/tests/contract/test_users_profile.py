@@ -72,6 +72,8 @@ def test_users_me_returns_profile(client: TestClient, fake_user_service) -> None
         given_name="Dev",
         family_name="Admin",
         avatar_url="https://example.com/avatar.png",
+        timezone="UTC",
+        locale="en-US",
         role="owner",
         email_verified=True,
     )
@@ -88,6 +90,8 @@ def test_users_me_returns_profile(client: TestClient, fake_user_service) -> None
     assert body["data"]["email"] == profile.email
     assert body["data"]["display_name"] == profile.display_name
     assert body["data"]["avatar_url"] == profile.avatar_url
+    assert body["data"]["timezone"] == profile.timezone
+    assert body["data"]["locale"] == profile.locale
 
     fake_user_service.get_user_profile_summary.assert_awaited_once()
     kwargs = fake_user_service.get_user_profile_summary.await_args.kwargs

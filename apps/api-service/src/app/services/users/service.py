@@ -13,13 +13,17 @@ from app.domain.users import (
     TenantMembershipDTO,
     UserCreate,
     UserCreatePayload,
+    UserEmailChangeResult,
+    UserEmailConflictError,
+    UserProfilePatch,
     UserProfileSummary,
     UserRecord,
     UserRepository,
+    UserStatus,
 )
 from app.observability.logging import log_event
 
-from .errors import InvalidCredentialsError
+from .errors import EmailAlreadyInUseError, InvalidCredentialsError, LastOwnerRemovalError
 from .lockout import LockoutManager
 from .login_events import ActivityRecorder, LoginEventRecorder
 from .membership import resolve_membership
@@ -84,13 +88,8 @@ class UserService:
         current_password: str,
         new_password: str,
     ) -> None:
-        user = await self._repository.get_user_by_id(user_id)
-        if user is None:
-            raise InvalidCredentialsError("Unknown user.")
-
-        verification = verify_password(current_password, user.password_hash)
-        if not verification.is_valid:
-            raise InvalidCredentialsError("Invalid current password.")
+        user = await self._require_user(user_id)
+        self._verify_current_password(user, current_password)
 
         await self._passwords.enforce_history(user.id, new_password)
         self._passwords.validate_strength(new_password, hints=[user.email])
@@ -247,9 +246,7 @@ class UserService:
         user_id: UUID,
         tenant_id: UUID,
     ) -> UserProfileSummary:
-        user = await self._repository.get_user_by_id(user_id)
-        if user is None:
-            raise InvalidCredentialsError("Unknown user.")
+        user = await self._require_user(user_id)
         membership = self._membership_resolver(user.memberships, tenant_id)
         display_name = (
             user.display_name
@@ -264,9 +261,65 @@ class UserService:
             given_name=user.given_name,
             family_name=user.family_name,
             avatar_url=user.avatar_url,
+            timezone=user.timezone,
+            locale=user.locale,
             role=membership.role,
             email_verified=user.email_verified_at is not None,
         )
+
+    async def update_user_profile(
+        self,
+        *,
+        user_id: UUID,
+        tenant_id: UUID,
+        update: UserProfilePatch,
+        provided_fields: set[str],
+    ) -> UserProfileSummary:
+        user = await self._require_user(user_id)
+        self._membership_resolver(user.memberships, tenant_id)
+        await self._repository.upsert_user_profile(
+            user_id=user.id,
+            update=update,
+            provided_fields=provided_fields,
+        )
+        return await self.get_user_profile_summary(user_id=user.id, tenant_id=tenant_id)
+
+    async def change_email(
+        self,
+        *,
+        user_id: UUID,
+        current_password: str,
+        new_email: str,
+    ) -> UserEmailChangeResult:
+        user = await self._require_user(user_id)
+        self._verify_current_password(user, current_password)
+        normalized = new_email.strip().lower()
+        if normalized == user.email.lower():
+            return UserEmailChangeResult(user=user, changed=False)
+        try:
+            await self._repository.update_user_email(user.id, normalized)
+        except UserEmailConflictError as exc:
+            raise EmailAlreadyInUseError("Email already registered.") from exc
+        updated = await self._require_user(user.id)
+        log_event("auth.email_change", result="success", user_id=str(user.id))
+        return UserEmailChangeResult(user=updated, changed=True)
+
+    async def disable_account(
+        self,
+        *,
+        user_id: UUID,
+        current_password: str,
+    ) -> None:
+        user = await self._require_user(user_id)
+        self._verify_current_password(user, current_password)
+        sole_owner_tenants = await self._repository.list_sole_owner_tenant_ids(user.id)
+        if sole_owner_tenants:
+            raise LastOwnerRemovalError("Cannot disable the last owner of a tenant.")
+        if user.status != UserStatus.DISABLED:
+            await self._repository.update_user_status(user.id, UserStatus.DISABLED)
+            await self._repository.reset_lockout_counter(user.id)
+            await self._repository.clear_user_lock(user.id)
+            log_event("auth.account_disable", result="success", user_id=str(user.id))
 
     async def _record_password_activity(
         self, user: UserRecord, tenant_id: UUID | None
@@ -284,6 +337,18 @@ class UserService:
             )
         except Exception:  # pragma: no cover - best effort
             logger.debug("activity.log.password_change.skipped", exc_info=True)
+
+    async def _require_user(self, user_id: UUID) -> UserRecord:
+        user = await self._repository.get_user_by_id(user_id)
+        if user is None:
+            raise InvalidCredentialsError("Unknown user.")
+        return user
+
+    @staticmethod
+    def _verify_current_password(user: UserRecord, current_password: str) -> None:
+        verification = verify_password(current_password, user.password_hash)
+        if not verification.is_valid:
+            raise InvalidCredentialsError("Invalid current password.")
 
 
 __all__ = ["UserService"]
