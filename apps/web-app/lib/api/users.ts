@@ -30,6 +30,18 @@ function extractMessage(payload: unknown): string | undefined {
     return undefined;
   }
   const record = payload as Record<string, unknown>;
+  if (Array.isArray(record.detail)) {
+    for (const entry of record.detail) {
+      if (typeof entry === 'string') {
+        return entry;
+      }
+      if (entry && typeof entry === 'object') {
+        const entryRecord = entry as Record<string, unknown>;
+        if (typeof entryRecord.msg === 'string') return entryRecord.msg;
+        if (typeof entryRecord.message === 'string') return entryRecord.message;
+      }
+    }
+  }
   if (typeof record.message === 'string') {
     return record.message;
   }

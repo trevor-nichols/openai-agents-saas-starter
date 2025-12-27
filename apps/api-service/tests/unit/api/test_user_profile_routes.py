@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -11,6 +11,7 @@ from app.api.dependencies.auth import require_current_user
 from app.api.v1.users import routes_profile
 from app.domain.users import (
     UserEmailChangeResult,
+    UserProfilePatch,
     UserProfileSummary,
     UserRecord,
     UserStatus,
@@ -22,7 +23,7 @@ class _StubAuthService:
         self.revoked = revoked
         self.calls: list[tuple[str, str]] = []
 
-    async def revoke_user_sessions(self, user_id, *, reason: str = "") -> int:
+    async def revoke_user_sessions(self, user_id: UUID, *, reason: str = "") -> int:
         self.calls.append((str(user_id), reason))
         return self.revoked
 
@@ -48,9 +49,8 @@ class _StubSecurityEventService:
     def __init__(self) -> None:
         self.events: list[dict[str, object]] = []
 
-    async def record(self, **kwargs):  # type: ignore[no-untyped-def]
-        self.events.append(kwargs)
-        return None
+    async def record(self, **kwargs: object) -> None:
+        self.events.append(dict(kwargs))
 
 
 class _StubUserService:
@@ -61,19 +61,43 @@ class _StubUserService:
         self.email_changes: list[dict[str, object]] = []
         self.disabled: list[str] = []
 
-    async def update_user_profile(self, **kwargs):  # type: ignore[no-untyped-def]
-        self.profile_updates.append(kwargs)
-        update = kwargs.get("update")
-        provided_fields = kwargs.get("provided_fields") or set()
+    async def update_user_profile(
+        self,
+        *,
+        user_id: UUID,
+        tenant_id: UUID,
+        update: UserProfilePatch,
+        provided_fields: set[str],
+    ) -> UserProfileSummary:
+        self.profile_updates.append(
+            {
+                "user_id": user_id,
+                "tenant_id": tenant_id,
+                "update": update,
+                "provided_fields": set(provided_fields),
+            }
+        )
         for field in provided_fields:
             setattr(self.profile, field, getattr(update, field))
         return self.profile
 
-    async def change_email(self, **kwargs):  # type: ignore[no-untyped-def]
-        self.email_changes.append(kwargs)
+    async def change_email(
+        self,
+        *,
+        user_id: UUID,
+        current_password: str,
+        new_email: str,
+    ) -> UserEmailChangeResult:
+        self.email_changes.append(
+            {
+                "user_id": user_id,
+                "current_password": current_password,
+                "new_email": new_email,
+            }
+        )
         return UserEmailChangeResult(user=self.record, changed=True)
 
-    async def disable_account(self, *, user_id, current_password: str) -> None:
+    async def disable_account(self, *, user_id: UUID, current_password: str) -> None:
         self.disabled.append(str(user_id))
 
 

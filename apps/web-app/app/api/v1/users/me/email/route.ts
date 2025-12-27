@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import type { UserEmailChangeRequest } from '@/lib/api/client/types.gen';
-import { changeCurrentUserEmail, UserProfileApiError } from '@/lib/server/services/users';
+import { changeCurrentUserEmail } from '@/lib/server/services/users';
+import { UserProfileApiError } from '@/lib/server/services/users.errors';
 
 export async function PATCH(request: NextRequest) {
   try {

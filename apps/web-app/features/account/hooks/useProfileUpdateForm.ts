@@ -13,14 +13,17 @@ import {
   createProfileFormValues,
   type ProfileFormValues,
 } from '../utils/profileForm';
+import { PROFILE_FIELD_LIMITS } from '../constants';
 
 const profileSchema = z.object({
-  displayName: z.string().max(120, 'Display name is too long.'),
-  givenName: z.string().max(80, 'Given name is too long.'),
-  familyName: z.string().max(80, 'Family name is too long.'),
-  avatarUrl: z.string().max(2048, 'Avatar URL is too long.'),
-  timezone: z.string().max(64, 'Timezone is too long.'),
-  locale: z.string().max(32, 'Locale is too long.'),
+  displayName: z
+    .string()
+    .max(PROFILE_FIELD_LIMITS.displayName, 'Display name is too long.'),
+  givenName: z.string().max(PROFILE_FIELD_LIMITS.givenName, 'Given name is too long.'),
+  familyName: z.string().max(PROFILE_FIELD_LIMITS.familyName, 'Family name is too long.'),
+  avatarUrl: z.string().max(PROFILE_FIELD_LIMITS.avatarUrl, 'Avatar URL is too long.'),
+  timezone: z.string().max(PROFILE_FIELD_LIMITS.timezone, 'Timezone is too long.'),
+  locale: z.string().max(PROFILE_FIELD_LIMITS.locale, 'Locale is too long.'),
 });
 
 export function useProfileUpdateForm(profile: CurrentUserProfileResponseData | null) {

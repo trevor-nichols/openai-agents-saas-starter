@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
-import { getCurrentUserProfile, UserProfileApiError } from '@/lib/server/services/users';
+import { getCurrentUserProfile } from '@/lib/server/services/users';
+import { UserProfileApiError } from '@/lib/server/services/users.errors';
 
 export async function GET() {
   try {

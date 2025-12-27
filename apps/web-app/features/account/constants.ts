@@ -26,3 +26,12 @@ export const PASSWORD_POLICY_RULES = [
   'No reuse of the last 5 passwords.',
   'Strength score ≥3 enforced by the backend policy engine.',
 ] as const;
+
+export const PROFILE_FIELD_LIMITS = {
+  displayName: 128,
+  givenName: 64,
+  familyName: 64,
+  avatarUrl: 512,
+  timezone: 64,
+  locale: 32,
+} as const;

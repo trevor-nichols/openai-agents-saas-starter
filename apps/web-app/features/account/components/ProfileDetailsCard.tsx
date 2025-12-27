@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import type { CurrentUserProfileResponseData } from '@/lib/api/client/types.gen';
 
 import { useProfileUpdateForm } from '../hooks/useProfileUpdateForm';
+import { PROFILE_FIELD_LIMITS } from '../constants';
 
 interface ProfileDetailsCardProps {
   profile: CurrentUserProfileResponseData | null;
@@ -56,7 +57,12 @@ export function ProfileDetailsCard({ profile }: ProfileDetailsCardProps) {
                 <FormItem>
                   <FormLabel>Display name</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Ada Lovelace" autoComplete="name" />
+                    <Input
+                      {...field}
+                      placeholder="Ada Lovelace"
+                      autoComplete="name"
+                      maxLength={PROFILE_FIELD_LIMITS.displayName}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -69,7 +75,13 @@ export function ProfileDetailsCard({ profile }: ProfileDetailsCardProps) {
                 <FormItem>
                   <FormLabel>Avatar URL</FormLabel>
                   <FormControl>
-                    <Input {...field} type="url" placeholder="https://" autoComplete="url" />
+                    <Input
+                      {...field}
+                      type="url"
+                      placeholder="https://"
+                      autoComplete="url"
+                      maxLength={PROFILE_FIELD_LIMITS.avatarUrl}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -85,7 +97,12 @@ export function ProfileDetailsCard({ profile }: ProfileDetailsCardProps) {
                 <FormItem>
                   <FormLabel>Given name</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Ada" autoComplete="given-name" />
+                    <Input
+                      {...field}
+                      placeholder="Ada"
+                      autoComplete="given-name"
+                      maxLength={PROFILE_FIELD_LIMITS.givenName}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -98,7 +115,12 @@ export function ProfileDetailsCard({ profile }: ProfileDetailsCardProps) {
                 <FormItem>
                   <FormLabel>Family name</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Lovelace" autoComplete="family-name" />
+                    <Input
+                      {...field}
+                      placeholder="Lovelace"
+                      autoComplete="family-name"
+                      maxLength={PROFILE_FIELD_LIMITS.familyName}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -114,7 +136,11 @@ export function ProfileDetailsCard({ profile }: ProfileDetailsCardProps) {
                 <FormItem>
                   <FormLabel>Timezone</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="America/Chicago" />
+                    <Input
+                      {...field}
+                      placeholder="America/Chicago"
+                      maxLength={PROFILE_FIELD_LIMITS.timezone}
+                    />
                   </FormControl>
                   <FormDescription>Suggested: {suggestedTimezone}</FormDescription>
                   <FormMessage />
@@ -128,7 +154,11 @@ export function ProfileDetailsCard({ profile }: ProfileDetailsCardProps) {
                 <FormItem>
                   <FormLabel>Locale</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="en-US" />
+                    <Input
+                      {...field}
+                      placeholder="en-US"
+                      maxLength={PROFILE_FIELD_LIMITS.locale}
+                    />
                   </FormControl>
                   <FormDescription>Suggested: {suggestedLocale}</FormDescription>
                   <FormMessage />

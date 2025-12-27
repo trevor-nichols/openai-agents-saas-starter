@@ -19,6 +19,7 @@ import type {
 } from '@/lib/api/client/types.gen';
 
 import { getServerApiClient } from '../apiClient';
+import { UserProfileApiError } from './users.errors';
 
 type SdkFieldsResult<T> =
   | {
@@ -37,20 +38,22 @@ function mapErrorMessage(payload: unknown, fallback: string): string {
     return fallback;
   }
   const record = payload as Record<string, unknown>;
+  if (Array.isArray(record.detail)) {
+    for (const entry of record.detail) {
+      if (typeof entry === 'string') {
+        return entry;
+      }
+      if (entry && typeof entry === 'object') {
+        const entryRecord = entry as Record<string, unknown>;
+        if (typeof entryRecord.msg === 'string') return entryRecord.msg;
+        if (typeof entryRecord.message === 'string') return entryRecord.message;
+      }
+    }
+  }
   if (typeof record.detail === 'string') return record.detail;
   if (typeof record.message === 'string') return record.message;
   if (typeof record.error === 'string') return record.error;
   return fallback;
-}
-
-export class UserProfileApiError extends Error {
-  constructor(
-    public readonly status: number,
-    message: string,
-  ) {
-    super(message);
-    this.name = 'UserProfileApiError';
-  }
 }
 
 function unwrapSdkResult<T>(result: SdkFieldsResult<T>, fallbackMessage: string): T {

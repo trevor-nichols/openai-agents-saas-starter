@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import type { UserAccountDisableRequest } from '@/lib/api/client/types.gen';
-import { disableCurrentUserAccount, UserProfileApiError } from '@/lib/server/services/users';
+import { disableCurrentUserAccount } from '@/lib/server/services/users';
+import { UserProfileApiError } from '@/lib/server/services/users.errors';
 
 export async function POST(request: NextRequest) {
   try {
