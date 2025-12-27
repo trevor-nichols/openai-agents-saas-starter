@@ -43,6 +43,7 @@ class SmokeConfig:
     enable_contact: bool
     enable_status_subscriptions: bool
     enable_openai_files: bool
+    openai_file_id: str | None
     enable_assets: bool
     enable_vector: bool
     enable_containers: bool
@@ -77,6 +78,7 @@ def load_config() -> SmokeConfig:
         enable_contact=_env_bool("SMOKE_ENABLE_CONTACT", False),
         enable_status_subscriptions=_env_bool("SMOKE_ENABLE_STATUS_SUBSCRIPTIONS", False),
         enable_openai_files=_env_bool("SMOKE_ENABLE_OPENAI_FILES", False),
+        openai_file_id=os.getenv("SMOKE_OPENAI_FILE_ID"),
         enable_assets=_env_bool("SMOKE_ENABLE_ASSETS", False),
         enable_vector=_env_bool("SMOKE_ENABLE_VECTOR", False),
         enable_containers=_env_bool("SMOKE_ENABLE_CONTAINERS", False),

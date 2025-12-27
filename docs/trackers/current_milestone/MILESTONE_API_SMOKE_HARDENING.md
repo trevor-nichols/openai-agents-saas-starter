@@ -352,12 +352,12 @@ The list below enumerates endpoints not yet covered by the HTTP smoke suite. Eac
 
 | ID | Area | Description | Owner | Status |
 |----|------|-------------|-------|--------|
-| D1 | Storage | Add download-url + delete-object smoke (idempotent). | TBD | Planned |
-| D2 | Uploads | Add `/api/v1/uploads/agent-input` smoke. | TBD | Planned |
-| D3 | Assets | Add assets list/detail/download/thumbnail smoke (requires asset seed/creation). | TBD | Planned |
-| D4 | OpenAI files | Add proxy download smoke (gated; requires file id). | TBD | Planned |
-| D5 | Vector stores | Add list/create/query/delete smoke (gated by `SMOKE_ENABLE_VECTOR`). | TBD | Planned |
-| D6 | Containers | Add container lifecycle smoke (gated by `SMOKE_ENABLE_CONTAINERS`). | TBD | Planned |
+| D1 | Storage | Add download-url + delete-object smoke (idempotent). | TBD | ✅ |
+| D2 | Uploads | Add `/api/v1/uploads/agent-input` smoke. | TBD | ✅ |
+| D3 | Assets | Add assets list/detail/download/thumbnail smoke (requires asset seed/creation). | TBD | ✅ |
+| D4 | OpenAI files | Add proxy download smoke (gated; requires file id). | TBD | ✅ |
+| D5 | Vector stores | Add list/create/query/delete smoke (gated by `SMOKE_ENABLE_VECTOR`). | TBD | ✅ |
+| D6 | Containers | Add container lifecycle smoke (gated by `SMOKE_ENABLE_CONTAINERS`). | TBD | ✅ |
 
 ### Workstream E - Platform catalog and misc
 
@@ -436,6 +436,7 @@ The list below enumerates endpoints not yet covered by the HTTP smoke suite. Eac
 <!-- SECTION: Changelog -->
 ## Changelog
 
+- 2025-12-27 - Completed Workstream D (storage download/delete, uploads agent-input, assets list/detail/download/thumbnail/delete, OpenAI file proxy smoke w/ `SMOKE_OPENAI_FILE_ID`, vector stores CRUD/search, containers lifecycle/bind/unbind); updated smoke docs/coverage; lint/typecheck/test green.
 - 2025-12-27 - Completed Workstream C (chat stream, conversation ledger, workflow stream/detail/cancel/replay smoke); updated smoke docs/coverage; lint/typecheck/test green.
 - 2025-12-27 - Completed Workstream B1 (auth signup/sessions/email/password/MFA/invites/service accounts) with new fixtures and password-reset test token endpoint; lint/typecheck/test green.
 - 2025-12-27 - Completed Workstream E1 + E6 (activity list/receipts + stream smoke, contact submission smoke); updated smoke docs/coverage.
