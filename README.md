@@ -40,6 +40,8 @@ Alternate startup: `starter-console start dev --detached` (or `just start-dev`) 
 If you only want to read the code/docs, clone and explore:
 `README.md`, `SNAPSHOT.md`, and `packages/starter_console/README.md`.
 
+<img src="docs/assets/media/chat.png" alt="OpenAI Agent Chat and Memory screenshots" width="1200" />
+
 ## Architecture At A Glance
 - **Backend** (`apps/api-service/`): FastAPI, async SQLAlchemy, Postgres + Redis (refresh-token cache, rate limits, billing streams), Ed25519 JWT auth, Alembic migrations, OpenAI Agents SDK integrations, Stripe billing services.
 - **Frontend** (`apps/web-app/`): Next.js 16 App Router with BFF routes under `app/api/v1`, TanStack Query, Shadcn UI, HeyAPI-generated client under `lib/api/client`, Storybook, Playwright/Vitest tests.
