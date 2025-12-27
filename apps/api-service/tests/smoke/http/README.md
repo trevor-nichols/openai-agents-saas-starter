@@ -13,11 +13,12 @@ Fast, deterministic checks that hit a running api-service over HTTP. Designed fo
 - Usage counters
 - User profile, consents, and notification preferences
 - Tenant settings (get + update)
-- Workflows list/runs
+- Workflows list/runs + descriptors
 - Storage presign + list
 - Logs ingestion
 - Optional: Billing plans/subscription (`SMOKE_ENABLE_BILLING=1`)
-- Optional: Chat + workflow run (`SMOKE_ENABLE_AI=1` and model key available)
+- Optional: Chat + workflow run + run-stream (`SMOKE_ENABLE_AI=1` and model key available)
+- Optional: Conversation ledger events/stream + workflow replay (requires streaming, `SMOKE_ENABLE_AI=1`)
 
 See `COVERAGE_MATRIX.md` for the router-to-test mapping and planned coverage.
 
@@ -42,7 +43,7 @@ SMOKE_BASE_URL=http://localhost:8000 pytest -m smoke tests/smoke/http --maxfail=
 - `SMOKE_BASE_URL` (default `http://localhost:8000`)
 - `SMOKE_TENANT_SLUG`, `SMOKE_USER_EMAIL`, `SMOKE_USER_PASSWORD` (fixture seed)
 - `SMOKE_ENABLE_BILLING` (1/0) — exercise billing endpoints
-- `SMOKE_ENABLE_AI` (1/0) — exercise chat + workflow run (needs model key)
+- `SMOKE_ENABLE_AI` (1/0) — exercise chat + workflow run/stream + ledger/replay (needs model key)
 - `SMOKE_ENABLE_BILLING_STREAM` (1/0) — billing SSE stream
 - `SMOKE_ENABLE_AUTH_SIGNUP` (1/0) — public signup flows
 - `SMOKE_ENABLE_AUTH_EXTENDED` (1/0) — email verification, password reset/change, session management

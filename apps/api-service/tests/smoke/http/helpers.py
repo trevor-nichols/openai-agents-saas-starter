@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Final, Iterable, Sequence
+import json
+from typing import Any, Callable, Final, Iterable, Sequence
 
 import httpx
 import pytest
@@ -55,6 +56,34 @@ async def read_first_sse_event(
         raise AssertionError("Timed out waiting for SSE data frame.") from exc
 
 
+async def read_sse_event_json(
+    response: httpx.Response,
+    *,
+    predicate: Callable[[dict[str, Any]], bool] | None = None,
+    timeout_seconds: float = DEFAULT_SSE_TIMEOUT_SECONDS,
+) -> dict[str, Any]:
+    """Read the first SSE data frame that parses as JSON (and matches predicate)."""
+    assert_event_stream_response(response)
+
+    async def _read() -> dict[str, Any]:
+        async for line in response.aiter_lines():
+            if not line or not line.startswith("data:"):
+                continue
+            payload = line.removeprefix("data:").strip()
+            try:
+                parsed = json.loads(payload)
+            except json.JSONDecodeError as exc:
+                raise AssertionError(f"Invalid SSE JSON payload: {payload!r}") from exc
+            if isinstance(parsed, dict) and (predicate is None or predicate(parsed)):
+                return parsed
+        raise AssertionError("No SSE JSON data frames received.")
+
+    try:
+        return await asyncio.wait_for(_read(), timeout=timeout_seconds)
+    except asyncio.TimeoutError as exc:
+        raise AssertionError("Timed out waiting for SSE JSON data frame.") from exc
+
+
 async def fetch_first_sse_event(
     client: httpx.AsyncClient,
     method: str,
@@ -66,6 +95,24 @@ async def fetch_first_sse_event(
     """Open an SSE stream, read the first data frame, then close the stream."""
     async with client.stream(method, url, **kwargs) as response:
         return await read_first_sse_event(response, timeout_seconds=timeout_seconds)
+
+
+async def fetch_sse_event_json(
+    client: httpx.AsyncClient,
+    method: str,
+    url: str,
+    *,
+    predicate: Callable[[dict[str, Any]], bool] | None = None,
+    timeout_seconds: float = DEFAULT_SSE_TIMEOUT_SECONDS,
+    **kwargs,
+) -> dict[str, Any]:
+    """Open an SSE stream, read the first JSON data frame (optionally matching predicate)."""
+    async with client.stream(method, url, **kwargs) as response:
+        return await read_sse_event_json(
+            response,
+            predicate=predicate,
+            timeout_seconds=timeout_seconds,
+        )
 
 
 async def delete_if_exists(
@@ -85,6 +132,8 @@ __all__ = [
     "assert_status_in",
     "delete_if_exists",
     "fetch_first_sse_event",
+    "fetch_sse_event_json",
+    "read_sse_event_json",
     "read_first_sse_event",
     "require_enabled",
 ]

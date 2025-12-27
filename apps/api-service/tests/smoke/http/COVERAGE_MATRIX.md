@@ -8,14 +8,14 @@ Keep it in sync with `apps/api-service/src/app/api/v1/router.py` and the smoke s
 | Router prefix | Smoke test(s) | Minimal assertion(s) | Gate / Notes |
 | --- | --- | --- | --- |
 | `/api/v1/auth` | `test_auth_smoke.py`, `test_auth_sessions_smoke.py`, `test_auth_email_password_smoke.py`, `test_auth_mfa_smoke.py`, `test_auth_signup_smoke.py`, `test_service_accounts_smoke.py` | Login/refresh/me, session management, signup/invites/requests/register, email verification + password flows, MFA TOTP, service-account issuance + token admin | Gates: `SMOKE_ENABLE_AUTH_SIGNUP`, `SMOKE_ENABLE_AUTH_EXTENDED`, `SMOKE_ENABLE_AUTH_MFA`, `SMOKE_ENABLE_SERVICE_ACCOUNTS`; fixtures seed operator/unverified/MFA users + password-reset token endpoint. |
-| `/api/v1/chat` | `test_ai_smoke.py` | `/chat` returns 200 with `conversation_id` | `SMOKE_ENABLE_AI=1` + model key; streaming handshake in Workstream C1. |
+| `/api/v1/chat` | `test_ai_smoke.py`, `test_ai_stream_smoke.py` | `/chat` returns 200 with `conversation_id`; `/chat/stream` yields a `public_sse_v1` event | `SMOKE_ENABLE_AI=1` + model key. |
 | `/api/v1/agents` | `test_agents_smoke.py` | Catalog includes `triage`; status endpoint returns `active` | Requires seeded auth user. |
 | `/api/v1/assets` | Planned | List/detail/download/thumbnail/delete | `SMOKE_ENABLE_ASSETS=1` + storage backing; Workstream D3. |
 | `/api/v1/guardrails` | `test_guardrails_smoke.py` | Guardrails + presets list and optional detail lookups | Requires `tools:read` scope on token. |
-| `/api/v1/workflows` | `test_workflows_smoke.py`, `test_ai_smoke.py` | Catalog list + runs list; `/workflows/{key}/run` returns run id | `SMOKE_ENABLE_AI=1` for run; detail/cancel/stream in Workstream C3. |
-| `/api/v1/workflows/replay` | Planned | Replay events + stream return data | Workstream C4; uses SSE helper. |
+| `/api/v1/workflows` | `test_workflows_smoke.py`, `test_ai_smoke.py` | Catalog list + runs list; `/workflows/{key}/run` returns run id; descriptor returns stages; run detail + cancel reachable; `/run-stream` yields `public_sse_v1` | `SMOKE_ENABLE_AI=1` for run + stream; cancel may return 202/409 depending on run state. |
+| `/api/v1/workflows/replay` | `test_workflows_smoke.py` | Replay events list + stream yield `public_sse_v1` | `SMOKE_ENABLE_AI=1` (requires streaming run to seed ledger). |
 | `/api/v1/conversations` | `test_conversations_smoke.py` | List/search/detail/events + delete idempotently | Requires seeded conversation via fixtures. |
-| `/api/v1/conversations/ledger` | Planned | Ledger events + stream return data | Workstream C2; uses SSE helper. |
+| `/api/v1/conversations/ledger` | `test_conversations_smoke.py` | Ledger events list + stream yield `public_sse_v1` | `SMOKE_ENABLE_AI=1` (requires streaming chat to seed ledger). |
 | `/api/v1/tools` | `test_tools_smoke.py` | Tool catalog returns lists/maps | Requires `tools:read` scope on token. |
 | `/api/v1/activity` | Planned | Activity list/stream + mark read | Requires seeded activity events + `activity:read` scope; Workstream E1. |
 | `/api/v1/containers` | Planned | Create/list/detail/delete + agent bind/unbind | `SMOKE_ENABLE_CONTAINERS=1`; Workstream D6. |
