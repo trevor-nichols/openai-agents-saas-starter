@@ -28,7 +28,17 @@ class SmokeConfig:
     fixture_conversation_key: str
     request_timeout: float
     enable_billing: bool
+    enable_billing_stream: bool
     enable_ai: bool
+    enable_auth_signup: bool
+    enable_auth_extended: bool
+    enable_auth_mfa: bool
+    enable_service_accounts: bool
+    enable_contact: bool
+    enable_status: bool
+    enable_status_subscriptions: bool
+    enable_openai_files: bool
+    enable_assets: bool
     enable_vector: bool
     enable_containers: bool
 
@@ -43,7 +53,17 @@ def load_config() -> SmokeConfig:
         fixture_conversation_key=os.getenv("SMOKE_CONVERSATION_KEY", "seeded-smoke-convo"),
         request_timeout=float(os.getenv("SMOKE_HTTP_TIMEOUT", "10")),
         enable_billing=_env_bool("SMOKE_ENABLE_BILLING", False),
+        enable_billing_stream=_env_bool("SMOKE_ENABLE_BILLING_STREAM", False),
         enable_ai=_env_bool("SMOKE_ENABLE_AI", False),
+        enable_auth_signup=_env_bool("SMOKE_ENABLE_AUTH_SIGNUP", False),
+        enable_auth_extended=_env_bool("SMOKE_ENABLE_AUTH_EXTENDED", False),
+        enable_auth_mfa=_env_bool("SMOKE_ENABLE_AUTH_MFA", False),
+        enable_service_accounts=_env_bool("SMOKE_ENABLE_SERVICE_ACCOUNTS", False),
+        enable_contact=_env_bool("SMOKE_ENABLE_CONTACT", False),
+        enable_status=_env_bool("SMOKE_ENABLE_STATUS", False),
+        enable_status_subscriptions=_env_bool("SMOKE_ENABLE_STATUS_SUBSCRIPTIONS", False),
+        enable_openai_files=_env_bool("SMOKE_ENABLE_OPENAI_FILES", False),
+        enable_assets=_env_bool("SMOKE_ENABLE_ASSETS", False),
         enable_vector=_env_bool("SMOKE_ENABLE_VECTOR", False),
         enable_containers=_env_bool("SMOKE_ENABLE_CONTAINERS", False),
     )

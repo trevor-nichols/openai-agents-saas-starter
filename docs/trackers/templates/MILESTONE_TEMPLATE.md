@@ -65,6 +65,18 @@ If there’s a full design doc, just summarize and link it.
 
 ---
 
+<!-- SECTION: Smoke Philosophy (optional) -->
+## Smoke Philosophy (Optional)
+
+Use this section when a milestone changes or expands smoke tests. Keep it short and action-oriented:
+
+- Smoke tests are shallow, fast, end-to-end checks for service wiring and happy paths.
+- Streaming/SSE smoke should verify connection + first event + clean termination only; contract shape is covered elsewhere.
+- Provider-dependent smoke tests are gated behind explicit env flags; default CI stays deterministic.
+- Prefer deterministic fixtures for baseline state; use public APIs to create/clean up when those APIs are in scope.
+
+---
+
 <!-- SECTION: Workstreams & Tasks -->
 ## Workstreams & Tasks
 
