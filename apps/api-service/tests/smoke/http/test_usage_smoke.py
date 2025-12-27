@@ -15,3 +15,5 @@ async def test_usage_counters(http_client: httpx.AsyncClient, smoke_state: Smoke
     assert resp.status_code == 200
     body = resp.json()
     assert isinstance(body, list)
+    assert body, "Expected at least one seeded usage counter"
+    assert any((item.get("requests") or 0) >= 1 for item in body)

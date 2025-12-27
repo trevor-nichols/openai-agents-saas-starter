@@ -8,6 +8,7 @@ _Last updated: 2025-12-27_
 **ID / Links:**
 - Template: `docs/trackers/templates/MILESTONE_TEMPLATE.md`
 - Smoke suite: `apps/api-service/tests/smoke/http/README.md`
+- Smoke coverage matrix: `apps/api-service/tests/smoke/http/COVERAGE_MATRIX.md`
 - API router index: `apps/api-service/src/app/api/v1/router.py`
 - API service snapshot: `apps/api-service/SNAPSHOT.md`
 
@@ -236,7 +237,7 @@ The list below enumerates endpoints not yet covered by the HTTP smoke suite. Eac
 
 | Method | Endpoint | Minimal assertion | Gate / Notes |
 | --- | --- | --- | --- |
-| GET | /api/v1/status | 200 + `overview` + `incidents` list | Proposed `SMOKE_ENABLE_STATUS`. |
+| GET | /api/v1/status | 200 + `overview` + `incidents` list | Always on (in-memory snapshot). |
 | GET | /api/v1/status/rss | 200 + RSS XML | Alias `/api/v1/status.rss` optional. |
 | POST | /api/v1/status/subscriptions | 201 + subscription id | Proposed `SMOKE_ENABLE_STATUS_SUBSCRIPTIONS`. |
 | POST | /api/v1/status/subscriptions/verify | 200 + subscription | Requires verification token. |
@@ -325,10 +326,10 @@ The list below enumerates endpoints not yet covered by the HTTP smoke suite. Eac
 
 | ID | Area | Description | Owner | Status |
 |----|------|-------------|-------|--------|
-| A1 | Tests | Publish a router-to-smoke coverage matrix and agree on minimal smoke assertions per router. | TBD | Planned |
-| A2 | Tests | Add/standardize smoke flags for provider-dependent routes (billing stream, status subscriptions, contact delivery, vector, containers, openai files). | TBD | Planned |
-| A3 | Fixtures | Extend test fixture seeding or per-test setup to create assets, usage, status data where required. | TBD | Planned |
-| A4 | Utils | Add shared helpers for SSE smoke (read first event + graceful close) and idempotent cleanup. | TBD | Planned |
+| A1 | Tests | Publish a router-to-smoke coverage matrix and agree on minimal smoke assertions per router. | TBD | ✅ |
+| A2 | Tests | Add/standardize smoke flags for provider-dependent routes (billing stream, status subscriptions, contact delivery, vector, containers, openai files). | TBD | ✅ |
+| A3 | Fixtures | Extend test fixture seeding or per-test setup to create assets, usage, status data where required. | TBD | ✅ |
+| A4 | Utils | Add shared helpers for SSE smoke (read first event + graceful close) and idempotent cleanup. | TBD | ✅ |
 
 ### Workstream B - Identity and tenant surfaces
 
@@ -435,5 +436,6 @@ The list below enumerates endpoints not yet covered by the HTTP smoke suite. Eac
 <!-- SECTION: Changelog -->
 ## Changelog
 
+- 2025-12-27 - Completed Workstream A (coverage matrix, standardized smoke gates, SSE/cleanup helpers, fixture seeding for usage/assets); lint/typecheck/test green.
 - 2025-12-27 - Added smoke coverage for status, tools, guardrails, usage, users, and tenant settings; updated README.
 - 2025-12-27 - Created milestone and initial coverage gap inventory.

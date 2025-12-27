@@ -5,6 +5,7 @@ import pytest
 
 from tests.smoke.http.auth import auth_headers
 from tests.smoke.http.config import SmokeConfig
+from tests.smoke.http.helpers import require_enabled
 from tests.smoke.http.state import SmokeState
 
 
@@ -14,8 +15,7 @@ async def test_billing_plans_and_subscription(
     smoke_config: SmokeConfig,
     smoke_state: SmokeState,
 ) -> None:
-    if not smoke_config.enable_billing:
-        pytest.skip("SMOKE_ENABLE_BILLING not enabled")
+    require_enabled(smoke_config.enable_billing, reason="SMOKE_ENABLE_BILLING not enabled")
 
     headers = auth_headers(smoke_state, tenant_role="owner")
 

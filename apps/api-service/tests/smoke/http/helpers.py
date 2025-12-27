@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Final
+from typing import Final, Iterable, Sequence
 
 import httpx
 import pytest
@@ -23,6 +23,14 @@ def assert_event_stream_response(response: httpx.Response) -> None:
     content_type = response.headers.get("content-type", "")
     if "text/event-stream" not in content_type:
         raise AssertionError(f"Expected text/event-stream, got {content_type!r}")
+
+
+def assert_status_in(response: httpx.Response, expected: Iterable[int]) -> None:
+    expected_set = set(expected)
+    if response.status_code not in expected_set:
+        raise AssertionError(
+            f"Expected status in {sorted(expected_set)}, got {response.status_code}: {response.text}"
+        )
 
 
 async def read_first_sse_event(
@@ -47,4 +55,36 @@ async def read_first_sse_event(
         raise AssertionError("Timed out waiting for SSE data frame.") from exc
 
 
-__all__ = ["assert_event_stream_response", "read_first_sse_event", "require_enabled"]
+async def fetch_first_sse_event(
+    client: httpx.AsyncClient,
+    method: str,
+    url: str,
+    *,
+    timeout_seconds: float = DEFAULT_SSE_TIMEOUT_SECONDS,
+    **kwargs,
+) -> str:
+    """Open an SSE stream, read the first data frame, then close the stream."""
+    async with client.stream(method, url, **kwargs) as response:
+        return await read_first_sse_event(response, timeout_seconds=timeout_seconds)
+
+
+async def delete_if_exists(
+    client: httpx.AsyncClient,
+    url: str,
+    *,
+    headers: dict[str, str] | None = None,
+    expected_statuses: Sequence[int] = (200, 202, 204, 404),
+) -> None:
+    """Delete a resource, treating missing resources as a no-op."""
+    response = await client.delete(url, headers=headers)
+    assert_status_in(response, expected_statuses)
+
+
+__all__ = [
+    "assert_event_stream_response",
+    "assert_status_in",
+    "delete_if_exists",
+    "fetch_first_sse_event",
+    "read_first_sse_event",
+    "require_enabled",
+]

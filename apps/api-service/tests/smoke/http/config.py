@@ -35,7 +35,6 @@ class SmokeConfig:
     enable_auth_mfa: bool
     enable_service_accounts: bool
     enable_contact: bool
-    enable_status: bool
     enable_status_subscriptions: bool
     enable_openai_files: bool
     enable_assets: bool
@@ -60,7 +59,6 @@ def load_config() -> SmokeConfig:
         enable_auth_mfa=_env_bool("SMOKE_ENABLE_AUTH_MFA", False),
         enable_service_accounts=_env_bool("SMOKE_ENABLE_SERVICE_ACCOUNTS", False),
         enable_contact=_env_bool("SMOKE_ENABLE_CONTACT", False),
-        enable_status=_env_bool("SMOKE_ENABLE_STATUS", False),
         enable_status_subscriptions=_env_bool("SMOKE_ENABLE_STATUS_SUBSCRIPTIONS", False),
         enable_openai_files=_env_bool("SMOKE_ENABLE_OPENAI_FILES", False),
         enable_assets=_env_bool("SMOKE_ENABLE_ASSETS", False),
