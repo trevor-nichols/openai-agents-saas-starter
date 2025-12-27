@@ -2,6 +2,17 @@
 
 _Last updated: November 19, 2025_
 
+# Testing Conventions
+
+We keep test placement predictable so feature code and its checks travel together.
+
+- **Route handlers:** Keep `route.test.ts` (or `route.test.tsx`) beside the matching `route.ts`.
+- **Everything else:** Place tests in a sibling `__tests__/` directory next to the code under test.
+
+Checks
+
+- Run `pnpm lint:test-placement` (also included in `pnpm validate`) to fail on mis‑placed tests.
+
 ## 1. Environment
 - Run `pnpm dev` (frontend) + `hatch run dev` (backend) locally or point Playwright to a deployed preview via `PLAYWRIGHT_BASE_URL`.
 - Seed deterministic fixtures with the Starter Console (`starter-console seed playground --answers-file ./seeds/playwright.yaml`). The answers file should describe every tenant/user listed in the table below so tests never depend on ad-hoc state.
