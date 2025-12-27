@@ -86,7 +86,7 @@ Top-level workstreams, each with its own mini checklist.
 <!-- SECTION: Phases (optional if simple) -->
 ## Phases
 
-Use when the milestone is multi-stage or time-based.
+Use when the milestone is multi-stage.
 
 | Phase | Scope | Exit Criteria | Status |
 | ----- | ----- | ------------- | ------ |
