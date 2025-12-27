@@ -28,7 +28,7 @@ Keep it in sync with `apps/api-service/src/app/api/v1/router.py` and the smoke s
 | `/api/v1/tenants` | `test_tenants_smoke.py` | Settings GET/PUT roundtrip | Requires owner token. |
 | `/api/v1/users` | `test_users_smoke.py` | Profile + consents + notification prefs | Requires authenticated user with tenant context. |
 | `/api/v1/usage` | `test_usage_smoke.py` | List returns array (may be empty) | Requires tenant context. |
-| `/api/v1/billing` | `test_billing_smoke.py` | Plans list + subscription detail | `SMOKE_ENABLE_BILLING=1`; additional endpoints in Workstream F1. |
+| `/api/v1/billing` | `test_billing_smoke.py` | Plans list + subscription lifecycle (start/update/cancel) + usage record + events list + stream handshake | `SMOKE_ENABLE_BILLING=1`; stream requires `SMOKE_ENABLE_BILLING_STREAM=1`. |
 | `/api/v1/logs` | `test_observability_smoke.py` | Ingest endpoint returns 202 | Requires `ENABLE_FRONTEND_LOG_INGEST=1` in api-service. |
 | `/api/v1/test-fixtures` | `fixtures.py`, `test_conversations_smoke.py` | Fixture apply returns 201 | Requires `USE_TEST_FIXTURES=true`; harness-only. |
 

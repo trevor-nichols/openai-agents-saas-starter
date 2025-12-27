@@ -56,6 +56,26 @@ async def read_first_sse_event(
         raise AssertionError("Timed out waiting for SSE data frame.") from exc
 
 
+async def read_first_sse_line(
+    response: httpx.Response,
+    *,
+    timeout_seconds: float = DEFAULT_SSE_TIMEOUT_SECONDS,
+) -> str:
+    """Read the first non-empty SSE line (data or ping)."""
+    assert_event_stream_response(response)
+
+    async def _read() -> str:
+        async for line in response.aiter_lines():
+            if line:
+                return line
+        raise AssertionError("No SSE lines received.")
+
+    try:
+        return await asyncio.wait_for(_read(), timeout=timeout_seconds)
+    except asyncio.TimeoutError as exc:
+        raise AssertionError("Timed out waiting for SSE line.") from exc
+
+
 async def read_sse_event_json(
     response: httpx.Response,
     *,
@@ -97,6 +117,19 @@ async def fetch_first_sse_event(
         return await read_first_sse_event(response, timeout_seconds=timeout_seconds)
 
 
+async def fetch_first_sse_line(
+    client: httpx.AsyncClient,
+    method: str,
+    url: str,
+    *,
+    timeout_seconds: float = DEFAULT_SSE_TIMEOUT_SECONDS,
+    **kwargs,
+) -> str:
+    """Open an SSE stream, read the first non-empty line, then close the stream."""
+    async with client.stream(method, url, **kwargs) as response:
+        return await read_first_sse_line(response, timeout_seconds=timeout_seconds)
+
+
 async def fetch_sse_event_json(
     client: httpx.AsyncClient,
     method: str,
@@ -132,8 +165,10 @@ __all__ = [
     "assert_status_in",
     "delete_if_exists",
     "fetch_first_sse_event",
+    "fetch_first_sse_line",
     "fetch_sse_event_json",
     "read_sse_event_json",
     "read_first_sse_event",
+    "read_first_sse_line",
     "require_enabled",
 ]

@@ -2,7 +2,7 @@
 # Milestone: API Smoke Test Hardening (Full Surface Coverage)
 
 _Last updated: 2025-12-27_  
-**Status:** In Progress  
+**Status:** Complete  
 **Owner:** TBD  
 **Domain:** Backend  
 **ID / Links:**
@@ -59,9 +59,9 @@ Expand the HTTP smoke suite so every public API v1 router has at least one fast,
 | Area | Status | Notes |
 | --- | --- | --- |
 | Architecture/design | OK | API v1 routers are well-factored; smoke suite is HTTP-based with fixtures. |
-| Implementation | ⚠️ | Core endpoints added (status/tools/guardrails/usage/users/tenants); many routers still pending. |
-| Tests & QA | WARN | Gaps in coverage across many API groups and streaming/replay surfaces. |
-| Docs & runbooks | WARN | Smoke README lists current scope; needs updates for new flags. |
+| Implementation | OK | All API v1 routers now have representative smoke coverage. |
+| Tests & QA | OK | Smoke suite covers primary endpoints with provider gates where needed. |
+| Docs & runbooks | OK | Smoke README and coverage matrix updated for billing expansion. |
 
 ---
 
@@ -374,7 +374,7 @@ The list below enumerates endpoints not yet covered by the HTTP smoke suite. Eac
 
 | ID | Area | Description | Owner | Status |
 |----|------|-------------|-------|--------|
-| F1 | Billing | Add start/update/cancel subscription, usage record, events list, and stream smoke (gated by `SMOKE_ENABLE_BILLING`). | TBD | Planned |
+| F1 | Billing | Add start/update/cancel subscription, usage record, events list, and stream smoke (gated by `SMOKE_ENABLE_BILLING`). | TBD | ✅ |
 
 ---
 
@@ -384,9 +384,9 @@ The list below enumerates endpoints not yet covered by the HTTP smoke suite. Eac
 | Phase | Scope | Exit Criteria | Status |
 | ----- | ----- | ------------- | ------ |
 | P0 - Alignment | Confirm smoke criteria, gates, and data seeding strategy | Coverage matrix signed off | ✅ |
-| P1 - Core coverage | Auth, tenants, users, status, tools, guardrails, usage | Workstreams B + E complete | Planned |
+| P1 - Core coverage | Auth, tenants, users, status, tools, guardrails, usage | Workstreams B + E complete | ✅ |
 | P2 - AI and streaming | Chat/workflow streaming + ledger/replay | Workstream C complete | ✅ |
-| P3 - Provider-dependent | Billing, assets, storage, uploads, vector, containers, openai_files | Workstreams D + F complete | Planned |
+| P3 - Provider-dependent | Billing, assets, storage, uploads, vector, containers, openai_files | Workstreams D + F complete | ✅ |
 
 ---
 
