@@ -20,7 +20,42 @@ async def apply_test_fixtures(client: httpx.AsyncClient, cfg: SmokeConfig) -> Di
                 "display_name": "Smoke Admin",
                 "role": "owner",
                 "verify_email": True,
-            }
+            },
+            {
+                "email": cfg.operator_email,
+                "password": cfg.admin_password,
+                "display_name": "Smoke Operator",
+                "role": "platform_operator",
+                "verify_email": True,
+            },
+            {
+                "email": cfg.unverified_email,
+                "password": cfg.admin_password,
+                "display_name": "Smoke Unverified",
+                "role": "member",
+                "verify_email": False,
+            },
+            {
+                "email": cfg.mfa_email,
+                "password": cfg.admin_password,
+                "display_name": "Smoke MFA",
+                "role": "member",
+                "verify_email": True,
+            },
+            {
+                "email": cfg.password_reset_email,
+                "password": cfg.admin_password,
+                "display_name": "Smoke Password Reset",
+                "role": "member",
+                "verify_email": True,
+            },
+            {
+                "email": cfg.password_change_email,
+                "password": cfg.admin_password,
+                "display_name": "Smoke Password Change",
+                "role": "member",
+                "verify_email": True,
+            },
         ],
         "conversations": [
             {

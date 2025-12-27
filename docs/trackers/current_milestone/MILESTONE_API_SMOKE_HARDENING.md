@@ -335,7 +335,7 @@ The list below enumerates endpoints not yet covered by the HTTP smoke suite. Eac
 
 | ID | Area | Description | Owner | Status |
 |----|------|-------------|-------|--------|
-| B1 | Auth | Add smoke coverage for signup, sessions/logout, email verification (test-fixture token), password reset, MFA, invites, service accounts + tokens. | TBD | Planned |
+| B1 | Auth | Add smoke coverage for signup, sessions/logout, email verification (test-fixture token), password reset, MFA, invites, service accounts + tokens. | TBD | ✅ |
 | B2 | Tenants | Add smoke coverage for tenant list/detail/settings endpoints. | TBD | ✅ |
 | B3 | Users | Add smoke coverage for consents, notifications, and profile endpoints. | TBD | ✅ |
 
@@ -436,6 +436,7 @@ The list below enumerates endpoints not yet covered by the HTTP smoke suite. Eac
 <!-- SECTION: Changelog -->
 ## Changelog
 
+- 2025-12-27 - Completed Workstream B1 (auth signup/sessions/email/password/MFA/invites/service accounts) with new fixtures and password-reset test token endpoint; lint/typecheck/test green.
 - 2025-12-27 - Completed Workstream A (coverage matrix, standardized smoke gates, SSE/cleanup helpers, fixture seeding for usage/assets); lint/typecheck/test green.
 - 2025-12-27 - Added smoke coverage for status, tools, guardrails, usage, users, and tenant settings; updated README.
 - 2025-12-27 - Created milestone and initial coverage gap inventory.

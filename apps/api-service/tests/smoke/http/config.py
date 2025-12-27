@@ -25,6 +25,11 @@ class SmokeConfig:
     tenant_name: str
     admin_email: str
     admin_password: str
+    operator_email: str
+    unverified_email: str
+    mfa_email: str
+    password_reset_email: str
+    password_change_email: str
     fixture_conversation_key: str
     request_timeout: float
     enable_billing: bool
@@ -49,6 +54,15 @@ def load_config() -> SmokeConfig:
         tenant_name=os.getenv("SMOKE_TENANT_NAME", "Smoke Test Tenant"),
         admin_email=os.getenv("SMOKE_USER_EMAIL", "smoke-admin@example.com"),
         admin_password=os.getenv("SMOKE_USER_PASSWORD", "SmokeAdmin!234"),
+        operator_email=os.getenv("SMOKE_OPERATOR_EMAIL", "smoke-operator@example.com"),
+        unverified_email=os.getenv("SMOKE_UNVERIFIED_EMAIL", "smoke-unverified@example.com"),
+        mfa_email=os.getenv("SMOKE_MFA_EMAIL", "smoke-mfa@example.com"),
+        password_reset_email=os.getenv(
+            "SMOKE_PASSWORD_RESET_EMAIL", "smoke-password-reset@example.com"
+        ),
+        password_change_email=os.getenv(
+            "SMOKE_PASSWORD_CHANGE_EMAIL", "smoke-password-change@example.com"
+        ),
         fixture_conversation_key=os.getenv("SMOKE_CONVERSATION_KEY", "seeded-smoke-convo"),
         request_timeout=float(os.getenv("SMOKE_HTTP_TIMEOUT", "10")),
         enable_billing=_env_bool("SMOKE_ENABLE_BILLING", False),

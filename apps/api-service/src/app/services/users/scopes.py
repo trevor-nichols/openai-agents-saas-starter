@@ -5,6 +5,14 @@ from __future__ import annotations
 
 def scopes_for_role(role: str) -> list[str]:
     normalized = role.lower()
+    if normalized in {"platform_operator", "platform-operator"}:
+        return [
+            "platform:operator",
+            "auth:invites",
+            "auth:signup_requests",
+            "support:read",
+            "activity:read",
+        ]
     if normalized in {"admin", "owner"}:
         return [
             "conversations:read",

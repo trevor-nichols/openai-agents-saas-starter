@@ -7,7 +7,7 @@ Keep it in sync with `apps/api-service/src/app/api/v1/router.py` and the smoke s
 
 | Router prefix | Smoke test(s) | Minimal assertion(s) | Gate / Notes |
 | --- | --- | --- | --- |
-| `/api/v1/auth` | `test_auth_smoke.py`, `auth.py` | Token issuance, refresh, and `/auth/me` return valid user/tokens | Uses fixtures for seed user; extended auth flows tracked in Workstream B1. |
+| `/api/v1/auth` | `test_auth_smoke.py`, `test_auth_sessions_smoke.py`, `test_auth_email_password_smoke.py`, `test_auth_mfa_smoke.py`, `test_auth_signup_smoke.py`, `test_service_accounts_smoke.py` | Login/refresh/me, session management, signup/invites/requests/register, email verification + password flows, MFA TOTP, service-account issuance + token admin | Gates: `SMOKE_ENABLE_AUTH_SIGNUP`, `SMOKE_ENABLE_AUTH_EXTENDED`, `SMOKE_ENABLE_AUTH_MFA`, `SMOKE_ENABLE_SERVICE_ACCOUNTS`; fixtures seed operator/unverified/MFA users + password-reset token endpoint. |
 | `/api/v1/chat` | `test_ai_smoke.py` | `/chat` returns 200 with `conversation_id` | `SMOKE_ENABLE_AI=1` + model key; streaming handshake in Workstream C1. |
 | `/api/v1/agents` | `test_agents_smoke.py` | Catalog includes `triage`; status endpoint returns `active` | Requires seeded auth user. |
 | `/api/v1/assets` | Planned | List/detail/download/thumbnail/delete | `SMOKE_ENABLE_ASSETS=1` + storage backing; Workstream D3. |

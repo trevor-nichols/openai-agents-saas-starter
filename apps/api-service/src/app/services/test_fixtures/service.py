@@ -310,6 +310,8 @@ class TestFixtureService:
             user.status = UserStatus.ACTIVE
             if user_spec.verify_email:
                 user.email_verified_at = now
+            else:
+                user.email_verified_at = None
 
         profile = await session.scalar(
             select(UserProfile).where(UserProfile.user_id == user.id)

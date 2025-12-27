@@ -53,6 +53,7 @@ SMOKE_BASE_URL=http://localhost:8000 pytest -m smoke tests/smoke/http --maxfail=
 - `SMOKE_ENABLE_OPENAI_FILES` (1/0) — OpenAI file/container download proxy
 - `SMOKE_ENABLE_ASSETS` (1/0) — assets list/detail/download/thumbnail/delete
 - `SMOKE_ENABLE_VECTOR`, `SMOKE_ENABLE_CONTAINERS` (1/0) — provider-backed storage/runtime tests
+- Optional fixture user overrides: `SMOKE_OPERATOR_EMAIL`, `SMOKE_UNVERIFIED_EMAIL`, `SMOKE_MFA_EMAIL`, `SMOKE_PASSWORD_RESET_EMAIL`, `SMOKE_PASSWORD_CHANGE_EMAIL` (use `SMOKE_USER_PASSWORD`).
 
 ## CI usage
 Backend CI job `http-smoke` runs `just smoke-http` with sqlite + redis, auto-migrations on, and fixtures enabled. Optional gates stay off unless env overrides are set in the workflow.
