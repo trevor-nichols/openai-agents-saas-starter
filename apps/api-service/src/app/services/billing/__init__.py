@@ -29,10 +29,9 @@ from .billing_service import (
 from .payment_gateway import (
     PaymentGateway,
     PaymentGatewayError,
-    StripeGateway,
     SubscriptionProvisionResult,
-    stripe_gateway,
 )
+from .stripe.gateway import StripeGateway, get_stripe_gateway
 
 __all__ = [
     "BillingEventBackend",
@@ -59,5 +58,5 @@ __all__ = [
     "SubscriptionStateError",
     "billing_events_service",
     "get_billing_events_service",
-    "stripe_gateway",
+    "get_stripe_gateway",
 ]

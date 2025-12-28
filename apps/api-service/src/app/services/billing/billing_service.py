@@ -21,8 +21,8 @@ from app.services.billing.payment_gateway import (
     PaymentMethodSummary,
     PortalSessionResult,
     SetupIntentResult,
-    stripe_gateway,
 )
+from app.services.billing.stripe.gateway import get_stripe_gateway
 
 
 class BillingError(Exception):
@@ -147,7 +147,7 @@ class BillingService:
         gateway: PaymentGateway | None = None,
     ) -> None:
         self._repository: BillingRepository | None = repository
-        self._gateway: PaymentGateway = gateway or stripe_gateway
+        self._gateway: PaymentGateway = gateway or get_stripe_gateway()
 
     def set_repository(self, repository: BillingRepository) -> None:
         self._repository = repository

@@ -4,7 +4,8 @@ Tenant subscription orchestration, usage metering, Stripe connectivity, and the 
 
 ## What lives here
 - `billing_service.py` — core facade for plans, subscriptions, usage, and invoice ingestion. It uses a `BillingRepository` (Postgres in `infrastructure/persistence/billing/postgres.py`) plus a `PaymentGateway` (Stripe by default).
-- `payment_gateway.py` — gateway protocol + Stripe implementation. Handles customer/subscription provisioning, usage recording, and error mapping with metrics.
+- `payment_gateway/` — gateway protocol + shared DTOs.
+- `stripe/gateway.py` — Stripe implementation (customer/subscription provisioning, usage recording, error mapping + metrics).
 - `billing_events/` — normalizes processed Stripe events and broadcasts them per-tenant:
   - `normalizer.py` → converts raw Stripe payloads into concise `BillingEventPayload`s.
   - `publisher.py` → emits events to a `BillingEventBackend` (Redis streams) and logs activity.
