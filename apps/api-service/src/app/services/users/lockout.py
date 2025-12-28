@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from math import ceil
 from uuid import UUID
 
 from app.core.settings import Settings
@@ -33,7 +34,7 @@ class LockoutManager:
         ip_address: str | None,
         user_agent: str | None,
     ) -> None:
-        window = int(self._settings.auth_lockout_window_minutes * 60)
+        window = max(1, ceil(self._settings.auth_lockout_window_minutes * 60))
         failures = await self._repository.increment_lockout_counter(user.id, ttl_seconds=window)
         await self._login_events.record(
             user_id=user.id,
@@ -46,7 +47,7 @@ class LockoutManager:
         threshold = self._settings.auth_lockout_threshold
         if failures >= threshold:
             await self._repository.update_user_status(user.id, UserStatus.LOCKED)
-            duration = int(self._settings.auth_lockout_duration_minutes * 60)
+            duration = max(1, ceil(self._settings.auth_lockout_duration_minutes * 60))
             await self._repository.mark_user_locked(user.id, duration_seconds=duration)
             await self._login_events.record(
                 user_id=user.id,

@@ -7,7 +7,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from app.services.billing.billing_service import BillingError, BillingService
+from app.services.billing.billing_service import BillingService
+from app.services.billing.errors import BillingError
 
 
 @dataclass(slots=True)

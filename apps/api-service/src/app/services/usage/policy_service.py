@@ -14,11 +14,8 @@ from typing import Protocol
 from app.core.settings.usage import SoftLimitMode, UsageGuardrailCacheBackend
 from app.domain.billing import PlanFeature, UsageTotal
 from app.infrastructure.redis_types import RedisBytesClient
-from app.services.billing.billing_service import (
-    BillingService,
-    PlanNotFoundError,
-    SubscriptionNotFoundError,
-)
+from app.services.billing.billing_service import BillingService
+from app.services.billing.errors import PlanNotFoundError, SubscriptionNotFoundError
 
 logger = logging.getLogger(__name__)
 

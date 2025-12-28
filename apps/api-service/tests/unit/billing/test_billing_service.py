@@ -13,15 +13,17 @@ from app.infrastructure.persistence.auth import models as auth_models  # noqa: F
 from app.infrastructure.persistence.billing import models as billing_models
 from app.infrastructure.persistence.billing.postgres import PostgresBillingRepository
 from app.infrastructure.persistence.tenants import models as tenant_models
-from app.services.billing.billing_service import (
-    BillingService,
+from app.services.billing.billing_service import BillingService
+from app.services.billing.errors import (
     InvalidTenantIdentifierError,
-    PlanChangeTiming,
     PaymentProviderError,
+    SubscriptionStateError,
+)
+from app.services.billing.models import (
+    PlanChangeTiming,
     ProcessorInvoiceLineSnapshot,
     ProcessorInvoiceSnapshot,
     ProcessorSubscriptionSnapshot,
-    SubscriptionStateError,
 )
 from app.domain.billing import BillingCustomerRecord, TenantSubscription
 from app.services.billing.payment_gateway import (

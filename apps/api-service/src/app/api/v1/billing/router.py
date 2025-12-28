@@ -38,14 +38,14 @@ from app.api.v1.billing.schemas import (
 from app.core.settings import get_settings
 from app.infrastructure.persistence.stripe.models import StripeEventStatus
 from app.services.billing.billing_events import get_billing_events_service
-from app.services.billing.billing_service import (
+from app.services.billing.billing_service import billing_service
+from app.services.billing.errors import (
     BillingCustomerNotFoundError,
     BillingError,
     InvalidTenantIdentifierError,
     PlanNotFoundError,
     SubscriptionNotFoundError,
     SubscriptionStateError,
-    billing_service,
 )
 from app.services.shared.rate_limit_service import (
     ConcurrencyQuota,

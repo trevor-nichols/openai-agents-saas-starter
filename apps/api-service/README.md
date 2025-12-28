@@ -193,9 +193,9 @@ hatch run test
 Targeted suites:
 ```bash
 cd apps/api-service
-hatch run test:unit
-hatch run test:integration
-hatch run test:smoke
+hatch run test-unit
+hatch run test-integration
+hatch run test-smoke
 ```
 
 ### OpenAPI export

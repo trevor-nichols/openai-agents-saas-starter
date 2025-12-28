@@ -13,7 +13,7 @@ from app.services.billing.billing_events import (
     BillingEventSubscription,
     BillingEventUsage,
 )
-from app.services.billing.billing_service import (
+from app.services.billing.models import (
     PlanChangeResult,
     PlanChangeTiming,
     UpcomingInvoicePreview,

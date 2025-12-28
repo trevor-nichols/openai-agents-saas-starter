@@ -37,3 +37,4 @@ Orchestrates account authentication and password lifecycle on top of the shared 
 - Ensure Postgres migrations are applied; the user repository depends on the auth tables and Redis for counters/history.
 - Prefer `get_user_service()` from the container instead of instantiating directly so the shared throttler/activity services are reused.
 - For local debugging without Redis IP throttling, pass a `NullLoginThrottle` into `build_user_service`, but keep throttling enabled in shared environments.
+- Lockout window/duration are rounded up to at least 1 second to avoid zero-second TTLs when configuring small values for tests.

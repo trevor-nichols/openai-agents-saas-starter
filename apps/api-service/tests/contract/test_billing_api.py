@@ -16,7 +16,7 @@ from tests.utils.contract_env import TEST_TENANT_ID
 from app.api.dependencies.auth import require_current_user  # noqa: E402
 from app.api.v1.billing import router as billing_router  # noqa: E402
 from app.domain.billing import BillingPlan, TenantSubscription  # noqa: E402
-from app.services.billing.billing_service import (  # noqa: E402
+from app.services.billing.models import (  # noqa: E402
     PlanChangeResult,
     PlanChangeTiming,
     UpcomingInvoiceLineSnapshot,
