@@ -13,8 +13,15 @@ const requiredPaths = [
   '/api/v1/billing/plans',
   '/api/v1/billing/stream',
   '/api/v1/billing/tenants/{tenant_id}/events',
+  '/api/v1/billing/tenants/{tenant_id}/payment-methods',
+  '/api/v1/billing/tenants/{tenant_id}/payment-methods/setup-intent',
+  '/api/v1/billing/tenants/{tenant_id}/payment-methods/{payment_method_id}',
+  '/api/v1/billing/tenants/{tenant_id}/payment-methods/{payment_method_id}/default',
+  '/api/v1/billing/tenants/{tenant_id}/portal',
   '/api/v1/billing/tenants/{tenant_id}/subscription',
+  '/api/v1/billing/tenants/{tenant_id}/subscription/plan',
   '/api/v1/billing/tenants/{tenant_id}/subscription/cancel',
+  '/api/v1/billing/tenants/{tenant_id}/upcoming-invoice',
   '/api/v1/billing/tenants/{tenant_id}/usage',
 ];
 

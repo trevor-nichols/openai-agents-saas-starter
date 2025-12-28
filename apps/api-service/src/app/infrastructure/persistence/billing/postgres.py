@@ -526,7 +526,7 @@ def _parse_metadata_datetime(value: object | None) -> datetime | None:
 def _coerce_int(value: object | None) -> int | None:
     if value is None or value == "":
         return None
-    if isinstance(value, (int, float, str)):
+    if isinstance(value, int | float | str):
         try:
             return int(value)
         except (TypeError, ValueError):

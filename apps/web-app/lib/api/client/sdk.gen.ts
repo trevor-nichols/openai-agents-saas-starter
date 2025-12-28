@@ -10,9 +10,6 @@ import type {
   AdminResetPasswordApiV1AuthPasswordResetPostData,
   AdminResetPasswordApiV1AuthPasswordResetPostErrors,
   AdminResetPasswordApiV1AuthPasswordResetPostResponses,
-  ApplyTestFixturesApiV1TestFixturesApplyPostData,
-  ApplyTestFixturesApiV1TestFixturesApplyPostErrors,
-  ApplyTestFixturesApiV1TestFixturesApplyPostResponses,
   ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostData,
   ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostErrors,
   ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostResponses,
@@ -193,15 +190,9 @@ import type {
   HealthCheckHealthGetData,
   HealthCheckHealthGetErrors,
   HealthCheckHealthGetResponses,
-  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostData,
-  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors,
-  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses,
   IssueInviteApiV1AuthInvitesPostData,
   IssueInviteApiV1AuthInvitesPostErrors,
   IssueInviteApiV1AuthInvitesPostResponses,
-  IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostData,
-  IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostErrors,
-  IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostResponses,
   IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostData,
   IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostErrors,
   IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostResponses,
@@ -4169,79 +4160,5 @@ export const billingEventStreamApiV1BillingStreamGet = <
     ],
     url: "/api/v1/billing/stream",
     ...options,
-  });
-};
-
-/**
- * Apply Test Fixtures
- */
-export const applyTestFixturesApiV1TestFixturesApplyPost = <
-  ThrowOnError extends boolean = false,
->(
-  options: Options<
-    ApplyTestFixturesApiV1TestFixturesApplyPostData,
-    ThrowOnError
-  >,
-) => {
-  return (options.client ?? client).post<
-    ApplyTestFixturesApiV1TestFixturesApplyPostResponses,
-    ApplyTestFixturesApiV1TestFixturesApplyPostErrors,
-    ThrowOnError
-  >({
-    url: "/api/v1/test-fixtures/apply",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
-};
-
-/**
- * Issue Email Verification Token
- */
-export const issueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPost =
-  <ThrowOnError extends boolean = false>(
-    options: Options<
-      IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostData,
-      ThrowOnError
-    >,
-  ) => {
-    return (options.client ?? client).post<
-      IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses,
-      IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors,
-      ThrowOnError
-    >({
-      url: "/api/v1/test-fixtures/email-verification-token",
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
-    });
-  };
-
-/**
- * Issue Password Reset Token
- */
-export const issuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPost = <
-  ThrowOnError extends boolean = false,
->(
-  options: Options<
-    IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostData,
-    ThrowOnError
-  >,
-) => {
-  return (options.client ?? client).post<
-    IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostResponses,
-    IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostErrors,
-    ThrowOnError
-  >({
-    url: "/api/v1/test-fixtures/password-reset-token",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
   });
 };
