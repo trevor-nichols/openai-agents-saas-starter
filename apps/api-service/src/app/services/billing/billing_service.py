@@ -527,6 +527,7 @@ class BillingService:
             or 1
         )
 
+        effective_at: datetime | None
         if resolved_timing == PlanChangeTiming.IMMEDIATE:
             try:
                 swap_result = await self._gateway.swap_subscription_plan(
