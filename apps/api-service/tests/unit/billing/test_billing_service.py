@@ -15,24 +15,14 @@ from app.infrastructure.persistence.billing.postgres import PostgresBillingRepos
 from app.infrastructure.persistence.tenants import models as tenant_models
 from app.services.billing.billing_service import (
     BillingService,
-    InvalidTenantIdentifierError,
     PaymentProviderError,
     ProcessorInvoiceLineSnapshot,
     ProcessorInvoiceSnapshot,
-    ProcessorSubscriptionSnapshot,
 )
-from app.domain.billing import BillingCustomerRecord, TenantSubscription
 from app.services.billing.payment_gateway import (
-    CustomerProvisionResult,
     PaymentGateway,
     PaymentGatewayError,
-    PaymentMethodSummary,
-    PortalSessionResult,
-    SetupIntentResult,
     SubscriptionProvisionResult,
-    SubscriptionPlanScheduleResult,
-    SubscriptionPlanSwapResult,
-    UpcomingInvoicePreviewResult,
 )
 from tests.utils.sqlalchemy import create_tables
 
@@ -44,8 +34,6 @@ class FakeGateway(PaymentGateway):
         self.subscription_counter = 0
         self.last_quantity: int | None = None
         self.usage_records: list[dict[str, object]] = []
-        self.created_customers: list[CustomerProvisionResult] = []
-        self.last_billing_email: str | None = None
 
     async def start_subscription(
         self,
@@ -56,15 +44,13 @@ class FakeGateway(PaymentGateway):
         auto_renew: bool,
         seat_count: int | None,
         trial_days: int | None,
-        customer_id: str | None = None,
     ) -> SubscriptionProvisionResult:
         self.subscription_counter += 1
         now = datetime.now(UTC)
         self.last_quantity = seat_count or 1
-        self.last_billing_email = billing_email
         return SubscriptionProvisionResult(
-            processor="stripe",
-            customer_id=customer_id or f"cust_{tenant_id}",
+            processor="stub",
+            customer_id=f"cust_{tenant_id}",
             subscription_id=f"sub_{self.subscription_counter}",
             starts_at=now,
             current_period_start=now,
@@ -110,100 +96,6 @@ class FakeGateway(PaymentGateway):
             }
         )
 
-    async def create_customer(
-        self, *, tenant_id: str, billing_email: str | None
-    ) -> CustomerProvisionResult:
-        result = CustomerProvisionResult(
-            processor="stripe",
-            customer_id=f"cust_{tenant_id}",
-            billing_email=billing_email,
-        )
-        self.created_customers.append(result)
-        return result
-
-    async def create_portal_session(
-        self, *, customer_id: str, return_url: str
-    ) -> PortalSessionResult:
-        return PortalSessionResult(url="https://portal.example.com")
-
-    async def list_payment_methods(self, *, customer_id: str):
-        return [
-            PaymentMethodSummary(
-                id="pm_123",
-                brand="visa",
-                last4="4242",
-                exp_month=12,
-                exp_year=2030,
-                is_default=True,
-            )
-        ]
-
-    async def create_setup_intent(self, *, customer_id: str):
-        return SetupIntentResult(id="seti_123", client_secret="secret")
-
-    async def set_default_payment_method(
-        self, *, customer_id: str, payment_method_id: str
-    ) -> None:
-        return None
-
-    async def detach_payment_method(
-        self, *, customer_id: str, payment_method_id: str
-    ) -> None:
-        return None
-
-    async def preview_upcoming_invoice(
-        self,
-        *,
-        subscription_id: str,
-        seat_count: int | None,
-        proration_behavior: str | None = None,
-    ) -> UpcomingInvoicePreviewResult:
-        now = datetime.now(UTC)
-        return UpcomingInvoicePreviewResult(
-            invoice_id="in_123",
-            amount_due_cents=1200,
-            currency="usd",
-            period_start=now,
-            period_end=now,
-            lines=[],
-        )
-
-    async def swap_subscription_plan(
-        self,
-        subscription_id: str,
-        *,
-        plan_code: str,
-        seat_count: int | None,
-        schedule_id: str | None = None,
-        proration_behavior: str | None = None,
-    ) -> SubscriptionPlanSwapResult:
-        now = datetime.now(UTC)
-        return SubscriptionPlanSwapResult(
-            price_id="price_123",
-            subscription_item_id="si_123",
-            current_period_start=now,
-            current_period_end=now,
-            quantity=seat_count or 1,
-            metadata={},
-        )
-
-    async def schedule_subscription_plan(
-        self,
-        subscription_id: str,
-        *,
-        plan_code: str,
-        seat_count: int | None,
-    ) -> SubscriptionPlanScheduleResult:
-        now = datetime.now(UTC)
-        return SubscriptionPlanScheduleResult(
-            schedule_id="sched_123",
-            price_id="price_123",
-            current_period_start=now,
-            current_period_end=now,
-            quantity=seat_count or 1,
-            metadata={},
-        )
-
 
 class ErrorGateway(FakeGateway):
     async def start_subscription(
@@ -215,7 +107,6 @@ class ErrorGateway(FakeGateway):
         auto_renew: bool,
         seat_count: int | None,
         trial_days: int | None,
-        customer_id: str | None = None,
     ) -> SubscriptionProvisionResult:
         raise PaymentGatewayError("boom")
 
@@ -228,7 +119,6 @@ TABLES_TO_CREATE = cast(
         billing_models.BillingPlan.__table__,
         billing_models.PlanFeature.__table__,
         billing_models.TenantSubscription.__table__,
-        billing_models.BillingCustomer.__table__,
         billing_models.SubscriptionInvoice.__table__,
         billing_models.SubscriptionUsage.__table__,
     ),
@@ -324,109 +214,6 @@ async def test_start_subscription_uses_gateway_and_repository(billing_context):
     stored = await service.get_subscription(billing_context.tenant_id)
     assert stored is not None
     assert stored.plan_code == "starter"
-
-
-@pytest.mark.asyncio
-async def test_start_subscription_defaults_seat_count_to_plan(billing_context):
-    gateway = FakeGateway()
-    service = BillingService(billing_context.repository, gateway)
-
-    subscription = await service.start_subscription(
-        tenant_id=billing_context.tenant_id,
-        plan_code="pro",
-        billing_email="owner@example.com",
-        auto_renew=True,
-        seat_count=None,
-        trial_days=None,
-    )
-
-    assert subscription.seat_count == 5
-    assert gateway.last_quantity == 5
-
-
-@pytest.mark.asyncio
-async def test_start_subscription_reuses_existing_billing_email(billing_context):
-    gateway = FakeGateway()
-    service = BillingService(billing_context.repository, gateway)
-
-    await billing_context.repository.upsert_customer(
-        BillingCustomerRecord(
-            tenant_id=billing_context.tenant_id,
-            processor="stripe",
-            processor_customer_id="cus_existing",
-            billing_email="billing@example.com",
-        )
-    )
-
-    subscription = await service.start_subscription(
-        tenant_id=billing_context.tenant_id,
-        plan_code="starter",
-        billing_email=None,
-        auto_renew=True,
-        trial_days=None,
-    )
-
-    assert subscription.billing_email == "billing@example.com"
-    assert subscription.processor_customer_id == "cus_existing"
-    assert gateway.last_billing_email == "billing@example.com"
-
-    customer = await billing_context.repository.get_customer(
-        billing_context.tenant_id,
-        processor="stripe",
-    )
-    assert customer is not None
-    assert customer.billing_email == "billing@example.com"
-
-
-@pytest.mark.asyncio
-async def test_resolve_customer_does_not_clear_existing_email(billing_context):
-    gateway = FakeGateway()
-    service = BillingService(billing_context.repository, gateway)
-
-    await billing_context.repository.upsert_customer(
-        BillingCustomerRecord(
-            tenant_id=billing_context.tenant_id,
-            processor="stripe",
-            processor_customer_id="cus_existing",
-            billing_email="billing@example.com",
-        )
-    )
-
-    now = datetime.now(UTC)
-    await billing_context.repository.upsert_subscription(
-        TenantSubscription(
-            tenant_id=billing_context.tenant_id,
-            plan_code="starter",
-            status="active",
-            auto_renew=True,
-            billing_email=None,
-            starts_at=now,
-            current_period_start=now,
-            current_period_end=now + timedelta(days=30),
-            seat_count=1,
-            metadata={},
-            processor="stripe",
-            processor_customer_id="cus_existing",
-            processor_subscription_id="sub_existing",
-        )
-    )
-
-    await service.list_payment_methods(billing_context.tenant_id)
-
-    customer = await billing_context.repository.get_customer(
-        billing_context.tenant_id,
-        processor="stripe",
-    )
-    assert customer is not None
-    assert customer.billing_email == "billing@example.com"
-
-
-@pytest.mark.asyncio
-async def test_get_subscription_invalid_tenant_raises(billing_context):
-    service = _service(billing_context)
-
-    with pytest.raises(InvalidTenantIdentifierError):
-        await service.get_subscription("not-a-uuid")
 
 
 @pytest.mark.asyncio
@@ -640,168 +427,3 @@ async def test_get_usage_totals_handles_multiple_features(billing_context):
     totals_map = {t.feature_key: t for t in totals}
     assert totals_map["messages"].quantity == 4
     assert totals_map["output_tokens"].quantity == 750
-
-
-@pytest.mark.asyncio
-async def test_create_setup_intent_creates_customer_record(billing_context):
-    service = _service(billing_context)
-
-    await service.create_setup_intent(
-        billing_context.tenant_id,
-        billing_email="billing@example.com",
-    )
-
-    customer = await billing_context.repository.get_customer(
-        billing_context.tenant_id, processor="stripe"
-    )
-    assert customer is not None
-    assert customer.billing_email == "billing@example.com"
-
-
-@pytest.mark.asyncio
-async def test_preview_upcoming_invoice_includes_plan_name(billing_context):
-    service = _service(billing_context)
-    await service.start_subscription(
-        tenant_id=billing_context.tenant_id,
-        plan_code="starter",
-        billing_email="owner@example.com",
-        auto_renew=True,
-        trial_days=None,
-    )
-
-    preview = await service.preview_upcoming_invoice(
-        billing_context.tenant_id,
-        seat_count=None,
-    )
-
-    assert preview.plan_code == "starter"
-    assert preview.plan_name == "Starter"
-
-
-@pytest.mark.asyncio
-async def test_change_subscription_plan_updates_plan_immediately(billing_context):
-    service = _service(billing_context)
-    await service.start_subscription(
-        tenant_id=billing_context.tenant_id,
-        plan_code="starter",
-        billing_email="owner@example.com",
-        auto_renew=True,
-        trial_days=None,
-    )
-
-    await service.change_subscription_plan(
-        tenant_id=billing_context.tenant_id,
-        plan_code="pro",
-        seat_count=2,
-        timing="immediate",
-    )
-
-    updated = await service.get_subscription(billing_context.tenant_id)
-    assert updated is not None
-    assert updated.plan_code == "pro"
-
-
-@pytest.mark.asyncio
-async def test_change_subscription_plan_schedules_future_change(billing_context):
-    service = _service(billing_context)
-    await service.start_subscription(
-        tenant_id=billing_context.tenant_id,
-        plan_code="starter",
-        billing_email="owner@example.com",
-        auto_renew=True,
-        trial_days=None,
-    )
-
-    result = await service.change_subscription_plan(
-        tenant_id=billing_context.tenant_id,
-        plan_code="pro",
-        seat_count=3,
-        timing="period_end",
-    )
-
-    assert result.schedule_id is not None
-    updated = await service.get_subscription(billing_context.tenant_id)
-    assert updated is not None
-    assert updated.metadata.get("pending_plan_code") == "pro"
-
-
-@pytest.mark.asyncio
-async def test_sync_subscription_preserves_pending_plan_metadata(billing_context):
-    service = _service(billing_context)
-
-    subscription = await service.start_subscription(
-        tenant_id=billing_context.tenant_id,
-        plan_code="starter",
-        billing_email="owner@example.com",
-        auto_renew=True,
-        trial_days=None,
-    )
-    subscription.metadata["pending_plan_code"] = "pro"
-    subscription.metadata["processor_schedule_id"] = "sched_123"
-    await billing_context.repository.upsert_subscription(subscription)
-
-    snapshot = ProcessorSubscriptionSnapshot(
-        tenant_id=billing_context.tenant_id,
-        plan_code="starter",
-        status="active",
-        auto_renew=True,
-        starts_at=subscription.starts_at,
-        current_period_start=subscription.current_period_start,
-        current_period_end=subscription.current_period_end,
-        trial_ends_at=subscription.trial_ends_at,
-        cancel_at=subscription.cancel_at,
-        seat_count=subscription.seat_count,
-        billing_email=subscription.billing_email,
-        processor_customer_id=subscription.processor_customer_id,
-        processor_subscription_id=subscription.processor_subscription_id or "sub_sync",
-        metadata={
-            "processor_price_id": "price_123",
-            "processor_status": "active",
-            "processor_schedule_id": "sched_123",
-        },
-    )
-
-    synced = await service.sync_subscription_from_processor(snapshot)
-    assert synced.metadata.get("pending_plan_code") == "pro"
-    assert synced.metadata.get("processor_schedule_id") == "sched_123"
-
-
-@pytest.mark.asyncio
-async def test_sync_subscription_clears_pending_plan_if_schedule_removed(billing_context):
-    service = _service(billing_context)
-
-    subscription = await service.start_subscription(
-        tenant_id=billing_context.tenant_id,
-        plan_code="starter",
-        billing_email="owner@example.com",
-        auto_renew=True,
-        trial_days=None,
-    )
-    subscription.metadata["pending_plan_code"] = "pro"
-    subscription.metadata["processor_schedule_id"] = "sched_123"
-    await billing_context.repository.upsert_subscription(subscription)
-
-    snapshot = ProcessorSubscriptionSnapshot(
-        tenant_id=billing_context.tenant_id,
-        plan_code="starter",
-        status="active",
-        auto_renew=True,
-        starts_at=subscription.starts_at,
-        current_period_start=subscription.current_period_start,
-        current_period_end=subscription.current_period_end,
-        trial_ends_at=subscription.trial_ends_at,
-        cancel_at=subscription.cancel_at,
-        seat_count=subscription.seat_count,
-        billing_email=subscription.billing_email,
-        processor_customer_id=subscription.processor_customer_id,
-        processor_subscription_id=subscription.processor_subscription_id or "sub_sync",
-        metadata={
-            "processor_price_id": "price_123",
-            "processor_status": "active",
-            "processor_schedule_id": "",
-        },
-    )
-
-    synced = await service.sync_subscription_from_processor(snapshot)
-    assert "pending_plan_code" not in synced.metadata
-    assert "processor_schedule_id" not in synced.metadata

@@ -132,36 +132,6 @@ class TenantSubscription(Base):
     )
 
 
-class BillingCustomer(Base):
-    """Stripe (or other provider) customer linkage stored before subscriptions exist."""
-
-    __tablename__ = "billing_customers"
-    __table_args__ = (
-        UniqueConstraint(
-            "tenant_id",
-            "processor",
-            name="uq_billing_customers_tenant_processor",
-        ),
-        Index("ix_billing_customers_processor_customer_id", "processor_customer_id"),
-    )
-
-    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk)
-    tenant_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("tenant_accounts.id", ondelete="CASCADE"), nullable=False
-    )
-    processor: Mapped[str] = mapped_column(String(32), default="stripe", nullable=False)
-    processor_customer_id: Mapped[str] = mapped_column(String(128), nullable=False)
-    billing_email: Mapped[str | None] = mapped_column(String(256))
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=UTC_NOW, nullable=False
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=UTC_NOW, nullable=False
-    )
-
-    tenant: Mapped[TenantAccount] = relationship("TenantAccount")
-
-
 class SubscriptionInvoice(Base):
     """Tracks billing periods and invoice metadata."""
 
@@ -226,7 +196,6 @@ __all__ = [
     "BillingPlan",
     "PlanFeature",
     "TenantSubscription",
-    "BillingCustomer",
     "SubscriptionInvoice",
     "SubscriptionUsage",
 ]

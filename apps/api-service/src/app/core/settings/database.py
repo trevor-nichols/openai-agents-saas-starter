@@ -79,11 +79,6 @@ class DatabaseAndBillingSettingsMixin(BaseModel):
         description="Stripe webhook signing secret (whsec_*).",
         alias="STRIPE_WEBHOOK_SECRET",
     )
-    stripe_portal_return_url: str | None = Field(
-        default=None,
-        description="Return URL for Stripe billing portal sessions.",
-        alias="STRIPE_PORTAL_RETURN_URL",
-    )
     stripe_product_price_map: dict[str, str] = Field(
         default_factory=dict,
         description=(
@@ -96,11 +91,6 @@ class DatabaseAndBillingSettingsMixin(BaseModel):
     def resolve_billing_events_redis_url(self) -> str | None:
         redis_source = getattr(self, "redis_url", None)
         return normalize_url(self.billing_events_redis_url) or normalize_url(redis_source)
-
-    def resolve_stripe_portal_return_url(self) -> str:
-        base_url = getattr(self, "app_public_url", "http://localhost:3000")
-        default_url = f"{str(base_url).rstrip('/')}/billing"
-        return normalize_url(self.stripe_portal_return_url) or default_url
 
     def required_stripe_envs_missing(self) -> list[str]:
         missing: list[str] = []
@@ -127,7 +117,6 @@ class DatabaseAndBillingSettingsMixin(BaseModel):
             "plan_count": len(plan_codes),
             "billing_stream_enabled": self.enable_billing_stream,
             "billing_stream_backend": redis_source if self.enable_billing_stream else "disabled",
-            "stripe_portal_return_url": self.resolve_stripe_portal_return_url(),
         }
 
     @staticmethod

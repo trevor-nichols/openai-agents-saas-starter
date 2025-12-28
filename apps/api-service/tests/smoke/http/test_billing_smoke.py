@@ -77,61 +77,6 @@ async def test_billing_subscription_lifecycle_and_events(
     update_body = update.json()
     assert update_body.get("billing_email") == updated_email
 
-    portal = await http_client.post(
-        f"/api/v1/billing/tenants/{smoke_state.tenant_id}/portal",
-        json={"billing_email": updated_email},
-        headers=headers,
-    )
-    assert portal.status_code == 200, portal.text
-    portal_body = portal.json()
-    portal_url = portal_body.get("url")
-    assert isinstance(portal_url, str)
-    assert portal_url
-
-    setup_intent = await http_client.post(
-        f"/api/v1/billing/tenants/{smoke_state.tenant_id}/payment-methods/setup-intent",
-        json={"billing_email": updated_email},
-        headers=headers,
-    )
-    assert setup_intent.status_code == 200, setup_intent.text
-    setup_body = setup_intent.json()
-    assert isinstance(setup_body.get("id"), str)
-
-    payment_methods = await http_client.get(
-        f"/api/v1/billing/tenants/{smoke_state.tenant_id}/payment-methods",
-        headers=headers,
-    )
-    assert payment_methods.status_code == 200, payment_methods.text
-    methods_body = payment_methods.json()
-    assert isinstance(methods_body, list)
-
-    preview = await http_client.post(
-        f"/api/v1/billing/tenants/{smoke_state.tenant_id}/upcoming-invoice",
-        json={"seat_count": 1},
-        headers=headers,
-    )
-    assert preview.status_code == 200, preview.text
-    preview_body = preview.json()
-    assert preview_body.get("plan_code") == plan_code
-
-    alternate_plan = next(
-        (
-            plan.get("code")
-            for plan in catalog
-            if plan.get("code") != plan_code
-        ),
-        None,
-    )
-    if isinstance(alternate_plan, str) and alternate_plan:
-        change = await http_client.post(
-            f"/api/v1/billing/tenants/{smoke_state.tenant_id}/subscription/plan",
-            json={"plan_code": alternate_plan, "timing": "period_end"},
-            headers=headers,
-        )
-        assert change.status_code == 200, change.text
-        change_body = change.json()
-        assert change_body.get("plan_code") == alternate_plan
-
     usage = await http_client.post(
         f"/api/v1/billing/tenants/{smoke_state.tenant_id}/usage",
         json={
