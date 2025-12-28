@@ -766,6 +766,91 @@ async def test_change_subscription_plan_updates_seat_count(billing_context):
 
 
 @pytest.mark.asyncio
+async def test_change_subscription_plan_auto_accounts_for_seat_increase(billing_context):
+    gateway = FakeGateway()
+    service = BillingService(billing_context.repository, gateway)
+
+    async with billing_context.session_factory() as session:
+        session.add(
+            billing_models.BillingPlan(
+                code="team",
+                name="Team",
+                interval="monthly",
+                interval_count=1,
+                price_cents=1000,
+                currency="USD",
+                trial_days=0,
+                seat_included=1,
+                feature_toggles={},
+            )
+        )
+        await session.commit()
+
+    await service.start_subscription(
+        tenant_id=billing_context.tenant_id,
+        plan_code="pro",
+        billing_email="owner@example.com",
+        auto_renew=True,
+        seat_count=1,
+        trial_days=None,
+    )
+
+    result = await service.change_subscription_plan(
+        tenant_id=billing_context.tenant_id,
+        plan_code="team",
+        seat_count=20,
+    )
+
+    assert result.timing == PlanChangeTiming.IMMEDIATE
+    assert result.subscription.plan_code == "team"
+    assert gateway.plan_swaps
+    assert not gateway.plan_schedules
+
+
+@pytest.mark.asyncio
+async def test_change_subscription_plan_auto_accounts_for_seat_decrease(billing_context):
+    gateway = FakeGateway()
+    service = BillingService(billing_context.repository, gateway)
+
+    async with billing_context.session_factory() as session:
+        session.add(
+            billing_models.BillingPlan(
+                code="team",
+                name="Team",
+                interval="monthly",
+                interval_count=1,
+                price_cents=1000,
+                currency="USD",
+                trial_days=0,
+                seat_included=1,
+                feature_toggles={},
+            )
+        )
+        await session.commit()
+
+    await service.start_subscription(
+        tenant_id=billing_context.tenant_id,
+        plan_code="team",
+        billing_email="owner@example.com",
+        auto_renew=True,
+        seat_count=20,
+        trial_days=None,
+    )
+
+    result = await service.change_subscription_plan(
+        tenant_id=billing_context.tenant_id,
+        plan_code="pro",
+        seat_count=1,
+    )
+
+    assert result.timing == PlanChangeTiming.PERIOD_END
+    assert result.subscription.plan_code == "team"
+    assert result.subscription.pending_plan_code == "pro"
+    assert gateway.plan_schedules
+    assert not gateway.plan_swaps
+
+
+@pytest.mark.asyncio
 async def test_change_subscription_plan_schedules_downgrade(billing_context):
     gateway = FakeGateway()
     service = BillingService(billing_context.repository, gateway)

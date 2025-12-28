@@ -515,9 +515,6 @@ class BillingService:
         if not subscription.processor_subscription_id:
             raise SubscriptionStateError("Subscription is missing processor identifier.")
 
-        resolved_timing = _resolve_plan_change_timing(
-            timing, current_plan=current_plan, target_plan=target_plan
-        )
         effective_seat_count = (
             seat_count
             if seat_count is not None
@@ -525,6 +522,19 @@ class BillingService:
             or target_plan.seat_included
             or current_plan.seat_included
             or 1
+        )
+        current_seat_count = (
+            subscription.seat_count
+            if subscription.seat_count is not None
+            else current_plan.seat_included
+            or 1
+        )
+        resolved_timing = _resolve_plan_change_timing(
+            timing,
+            current_plan=current_plan,
+            target_plan=target_plan,
+            current_seat_count=current_seat_count,
+            target_seat_count=effective_seat_count,
         )
 
         effective_at: datetime | None
@@ -890,6 +900,8 @@ def _resolve_plan_change_timing(
     *,
     current_plan: BillingPlan,
     target_plan: BillingPlan,
+    current_seat_count: int,
+    target_seat_count: int,
 ) -> PlanChangeTiming:
     if timing != PlanChangeTiming.AUTO:
         return timing
@@ -897,7 +909,9 @@ def _resolve_plan_change_timing(
         current_plan.interval == target_plan.interval
         and current_plan.interval_count == target_plan.interval_count
     ):
-        if target_plan.price_cents > current_plan.price_cents:
+        current_total = current_plan.price_cents * max(current_seat_count, 1)
+        target_total = target_plan.price_cents * max(target_seat_count, 1)
+        if target_total > current_total:
             return PlanChangeTiming.IMMEDIATE
         return PlanChangeTiming.PERIOD_END
     return PlanChangeTiming.PERIOD_END
