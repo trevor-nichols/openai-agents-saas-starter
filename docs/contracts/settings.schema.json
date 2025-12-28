@@ -1401,6 +1401,19 @@
       "default": "memory",
       "description": "Which storage provider implementation to use (minio, gcs, s3, azure_blob, memory)."
     },
+    "STRIPE_PORTAL_RETURN_URL": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Return URL for Stripe billing portal sessions.",
+      "title": "Stripe Portal Return Url"
+    },
     "STRIPE_PRODUCT_PRICE_MAP": {
       "additionalProperties": {
         "type": "string"

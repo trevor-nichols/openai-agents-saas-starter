@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from typing import Literal
 
+from app.core.settings import get_settings
 from app.domain.billing import (
+    BillingCustomerRecord,
     BillingPlan,
     BillingRepository,
     SubscriptionInvoiceRecord,
@@ -15,6 +18,11 @@ from app.domain.billing import (
 from app.services.billing.payment_gateway import (
     PaymentGateway,
     PaymentGatewayError,
+    PaymentMethodSummary,
+    PortalSessionResult,
+    SetupIntentResult,
+    SubscriptionPlanScheduleResult,
+    SubscriptionPlanSwapResult,
     stripe_gateway,
 )
 
@@ -35,12 +43,19 @@ class SubscriptionStateError(BillingError):
     """Raised when subscription state prevents the requested operation."""
 
 
+class BillingCustomerNotFoundError(BillingError):
+    """Raised when no billing customer exists for the tenant."""
+
+
 class InvalidTenantIdentifierError(BillingError):
     """Raised when the provided tenant identifier is not valid for persistence."""
 
 
 class PaymentProviderError(BillingError):
     """Raised when the payment gateway rejects a request."""
+
+
+PlanChangeTiming = Literal["immediate", "period_end"]
 
 
 @dataclass(slots=True)
@@ -87,8 +102,43 @@ class ProcessorInvoiceSnapshot:
     lines: list[ProcessorInvoiceLineSnapshot] = field(default_factory=list)
 
 
+@dataclass(slots=True)
+class PlanChangeResult:
+    plan_code: str
+    timing: PlanChangeTiming
+    seat_count: int | None
+    effective_at: datetime | None
+    current_period_end: datetime | None
+    schedule_id: str | None = None
+
+
+@dataclass(slots=True)
+class UpcomingInvoicePreview:
+    plan_code: str
+    plan_name: str
+    seat_count: int | None
+    invoice_id: str | None
+    amount_due_cents: int
+    currency: str
+    period_start: datetime | None
+    period_end: datetime | None
+    lines: list[UpcomingInvoiceLineSnapshot] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class UpcomingInvoiceLineSnapshot:
+    description: str | None
+    amount_cents: int
+    currency: str | None
+    quantity: int | None
+    unit_amount_cents: int | None
+    price_id: str | None
+
+
 class BillingService:
     """Encapsulates billing operations while hiding persistence details."""
+
+    processor_name = "stripe"
 
     def __init__(
         self,
@@ -109,6 +159,110 @@ class BillingService:
             raise RuntimeError("Billing repository has not been configured.")
         return self._repository
 
+    async def _upsert_billing_customer(
+        self,
+        *,
+        tenant_id: str,
+        customer_id: str,
+        billing_email: str | None,
+        processor: str | None = None,
+    ) -> BillingCustomerRecord:
+        repository = self._require_repository()
+        record = BillingCustomerRecord(
+            tenant_id=tenant_id,
+            processor=processor or self.processor_name,
+            processor_customer_id=customer_id,
+            billing_email=billing_email,
+        )
+        try:
+            return await repository.upsert_customer(record)
+        except ValueError as exc:
+            raise InvalidTenantIdentifierError("Tenant identifier is not a valid UUID.") from exc
+
+    async def _resolve_customer_id(
+        self,
+        tenant_id: str,
+        billing_email: str | None,
+        *,
+        create_if_missing: bool,
+    ) -> str | None:
+        record = await self._resolve_customer(
+            tenant_id,
+            billing_email,
+            create_if_missing=create_if_missing,
+        )
+        return record.processor_customer_id if record else None
+
+    async def _resolve_customer(
+        self,
+        tenant_id: str,
+        billing_email: str | None,
+        *,
+        create_if_missing: bool,
+    ) -> BillingCustomerRecord | None:
+        repository = self._require_repository()
+        try:
+            subscription = await repository.get_subscription(tenant_id)
+        except ValueError as exc:
+            raise InvalidTenantIdentifierError("Tenant identifier is not a valid UUID.") from exc
+        if subscription and subscription.processor_customer_id:
+            effective_email = billing_email or subscription.billing_email
+            if effective_email:
+                return await self._upsert_billing_customer(
+                    tenant_id=tenant_id,
+                    customer_id=subscription.processor_customer_id,
+                    billing_email=effective_email,
+                )
+            try:
+                existing_record = await repository.get_customer(
+                    tenant_id, processor=self.processor_name
+                )
+            except ValueError as exc:
+                raise InvalidTenantIdentifierError(
+                    "Tenant identifier is not a valid UUID."
+                ) from exc
+            if existing_record:
+                return existing_record
+            return await self._upsert_billing_customer(
+                tenant_id=tenant_id,
+                customer_id=subscription.processor_customer_id,
+                billing_email=None,
+            )
+
+        try:
+            customer_record = await repository.get_customer(
+                tenant_id, processor=self.processor_name
+            )
+        except ValueError as exc:
+            raise InvalidTenantIdentifierError("Tenant identifier is not a valid UUID.") from exc
+        if customer_record:
+            if billing_email and billing_email != customer_record.billing_email:
+                return await self._upsert_billing_customer(
+                    tenant_id=tenant_id,
+                    customer_id=customer_record.processor_customer_id,
+                    billing_email=billing_email,
+                    processor=customer_record.processor,
+                )
+            return customer_record
+
+        if not create_if_missing:
+            return None
+
+        try:
+            provisioned = await self._gateway.create_customer(
+                tenant_id=tenant_id,
+                billing_email=billing_email,
+            )
+        except PaymentGatewayError as exc:
+            raise PaymentProviderError(str(exc)) from exc
+
+        return await self._upsert_billing_customer(
+            tenant_id=tenant_id,
+            customer_id=provisioned.customer_id,
+            billing_email=billing_email,
+            processor=provisioned.processor,
+        )
+
     async def list_plans(self) -> list[BillingPlan]:
         return await self._require_repository().list_plans()
 
@@ -118,10 +272,8 @@ class BillingService:
     async def get_subscription(self, tenant_id: str) -> TenantSubscription | None:
         try:
             return await self._require_repository().get_subscription(tenant_id)
-        except ValueError:
-            # Maintain backward compatibility with non-UUID tenant identifiers by
-            # treating them as missing records rather than surfacing a 500.
-            return None
+        except ValueError as exc:
+            raise InvalidTenantIdentifierError("Tenant identifier is not a valid UUID.") from exc
 
     async def get_usage_totals(
         self,
@@ -153,14 +305,28 @@ class BillingService:
         trial_days: int | None = None,
     ) -> TenantSubscription:
         plan = await self._ensure_plan_exists(plan_code)
+        resolved_seat_count = seat_count if seat_count is not None else plan.seat_included
+        gateway_seat_count = resolved_seat_count if resolved_seat_count is not None else 1
+        customer_record = await self._resolve_customer(
+            tenant_id,
+            billing_email,
+            create_if_missing=False,
+        )
+        effective_billing_email = billing_email or (
+            customer_record.billing_email if customer_record else None
+        )
+        existing_customer_id = (
+            customer_record.processor_customer_id if customer_record else None
+        )
         try:
             processor_payload = await self._gateway.start_subscription(
                 tenant_id=tenant_id,
                 plan_code=plan_code,
-                billing_email=billing_email,
+                billing_email=effective_billing_email,
                 auto_renew=auto_renew,
-                seat_count=seat_count,
+                seat_count=gateway_seat_count,
                 trial_days=trial_days,
+                customer_id=existing_customer_id,
             )
         except PaymentGatewayError as exc:
             raise PaymentProviderError(str(exc)) from exc
@@ -170,12 +336,12 @@ class BillingService:
             plan_code=plan_code,
             status="active",
             auto_renew=auto_renew,
-            billing_email=billing_email,
+            billing_email=effective_billing_email,
             starts_at=processor_payload.starts_at,
             current_period_start=processor_payload.current_period_start,
             current_period_end=processor_payload.current_period_end,
             trial_ends_at=processor_payload.trial_ends_at,
-            seat_count=seat_count or plan.seat_included,
+            seat_count=resolved_seat_count,
             metadata=processor_payload.metadata or {},
             processor=processor_payload.processor,
             processor_customer_id=processor_payload.customer_id,
@@ -188,6 +354,13 @@ class BillingService:
             await repository.upsert_subscription(subscription)
         except ValueError as exc:
             raise InvalidTenantIdentifierError("Tenant identifier is not a valid UUID.") from exc
+
+        await self._upsert_billing_customer(
+            tenant_id=tenant_id,
+            customer_id=processor_payload.customer_id,
+            billing_email=effective_billing_email,
+            processor=processor_payload.processor,
+        )
         return subscription
 
     async def cancel_subscription(
@@ -283,6 +456,78 @@ class BillingService:
             )
         return subscription
 
+    async def _swap_plan_now(
+        self,
+        subscription: TenantSubscription,
+        *,
+        plan_code: str,
+        seat_count: int | None,
+    ) -> SubscriptionPlanSwapResult:
+        schedule_id = subscription.metadata.get("processor_schedule_id")
+        try:
+            swap = await self._gateway.swap_subscription_plan(
+                subscription.processor_subscription_id or "",
+                plan_code=plan_code,
+                seat_count=seat_count,
+                schedule_id=schedule_id if isinstance(schedule_id, str) else None,
+                proration_behavior="always_invoice",
+            )
+        except PaymentGatewayError as exc:
+            raise PaymentProviderError(str(exc)) from exc
+
+        updated_metadata = dict(subscription.metadata or {})
+        updated_metadata.update(
+            {
+                "processor_price_id": swap.price_id,
+                "processor_subscription_item_id": swap.subscription_item_id or "",
+            }
+        )
+        updated_metadata.pop("processor_schedule_id", None)
+        updated_metadata.pop("pending_plan_code", None)
+
+        subscription.plan_code = plan_code
+        subscription.seat_count = swap.quantity
+        if swap.current_period_start:
+            subscription.current_period_start = swap.current_period_start
+        if swap.current_period_end:
+            subscription.current_period_end = swap.current_period_end
+        subscription.metadata = updated_metadata
+
+        try:
+            await self._require_repository().upsert_subscription(subscription)
+        except ValueError as exc:
+            raise InvalidTenantIdentifierError("Tenant identifier is not a valid UUID.") from exc
+
+        return swap
+
+    async def _schedule_plan_change(
+        self,
+        subscription: TenantSubscription,
+        *,
+        plan_code: str,
+        seat_count: int | None,
+    ) -> SubscriptionPlanScheduleResult:
+        try:
+            schedule = await self._gateway.schedule_subscription_plan(
+                subscription.processor_subscription_id or "",
+                plan_code=plan_code,
+                seat_count=seat_count,
+            )
+        except PaymentGatewayError as exc:
+            raise PaymentProviderError(str(exc)) from exc
+
+        updated_metadata = dict(subscription.metadata or {})
+        updated_metadata["processor_schedule_id"] = schedule.schedule_id
+        updated_metadata["pending_plan_code"] = plan_code
+        subscription.metadata = updated_metadata
+
+        try:
+            await self._require_repository().upsert_subscription(subscription)
+        except ValueError as exc:
+            raise InvalidTenantIdentifierError("Tenant identifier is not a valid UUID.") from exc
+
+        return schedule
+
     async def update_subscription(
         self,
         tenant_id: str,
@@ -313,7 +558,203 @@ class BillingService:
             )
         except ValueError as exc:
             raise InvalidTenantIdentifierError("Tenant identifier is not a valid UUID.") from exc
+
+        if updated.processor_customer_id:
+            await self._upsert_billing_customer(
+                tenant_id=tenant_id,
+                customer_id=updated.processor_customer_id,
+                billing_email=updated.billing_email,
+            )
         return updated
+
+    async def change_subscription_plan(
+        self,
+        *,
+        tenant_id: str,
+        plan_code: str,
+        seat_count: int | None,
+        timing: PlanChangeTiming,
+    ) -> PlanChangeResult:
+        subscription = await self._require_subscription(tenant_id)
+        if not subscription.processor_subscription_id:
+            raise SubscriptionStateError("Subscription is missing processor identifier.")
+
+        await self._ensure_plan_exists(plan_code)
+
+        if timing == "period_end":
+            schedule = await self._schedule_plan_change(
+                subscription,
+                plan_code=plan_code,
+                seat_count=seat_count,
+            )
+            effective_at = subscription.current_period_end
+            return PlanChangeResult(
+                plan_code=plan_code,
+                timing=timing,
+                seat_count=seat_count or subscription.seat_count,
+                effective_at=effective_at,
+                current_period_end=subscription.current_period_end,
+                schedule_id=schedule.schedule_id,
+            )
+
+        swap = await self._swap_plan_now(
+            subscription,
+            plan_code=plan_code,
+            seat_count=seat_count,
+        )
+        return PlanChangeResult(
+            plan_code=plan_code,
+            timing=timing,
+            seat_count=swap.quantity,
+            effective_at=datetime.now(UTC),
+            current_period_end=swap.current_period_end,
+            schedule_id=None,
+        )
+
+    async def create_portal_session(
+        self,
+        tenant_id: str,
+        *,
+        billing_email: str | None = None,
+    ) -> PortalSessionResult:
+        customer_id = await self._resolve_customer_id(
+            tenant_id,
+            billing_email,
+            create_if_missing=True,
+        )
+        if not customer_id:
+            raise BillingCustomerNotFoundError("Billing customer not found.")
+        settings = get_settings()
+        return_url = settings.resolve_stripe_portal_return_url()
+        try:
+            return await self._gateway.create_portal_session(
+                customer_id=customer_id,
+                return_url=return_url,
+            )
+        except PaymentGatewayError as exc:
+            raise PaymentProviderError(str(exc)) from exc
+
+    async def list_payment_methods(
+        self, tenant_id: str
+    ) -> list[PaymentMethodSummary]:
+        customer_id = await self._resolve_customer_id(
+            tenant_id,
+            billing_email=None,
+            create_if_missing=False,
+        )
+        if not customer_id:
+            return []
+        try:
+            return await self._gateway.list_payment_methods(customer_id=customer_id)
+        except PaymentGatewayError as exc:
+            raise PaymentProviderError(str(exc)) from exc
+
+    async def create_setup_intent(
+        self,
+        tenant_id: str,
+        *,
+        billing_email: str | None = None,
+    ) -> SetupIntentResult:
+        customer_id = await self._resolve_customer_id(
+            tenant_id,
+            billing_email,
+            create_if_missing=True,
+        )
+        if not customer_id:
+            raise BillingCustomerNotFoundError("Billing customer not found.")
+        try:
+            return await self._gateway.create_setup_intent(customer_id=customer_id)
+        except PaymentGatewayError as exc:
+            raise PaymentProviderError(str(exc)) from exc
+
+    async def set_default_payment_method(
+        self,
+        tenant_id: str,
+        *,
+        payment_method_id: str,
+    ) -> None:
+        customer_id = await self._resolve_customer_id(
+            tenant_id,
+            billing_email=None,
+            create_if_missing=False,
+        )
+        if not customer_id:
+            raise BillingCustomerNotFoundError("Billing customer not found.")
+        try:
+            await self._gateway.set_default_payment_method(
+                customer_id=customer_id,
+                payment_method_id=payment_method_id,
+            )
+        except PaymentGatewayError as exc:
+            raise PaymentProviderError(str(exc)) from exc
+
+    async def detach_payment_method(
+        self,
+        tenant_id: str,
+        *,
+        payment_method_id: str,
+    ) -> None:
+        customer_id = await self._resolve_customer_id(
+            tenant_id,
+            billing_email=None,
+            create_if_missing=False,
+        )
+        if not customer_id:
+            raise BillingCustomerNotFoundError("Billing customer not found.")
+        try:
+            await self._gateway.detach_payment_method(
+                customer_id=customer_id,
+                payment_method_id=payment_method_id,
+            )
+        except PaymentGatewayError as exc:
+            raise PaymentProviderError(str(exc)) from exc
+
+    async def preview_upcoming_invoice(
+        self,
+        tenant_id: str,
+        *,
+        seat_count: int | None,
+    ) -> UpcomingInvoicePreview:
+        subscription = await self._require_subscription(tenant_id)
+        if not subscription.processor_subscription_id:
+            raise SubscriptionStateError("Subscription is missing processor identifier.")
+
+        plan = await self._ensure_plan_exists(subscription.plan_code)
+        effective_seat_count = (
+            seat_count
+            if seat_count is not None
+            else subscription.seat_count or plan.seat_included
+        )
+
+        try:
+            preview = await self._gateway.preview_upcoming_invoice(
+                subscription_id=subscription.processor_subscription_id,
+                seat_count=effective_seat_count,
+            )
+        except PaymentGatewayError as exc:
+            raise PaymentProviderError(str(exc)) from exc
+
+        return UpcomingInvoicePreview(
+            plan_code=subscription.plan_code,
+            plan_name=plan.name,
+            seat_count=effective_seat_count,
+            invoice_id=preview.invoice_id,
+            amount_due_cents=preview.amount_due_cents,
+            currency=preview.currency,
+            period_start=preview.period_start,
+            period_end=preview.period_end,
+            lines=[
+                UpcomingInvoiceLineSnapshot(
+                    description=line.description,
+                    amount_cents=line.amount_cents,
+                    currency=line.currency,
+                    quantity=line.quantity,
+                    unit_amount_cents=line.unit_amount_cents,
+                    price_id=line.price_id,
+                )
+                for line in preview.lines
+            ],
+        )
 
     async def sync_subscription_from_processor(
         self,
@@ -321,8 +762,19 @@ class BillingService:
         *,
         processor_name: str = "stripe",
     ) -> TenantSubscription:
+        repository = self._require_repository()
+        try:
+            existing = await repository.get_subscription(snapshot.tenant_id)
+        except ValueError as exc:
+            raise InvalidTenantIdentifierError("Tenant identifier is not a valid UUID.") from exc
+
         starts_at = snapshot.starts_at or datetime.now(UTC)
         plan = await self._ensure_plan_exists(snapshot.plan_code)
+        merged_metadata = _merge_subscription_metadata(
+            existing.metadata if existing else None,
+            snapshot.metadata,
+            plan_code=snapshot.plan_code,
+        )
         subscription = TenantSubscription(
             tenant_id=snapshot.tenant_id,
             plan_code=snapshot.plan_code,
@@ -335,16 +787,23 @@ class BillingService:
             trial_ends_at=snapshot.trial_ends_at,
             cancel_at=snapshot.cancel_at,
             seat_count=snapshot.seat_count or plan.seat_included,
-            metadata=snapshot.metadata or {},
+            metadata=merged_metadata,
             processor=processor_name,
             processor_customer_id=snapshot.processor_customer_id,
             processor_subscription_id=snapshot.processor_subscription_id,
         )
-        repository = self._require_repository()
         try:
             await repository.upsert_subscription(subscription)
         except ValueError as exc:
             raise InvalidTenantIdentifierError("Tenant identifier is not a valid UUID.") from exc
+
+        if snapshot.processor_customer_id:
+            await self._upsert_billing_customer(
+                tenant_id=snapshot.tenant_id,
+                customer_id=snapshot.processor_customer_id,
+                billing_email=snapshot.billing_email,
+                processor=processor_name,
+            )
         return subscription
 
     async def ingest_invoice_snapshot(
@@ -397,6 +856,34 @@ def _to_utc(dt: datetime) -> datetime:
     if dt.tzinfo is None:
         return dt.replace(tzinfo=UTC)
     return dt.astimezone(UTC)
+
+
+def _merge_subscription_metadata(
+    existing: dict[str, str] | None,
+    incoming: dict[str, str] | None,
+    *,
+    plan_code: str,
+) -> dict[str, str]:
+    merged: dict[str, str] = dict(existing or {})
+    if incoming:
+        for key, value in incoming.items():
+            if value is None:
+                continue
+            merged[str(key)] = str(value)
+
+    pending_plan = merged.get("pending_plan_code")
+    schedule_id = merged.get("processor_schedule_id") or ""
+
+    if pending_plan:
+        if pending_plan == plan_code or not schedule_id:
+            merged.pop("pending_plan_code", None)
+            if pending_plan == plan_code:
+                merged.pop("processor_schedule_id", None)
+
+    if not schedule_id:
+        merged.pop("processor_schedule_id", None)
+
+    return merged
 
 
 def get_billing_service() -> BillingService:

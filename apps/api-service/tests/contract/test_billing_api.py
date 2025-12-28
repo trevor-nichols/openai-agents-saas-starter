@@ -16,6 +16,16 @@ from tests.utils.contract_env import TEST_TENANT_ID
 from app.api.dependencies.auth import require_current_user  # noqa: E402
 from app.api.v1.billing import router as billing_router  # noqa: E402
 from app.domain.billing import BillingPlan, TenantSubscription  # noqa: E402
+from app.services.billing.billing_service import (  # noqa: E402
+    PlanChangeResult,
+    UpcomingInvoiceLineSnapshot,
+    UpcomingInvoicePreview,
+)
+from app.services.billing.payment_gateway import (  # noqa: E402
+    PaymentMethodSummary,
+    PortalSessionResult,
+    SetupIntentResult,
+)
 
 
 def _stub_owner_user() -> dict[str, Any]:
@@ -95,3 +105,200 @@ def test_get_tenant_subscription_returns_payload(
     assert payload["tenant_id"] == TEST_TENANT_ID
     assert payload["plan_code"] == "starter"
     assert payload["status"] == "active"
+
+
+def test_create_portal_session_returns_url(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        billing_router.billing_service,
+        "create_portal_session",
+        AsyncMock(return_value=PortalSessionResult(url="https://portal.example.com")),
+    )
+
+    response = client.post(
+        f"/api/v1/billing/tenants/{TEST_TENANT_ID}/portal",
+        json={"billing_email": "billing@example.com"},
+    )
+    assert response.status_code == 200
+    assert response.json()["url"] == "https://portal.example.com"
+
+
+def test_start_subscription_omits_email_but_response_preserves(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    now = datetime.now(UTC)
+    subscription = TenantSubscription(
+        tenant_id=TEST_TENANT_ID,
+        plan_code="starter",
+        status="active",
+        auto_renew=True,
+        billing_email="billing@example.com",
+        starts_at=now,
+        current_period_start=now,
+        current_period_end=now + timedelta(days=30),
+        seat_count=1,
+        processor="stripe",
+        processor_subscription_id="sub_test",
+        processor_customer_id="cus_test",
+    )
+    start_mock = AsyncMock(return_value=subscription)
+    monkeypatch.setattr(billing_router.billing_service, "start_subscription", start_mock)
+
+    response = client.post(
+        f"/api/v1/billing/tenants/{TEST_TENANT_ID}/subscription",
+        json={"plan_code": "starter", "auto_renew": True},
+    )
+    assert response.status_code == 201
+    payload = response.json()
+    assert payload["billing_email"] == "billing@example.com"
+    start_mock.assert_awaited_once()
+
+
+def test_list_payment_methods_returns_items(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        billing_router.billing_service,
+        "list_payment_methods",
+        AsyncMock(
+            return_value=[
+                PaymentMethodSummary(
+                    id="pm_123",
+                    brand="visa",
+                    last4="4242",
+                    exp_month=12,
+                    exp_year=2030,
+                    is_default=True,
+                )
+            ]
+        ),
+    )
+
+    response = client.get(
+        f"/api/v1/billing/tenants/{TEST_TENANT_ID}/payment-methods"
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload[0]["id"] == "pm_123"
+    assert payload[0]["is_default"] is True
+
+
+def test_create_setup_intent_returns_payload(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        billing_router.billing_service,
+        "create_setup_intent",
+        AsyncMock(
+            return_value=SetupIntentResult(id="seti_123", client_secret="secret")
+        ),
+    )
+
+    response = client.post(
+        f"/api/v1/billing/tenants/{TEST_TENANT_ID}/payment-methods/setup-intent",
+        json={"billing_email": "billing@example.com"},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["id"] == "seti_123"
+    assert payload["client_secret"] == "secret"
+
+
+def test_set_default_payment_method_returns_success(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        billing_router.billing_service,
+        "set_default_payment_method",
+        AsyncMock(return_value=None),
+    )
+
+    response = client.post(
+        f"/api/v1/billing/tenants/{TEST_TENANT_ID}/payment-methods/pm_123/default"
+    )
+    assert response.status_code == 200
+    assert response.json()["success"] is True
+
+
+def test_detach_payment_method_returns_success(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        billing_router.billing_service,
+        "detach_payment_method",
+        AsyncMock(return_value=None),
+    )
+
+    response = client.delete(
+        f"/api/v1/billing/tenants/{TEST_TENANT_ID}/payment-methods/pm_123"
+    )
+    assert response.status_code == 200
+    assert response.json()["success"] is True
+
+
+def test_preview_upcoming_invoice_returns_payload(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    now = datetime.now(UTC)
+    preview = UpcomingInvoicePreview(
+        plan_code="starter",
+        plan_name="Starter",
+        seat_count=2,
+        invoice_id="in_123",
+        amount_due_cents=1200,
+        currency="usd",
+        period_start=now,
+        period_end=now + timedelta(days=30),
+        lines=[
+            UpcomingInvoiceLineSnapshot(
+                description="Seat charge",
+                amount_cents=1200,
+                currency="usd",
+                quantity=2,
+                unit_amount_cents=600,
+                price_id="price_123",
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        billing_router.billing_service,
+        "preview_upcoming_invoice",
+        AsyncMock(return_value=preview),
+    )
+
+    response = client.post(
+        f"/api/v1/billing/tenants/{TEST_TENANT_ID}/upcoming-invoice",
+        json={"seat_count": 2},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["plan_code"] == "starter"
+    assert payload["plan_name"] == "Starter"
+    assert payload["amount_due_cents"] == 1200
+
+
+def test_change_subscription_plan_returns_response(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    result = PlanChangeResult(
+        plan_code="pro",
+        timing="immediate",
+        seat_count=2,
+        effective_at=datetime.now(UTC),
+        current_period_end=None,
+        schedule_id=None,
+    )
+    monkeypatch.setattr(
+        billing_router.billing_service,
+        "change_subscription_plan",
+        AsyncMock(return_value=result),
+    )
+
+    response = client.post(
+        f"/api/v1/billing/tenants/{TEST_TENANT_ID}/subscription/plan",
+        json={"plan_code": "pro", "seat_count": 2, "timing": "immediate"},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["plan_code"] == "pro"

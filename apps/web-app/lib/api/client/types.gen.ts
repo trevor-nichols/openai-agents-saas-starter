@@ -969,6 +969,30 @@ export type CancelSubscriptionRequest = {
 };
 
 /**
+ * ChangeSubscriptionPlanRequest
+ */
+export type ChangeSubscriptionPlanRequest = {
+  /**
+   * Plan Code
+   *
+   * Target billing plan code.
+   */
+  plan_code: string;
+  /**
+   * Seat Count
+   *
+   * Optional seat count override for the new plan.
+   */
+  seat_count?: number | null;
+  /**
+   * Timing
+   *
+   * Whether the plan changes immediately or at the period end.
+   */
+  timing?: "immediate" | "period_end";
+};
+
+/**
  * ChatMessage
  *
  * Single conversational message.
@@ -3983,6 +4007,66 @@ export type PasswordResetTokenResponse = {
 };
 
 /**
+ * PaymentMethodResponse
+ */
+export type PaymentMethodResponse = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Brand
+   */
+  brand?: string | null;
+  /**
+   * Last4
+   */
+  last4?: string | null;
+  /**
+   * Exp Month
+   */
+  exp_month?: number | null;
+  /**
+   * Exp Year
+   */
+  exp_year?: number | null;
+  /**
+   * Is Default
+   */
+  is_default?: boolean;
+};
+
+/**
+ * PlanChangeResponse
+ */
+export type PlanChangeResponse = {
+  /**
+   * Plan Code
+   */
+  plan_code: string;
+  /**
+   * Timing
+   */
+  timing: "immediate" | "period_end";
+  /**
+   * Seat Count
+   */
+  seat_count?: number | null;
+  /**
+   * Effective At
+   */
+  effective_at?: string | null;
+  /**
+   * Current Period End
+   */
+  current_period_end?: string | null;
+  /**
+   * Schedule Id
+   */
+  schedule_id?: string | null;
+};
+
+/**
  * PlanFeatureResponse
  */
 export type PlanFeatureResponse = {
@@ -4045,6 +4129,28 @@ export type PlaywrightFixtureSpec = {
    * Tenants
    */
   tenants?: Array<FixtureTenant>;
+};
+
+/**
+ * PortalSessionRequest
+ */
+export type PortalSessionRequest = {
+  /**
+   * Billing Email
+   *
+   * Optional billing email to associate with the customer.
+   */
+  billing_email?: string | null;
+};
+
+/**
+ * PortalSessionResponse
+ */
+export type PortalSessionResponse = {
+  /**
+   * Url
+   */
+  url: string;
 };
 
 /**
@@ -4942,6 +5048,32 @@ export type SessionRevokeByIdSuccessResponse = {
    * Session revocation result payload.
    */
   data?: SessionLogoutResponseData | null;
+};
+
+/**
+ * SetupIntentRequest
+ */
+export type SetupIntentRequest = {
+  /**
+   * Billing Email
+   *
+   * Optional billing email to associate with the customer.
+   */
+  billing_email?: string | null;
+};
+
+/**
+ * SetupIntentResponse
+ */
+export type SetupIntentResponse = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Client Secret
+   */
+  client_secret?: string | null;
 };
 
 /**
@@ -6451,6 +6583,90 @@ export type TotpVerifyRequest = {
    * Code
    */
   code: string;
+};
+
+/**
+ * UpcomingInvoiceLineResponse
+ */
+export type UpcomingInvoiceLineResponse = {
+  /**
+   * Description
+   */
+  description?: string | null;
+  /**
+   * Amount Cents
+   */
+  amount_cents: number;
+  /**
+   * Currency
+   */
+  currency?: string | null;
+  /**
+   * Quantity
+   */
+  quantity?: number | null;
+  /**
+   * Unit Amount Cents
+   */
+  unit_amount_cents?: number | null;
+  /**
+   * Price Id
+   */
+  price_id?: string | null;
+};
+
+/**
+ * UpcomingInvoicePreviewRequest
+ */
+export type UpcomingInvoicePreviewRequest = {
+  /**
+   * Seat Count
+   *
+   * Optional seat count override for previewing charges.
+   */
+  seat_count?: number | null;
+};
+
+/**
+ * UpcomingInvoicePreviewResponse
+ */
+export type UpcomingInvoicePreviewResponse = {
+  /**
+   * Plan Code
+   */
+  plan_code: string;
+  /**
+   * Plan Name
+   */
+  plan_name: string;
+  /**
+   * Seat Count
+   */
+  seat_count?: number | null;
+  /**
+   * Invoice Id
+   */
+  invoice_id?: string | null;
+  /**
+   * Amount Due Cents
+   */
+  amount_due_cents: number;
+  /**
+   * Currency
+   */
+  currency: string;
+  /**
+   * Period Start
+   */
+  period_start?: string | null;
+  /**
+   * Period End
+   */
+  period_end?: string | null;
+  /**
+   * Lines
+   */
+  lines?: Array<UpcomingInvoiceLineResponse>;
 };
 
 /**
@@ -18567,6 +18783,95 @@ export type StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostResponse
 export type StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostResponse =
   StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostResponses[keyof StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostResponses];
 
+export type ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostData =
+  {
+    body: ChangeSubscriptionPlanRequest;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Tenant Id
+       */
+      tenant_id: string;
+    };
+    query?: never;
+    url: "/api/v1/billing/tenants/{tenant_id}/subscription/plan";
+  };
+
+export type ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostError =
+  ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostErrors[keyof ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostErrors];
+
+export type ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: PlanChangeResponse;
+  };
+
+export type ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostResponse =
+  ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostResponses[keyof ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostResponses];
+
 export type CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostData =
   {
     body: CancelSubscriptionRequest;
@@ -18655,6 +18960,548 @@ export type CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostR
 
 export type CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostResponse =
   CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostResponses[keyof CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostResponses];
+
+export type CreatePortalSessionApiV1BillingTenantsTenantIdPortalPostData = {
+  body: PortalSessionRequest;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path: {
+    /**
+     * Tenant Id
+     */
+    tenant_id: string;
+  };
+  query?: never;
+  url: "/api/v1/billing/tenants/{tenant_id}/portal";
+};
+
+export type CreatePortalSessionApiV1BillingTenantsTenantIdPortalPostErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type CreatePortalSessionApiV1BillingTenantsTenantIdPortalPostError =
+  CreatePortalSessionApiV1BillingTenantsTenantIdPortalPostErrors[keyof CreatePortalSessionApiV1BillingTenantsTenantIdPortalPostErrors];
+
+export type CreatePortalSessionApiV1BillingTenantsTenantIdPortalPostResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: PortalSessionResponse;
+  };
+
+export type CreatePortalSessionApiV1BillingTenantsTenantIdPortalPostResponse =
+  CreatePortalSessionApiV1BillingTenantsTenantIdPortalPostResponses[keyof CreatePortalSessionApiV1BillingTenantsTenantIdPortalPostResponses];
+
+export type ListPaymentMethodsApiV1BillingTenantsTenantIdPaymentMethodsGetData =
+  {
+    body?: never;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Tenant Id
+       */
+      tenant_id: string;
+    };
+    query?: never;
+    url: "/api/v1/billing/tenants/{tenant_id}/payment-methods";
+  };
+
+export type ListPaymentMethodsApiV1BillingTenantsTenantIdPaymentMethodsGetErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type ListPaymentMethodsApiV1BillingTenantsTenantIdPaymentMethodsGetError =
+  ListPaymentMethodsApiV1BillingTenantsTenantIdPaymentMethodsGetErrors[keyof ListPaymentMethodsApiV1BillingTenantsTenantIdPaymentMethodsGetErrors];
+
+export type ListPaymentMethodsApiV1BillingTenantsTenantIdPaymentMethodsGetResponses =
+  {
+    /**
+     * Response List Payment Methods Api V1 Billing Tenants  Tenant Id  Payment Methods Get
+     *
+     * Successful Response
+     */
+    200: Array<PaymentMethodResponse>;
+  };
+
+export type ListPaymentMethodsApiV1BillingTenantsTenantIdPaymentMethodsGetResponse =
+  ListPaymentMethodsApiV1BillingTenantsTenantIdPaymentMethodsGetResponses[keyof ListPaymentMethodsApiV1BillingTenantsTenantIdPaymentMethodsGetResponses];
+
+export type CreateSetupIntentApiV1BillingTenantsTenantIdPaymentMethodsSetupIntentPostData =
+  {
+    body: SetupIntentRequest;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Tenant Id
+       */
+      tenant_id: string;
+    };
+    query?: never;
+    url: "/api/v1/billing/tenants/{tenant_id}/payment-methods/setup-intent";
+  };
+
+export type CreateSetupIntentApiV1BillingTenantsTenantIdPaymentMethodsSetupIntentPostErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type CreateSetupIntentApiV1BillingTenantsTenantIdPaymentMethodsSetupIntentPostError =
+  CreateSetupIntentApiV1BillingTenantsTenantIdPaymentMethodsSetupIntentPostErrors[keyof CreateSetupIntentApiV1BillingTenantsTenantIdPaymentMethodsSetupIntentPostErrors];
+
+export type CreateSetupIntentApiV1BillingTenantsTenantIdPaymentMethodsSetupIntentPostResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: SetupIntentResponse;
+  };
+
+export type CreateSetupIntentApiV1BillingTenantsTenantIdPaymentMethodsSetupIntentPostResponse =
+  CreateSetupIntentApiV1BillingTenantsTenantIdPaymentMethodsSetupIntentPostResponses[keyof CreateSetupIntentApiV1BillingTenantsTenantIdPaymentMethodsSetupIntentPostResponses];
+
+export type SetDefaultPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDefaultPostData =
+  {
+    body?: never;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Tenant Id
+       */
+      tenant_id: string;
+      /**
+       * Payment Method Id
+       */
+      payment_method_id: string;
+    };
+    query?: never;
+    url: "/api/v1/billing/tenants/{tenant_id}/payment-methods/{payment_method_id}/default";
+  };
+
+export type SetDefaultPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDefaultPostErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type SetDefaultPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDefaultPostError =
+  SetDefaultPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDefaultPostErrors[keyof SetDefaultPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDefaultPostErrors];
+
+export type SetDefaultPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDefaultPostResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: SuccessNoDataResponse;
+  };
+
+export type SetDefaultPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDefaultPostResponse =
+  SetDefaultPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDefaultPostResponses[keyof SetDefaultPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDefaultPostResponses];
+
+export type DetachPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDeleteData =
+  {
+    body?: never;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Tenant Id
+       */
+      tenant_id: string;
+      /**
+       * Payment Method Id
+       */
+      payment_method_id: string;
+    };
+    query?: never;
+    url: "/api/v1/billing/tenants/{tenant_id}/payment-methods/{payment_method_id}";
+  };
+
+export type DetachPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDeleteErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type DetachPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDeleteError =
+  DetachPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDeleteErrors[keyof DetachPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDeleteErrors];
+
+export type DetachPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDeleteResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: SuccessNoDataResponse;
+  };
+
+export type DetachPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDeleteResponse =
+  DetachPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDeleteResponses[keyof DetachPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDeleteResponses];
+
+export type PreviewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePostData =
+  {
+    body: UpcomingInvoicePreviewRequest;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Tenant Id
+       */
+      tenant_id: string;
+    };
+    query?: never;
+    url: "/api/v1/billing/tenants/{tenant_id}/upcoming-invoice";
+  };
+
+export type PreviewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePostErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type PreviewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePostError =
+  PreviewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePostErrors[keyof PreviewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePostErrors];
+
+export type PreviewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePostResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: UpcomingInvoicePreviewResponse;
+  };
+
+export type PreviewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePostResponse =
+  PreviewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePostResponses[keyof PreviewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePostResponses];
 
 export type RecordUsageApiV1BillingTenantsTenantIdUsagePostData = {
   body: UsageRecordRequest;
