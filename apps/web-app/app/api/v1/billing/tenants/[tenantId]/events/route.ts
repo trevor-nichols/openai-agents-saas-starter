@@ -4,21 +4,12 @@ import { NextResponse } from 'next/server';
 import { billingEnabled } from '@/lib/config/features';
 import { listTenantBillingEvents } from '@/lib/server/services/billing';
 import type { StripeEventStatus } from '@/lib/api/client/types.gen';
-
-interface RouteContext {
-  params: Promise<{
-    tenantId: string;
-  }>;
-}
-
-async function resolveTenantId(context: RouteContext): Promise<string | null> {
-  const { tenantId } = await context.params;
-  return tenantId ?? null;
-}
-
-function resolveTenantRole(request: NextRequest): string | null {
-  return request.headers.get('x-tenant-role');
-}
+import {
+  mapBillingErrorToStatus,
+  resolveTenantId,
+  resolveTenantRole,
+  type BillingTenantRouteContext,
+} from '../../_utils';
 
 const VALID_PROCESSING_STATUSES: StripeEventStatus[] = ['received', 'processed', 'failed'];
 
@@ -31,18 +22,7 @@ function normalizeProcessingStatus(value: string | null): StripeEventStatus | nu
     : null;
 }
 
-function mapErrorToStatus(message: string): number {
-  const normalized = message.toLowerCase();
-  if (normalized.includes('missing access token')) {
-    return 401;
-  }
-  if (normalized.includes('not found')) {
-    return 404;
-  }
-  return 400;
-}
-
-export async function GET(request: NextRequest, context: RouteContext) {
+export async function GET(request: NextRequest, context: BillingTenantRouteContext) {
   if (!billingEnabled) {
     return NextResponse.json({ success: false, error: 'Billing is disabled.' }, { status: 404 });
   }
@@ -83,7 +63,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Failed to load billing events.';
-    const statusCode = mapErrorToStatus(message);
+    const statusCode = mapBillingErrorToStatus(message, { includeNotFound: true });
     return NextResponse.json({ message }, { status: statusCode });
   }
 }

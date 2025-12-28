@@ -56,3 +56,26 @@ export function formatStatusLabel(value?: string | null): string {
 export function formatInterval(plan: BillingPlan): string {
   return plan.interval_count > 1 ? `${plan.interval_count} ${plan.interval}s` : plan.interval;
 }
+
+export function formatCardBrand(brand?: string | null): string {
+  if (!brand) {
+    return 'Card';
+  }
+  const normalized = brand.toLowerCase();
+  if (normalized === 'amex') {
+    return 'Amex';
+  }
+  if (normalized === 'mastercard') {
+    return 'Mastercard';
+  }
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
+export function formatCardExpiry(expMonth?: number | null, expYear?: number | null): string {
+  if (!expMonth || !expYear) {
+    return '—';
+  }
+  const month = String(expMonth).padStart(2, '0');
+  const year = String(expYear).slice(-2);
+  return `${month}/${year}`;
+}

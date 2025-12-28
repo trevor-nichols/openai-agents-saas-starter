@@ -5,7 +5,12 @@ import type {
   BillingEventSubscriptionResponse,
   BillingEventUsageResponse,
   BillingPlanResponse,
+  PaymentMethodResponse,
+  PlanChangeResponse,
+  PortalSessionResponse,
   StripeEventStatus,
+  UpcomingInvoiceLineResponse,
+  UpcomingInvoicePreviewResponse,
 } from '@/lib/api/client/types.gen';
 
 export type BillingEventProcessingStatus = StripeEventStatus;
@@ -21,6 +26,16 @@ export type BillingEvent = BillingEventResponse;
 export type BillingStreamStatus = 'disabled' | 'connecting' | 'open' | 'error';
 
 export type BillingPlan = BillingPlanResponse;
+
+export type BillingPaymentMethod = PaymentMethodResponse;
+
+export type BillingPortalSession = PortalSessionResponse;
+
+export type UpcomingInvoicePreview = UpcomingInvoicePreviewResponse;
+
+export type UpcomingInvoiceLine = UpcomingInvoiceLineResponse;
+
+export type PlanChange = PlanChangeResponse;
 
 export interface BillingPlanListResponse {
   success: boolean;

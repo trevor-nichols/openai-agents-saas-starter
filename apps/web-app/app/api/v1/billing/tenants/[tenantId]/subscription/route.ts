@@ -7,37 +7,14 @@ import {
   startTenantSubscription,
   updateTenantSubscription,
 } from '@/lib/server/services/billing';
+import {
+  mapBillingErrorToStatus,
+  resolveTenantId,
+  resolveTenantRole,
+  type BillingTenantRouteContext,
+} from '../../_utils';
 
-interface RouteContext {
-  params: Promise<{
-    tenantId: string;
-  }>;
-}
-
-async function resolveTenantId(context: RouteContext): Promise<string | null> {
-  const { tenantId } = await context.params;
-  if (!tenantId) {
-    return null;
-  }
-  return tenantId;
-}
-
-function resolveTenantRole(request: NextRequest): string | null {
-  return request.headers.get('x-tenant-role');
-}
-
-function mapErrorToStatus(message: string): number {
-  const normalized = message.toLowerCase();
-  if (normalized.includes('missing access token')) {
-    return 401;
-  }
-  if (normalized.includes('not found')) {
-    return 404;
-  }
-  return 400;
-}
-
-export async function GET(request: NextRequest, context: RouteContext) {
+export async function GET(request: NextRequest, context: BillingTenantRouteContext) {
   if (!billingEnabled) {
     return NextResponse.json({ success: false, error: 'Billing is disabled.' }, { status: 404 });
   }
@@ -54,12 +31,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Failed to load subscription.';
-    const status = mapErrorToStatus(message);
+    const status = mapBillingErrorToStatus(message, { includeNotFound: true });
     return NextResponse.json({ message }, { status });
   }
 }
 
-export async function POST(request: NextRequest, context: RouteContext) {
+export async function POST(request: NextRequest, context: BillingTenantRouteContext) {
   if (!billingEnabled) {
     return NextResponse.json({ success: false, error: 'Billing is disabled.' }, { status: 404 });
   }
@@ -77,12 +54,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Failed to start subscription.';
-    const status = mapErrorToStatus(message);
+    const status = mapBillingErrorToStatus(message, { includeNotFound: true });
     return NextResponse.json({ message }, { status });
   }
 }
 
-export async function PATCH(request: NextRequest, context: RouteContext) {
+export async function PATCH(request: NextRequest, context: BillingTenantRouteContext) {
   if (!billingEnabled) {
     return NextResponse.json({ success: false, error: 'Billing is disabled.' }, { status: 404 });
   }
@@ -100,7 +77,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Failed to update subscription.';
-    const status = mapErrorToStatus(message);
+    const status = mapBillingErrorToStatus(message, { includeNotFound: true });
     return NextResponse.json({ message }, { status });
   }
 }

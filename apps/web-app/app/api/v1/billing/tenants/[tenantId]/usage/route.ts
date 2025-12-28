@@ -3,31 +3,14 @@ import { NextResponse } from 'next/server';
 
 import { billingEnabled } from '@/lib/config/features';
 import { recordTenantUsage } from '@/lib/server/services/billing';
+import {
+  mapBillingErrorToStatus,
+  resolveTenantId,
+  resolveTenantRole,
+  type BillingTenantRouteContext,
+} from '../../_utils';
 
-interface RouteContext {
-  params: Promise<{
-    tenantId: string;
-  }>;
-}
-
-async function resolveTenantId(context: RouteContext): Promise<string | null> {
-  const { tenantId } = await context.params;
-  return tenantId ?? null;
-}
-
-function resolveTenantRole(request: NextRequest): string | null {
-  return request.headers.get('x-tenant-role');
-}
-
-function mapErrorToStatus(message: string): number {
-  const normalized = message.toLowerCase();
-  if (normalized.includes('missing access token')) {
-    return 401;
-  }
-  return 400;
-}
-
-export async function POST(request: NextRequest, context: RouteContext) {
+export async function POST(request: NextRequest, context: BillingTenantRouteContext) {
   if (!billingEnabled) {
     return NextResponse.json({ success: false, error: 'Billing is disabled.' }, { status: 404 });
   }
@@ -51,7 +34,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Failed to record usage.';
-    const status = mapErrorToStatus(message);
+    const status = mapBillingErrorToStatus(message);
     return NextResponse.json({ message }, { status });
   }
 }

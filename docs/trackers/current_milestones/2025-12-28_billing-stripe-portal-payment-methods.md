@@ -2,7 +2,7 @@
 # Billing: Stripe Portal + Payment Methods + Invoice Preview
 
 _Last updated: 2025-12-28_  
-**Status:** In Progress  
+**Status:** Complete  
 **Owner:** @tan  
 **Domain:** Backend + Frontend  
 **ID / Links:** [Docs], [Related trackers]
@@ -41,7 +41,6 @@ Deliver a production-grade Stripe billing surface for portal sessions, payment m
 - Web app billing updates: BFF routes, client fetchers/hooks, and UI surfaces for portal, payment methods, upcoming invoice preview, and plan-change timing.
 
 ### Out of Scope
-- Frontend UI wiring for the new endpoints.
 - Data backfills or migrations beyond new billing customer storage.
 - Non-Stripe payment providers.
 
@@ -53,9 +52,9 @@ Deliver a production-grade Stripe billing surface for portal sessions, payment m
 | Area | Status | Notes |
 | --- | --- | --- |
 | Architecture/design | ✅ | Plan defined with explicit boundaries and role gates. |
-| Implementation | ⚠️ | Backend complete; frontend wiring + UI in progress. |
+| Implementation | ✅ | Backend and frontend wiring complete. |
 | Tests & QA | ✅ | Contract + unit coverage updated; lint/typecheck green. |
-| Docs & runbooks | ⚠️ | Backend docs updated; frontend milestone updates in progress. |
+| Docs & runbooks | ✅ | Tracker updated with frontend delivery. |
 
 ---
 
@@ -79,7 +78,7 @@ Deliver a production-grade Stripe billing surface for portal sessions, payment m
 | P1 – Persistence + Gateway | Add billing customer model + Stripe client/gateway extensions. | DB model + migration + gateway API compiled. | ✅ |
 | P2 – Service + API | Service orchestration + billing endpoints/schemas. | API routes compile and wire correctly. | ✅ |
 | P3 – Tests + Docs | Unit/contract tests + billing README + lint/typecheck. | Tests updated; lint/typecheck green. | ✅ |
-| P4 – Frontend | BFF routes + hooks + UI for portal/payment methods/invoice preview/plan-change timing. | UI wired, Storybook updated, pnpm lint/type-check green. | ⏳ |
+| P4 – Frontend | BFF routes + hooks + UI for portal/payment methods/invoice preview/plan-change timing. | UI wired, Storybook updated, pnpm lint/type-check green. | ✅ |
 
 ---
 
@@ -109,6 +108,8 @@ Deliver a production-grade Stripe billing surface for portal sessions, payment m
 - `cd apps/api-service && hatch run typecheck`
 - `cd apps/api-service && hatch run test tests/unit/billing` (targeted)
 - `cd apps/api-service && hatch run test tests/contract/test_billing_api.py`
+- `cd apps/web-app && pnpm lint`
+- `cd apps/web-app && pnpm type-check`
 
 ---
 
@@ -127,4 +128,4 @@ Deliver a production-grade Stripe billing surface for portal sessions, payment m
 
 - 2025-12-28 — Milestone created; implementation kicked off.
 - 2025-12-28 — Implementation complete with portal, payment methods, invoice preview, plan-change flows, tests, and docs.
-- 2025-12-28 — Frontend follow-up scoped (BFF routes + billing UI surfaces).
+- 2025-12-28 — Frontend wiring shipped (BFF routes, hooks, UI surfaces, Storybook); milestone marked complete.

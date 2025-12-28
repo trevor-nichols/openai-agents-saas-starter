@@ -1,49 +1,33 @@
 'use client';
 
 import type { Meta, StoryObj } from '@storybook/react';
-import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-
 import { PlanChangeDialog } from '../components/PlanChangeDialog';
-import type { PlanFormValues } from '../types';
-import { mockPlans, resetFormDefaults } from './fixtures';
+import { mockPlans, mockSubscription } from './fixtures';
 
 type PlanChangeDialogPreviewProps = {
   open?: boolean;
   isSubmitting?: boolean;
   errorMessage?: string;
-  updateCurrent?: boolean;
+  hasSubscription?: boolean;
 };
 
 function PlanChangeDialogPreview({
   open = true,
   isSubmitting = false,
   errorMessage,
-  updateCurrent = false,
+  hasSubscription = true,
 }: PlanChangeDialogPreviewProps) {
   const plan = (mockPlans[1] ?? mockPlans[0])!;
-  const form = useForm<PlanFormValues>({
-    defaultValues: {
-      billingEmail: '',
-      autoRenew: true,
-      seatCount: undefined,
-    },
-  });
-
-  useEffect(() => {
-    resetFormDefaults(form);
-  }, [form]);
 
   return (
     <PlanChangeDialog
       open={open}
       plan={plan}
-      form={form}
+      subscription={hasSubscription ? mockSubscription : null}
       onSubmit={(values) => console.log('submit plan', values)}
       onClose={() => console.log('close dialog')}
       isSubmitting={isSubmitting}
       errorMessage={errorMessage}
-      isUpdatingCurrentPlan={updateCurrent}
     />
   );
 }
@@ -71,8 +55,8 @@ export const ErrorState: Story = {
   },
 };
 
-export const UpdatingCurrentPlan: Story = {
+export const NewSubscription: Story = {
   args: {
-    updateCurrent: true,
+    hasSubscription: false,
   },
 };

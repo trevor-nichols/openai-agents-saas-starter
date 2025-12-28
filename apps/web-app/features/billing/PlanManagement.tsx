@@ -1,25 +1,33 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useForm } from 'react-hook-form';
 
 import { EmptyState, ErrorState, SkeletonPanel } from '@/components/ui/states';
 import { SectionHeader } from '@/components/ui/foundation';
 import { readClientSessionMeta } from '@/lib/auth/clientMeta';
 import { useBillingPlans } from '@/lib/queries/billingPlans';
-import { useStartSubscriptionMutation, useTenantSubscription } from '@/lib/queries/billingSubscriptions';
+import {
+  useChangeSubscriptionPlanMutation,
+  useStartSubscriptionMutation,
+  useTenantSubscription,
+} from '@/lib/queries/billingSubscriptions';
 import type { BillingPlan } from '@/types/billing';
-import { toast } from 'sonner';
+import { useToast } from '@/components/ui/use-toast';
 
 import { BILLING_COPY } from './constants';
 import { CurrentSubscriptionCard } from './components/CurrentSubscriptionCard';
+import { BillingPortalCard } from './components/BillingPortalCard';
+import { PaymentMethodsPanel } from './components/PaymentMethodsPanel';
 import { PlanCard } from './components/PlanCard';
 import { PlanChangeDialog } from './components/PlanChangeDialog';
-import type { PlanFormValues } from './types';
+import { SubscriptionSettingsCard } from './components/SubscriptionSettingsCard';
+import { UpcomingInvoicePreviewCard } from './components/UpcomingInvoicePreviewCard';
+import type { PlanChangeFormValues } from './types';
 
 export function PlanManagement() {
   const tenantMeta = useMemo(() => readClientSessionMeta(), []);
   const tenantId = tenantMeta?.tenantId ?? null;
+  const { success, error: showError } = useToast();
 
   const { plans, isLoading: isLoadingPlans, error: plansError, refetch: refetchPlans } = useBillingPlans();
   const {
@@ -29,60 +37,58 @@ export function PlanManagement() {
     refetchSubscription,
   } = useTenantSubscription({ tenantId });
   const startSubscription = useStartSubscriptionMutation({ tenantId });
+  const changePlan = useChangeSubscriptionPlanMutation({ tenantId });
 
   const [selectedPlan, setSelectedPlan] = useState<BillingPlan | null>(null);
-
-  const form = useForm<PlanFormValues>({
-    defaultValues: {
-      billingEmail: subscription?.billing_email ?? '',
-      autoRenew: subscription?.auto_renew ?? true,
-      seatCount: subscription?.seat_count ?? undefined,
-    },
-  });
-
-  useEffect(() => {
-    form.reset({
-      billingEmail: subscription?.billing_email ?? '',
-      autoRenew: subscription?.auto_renew ?? true,
-      seatCount: subscription?.seat_count ?? selectedPlan?.seat_included ?? undefined,
-    });
-  }, [
-    form,
-    selectedPlan?.seat_included,
-    subscription?.auto_renew,
-    subscription?.billing_email,
-    subscription?.seat_count,
-  ]);
 
   useEffect(() => {
     if (selectedPlan) {
       startSubscription.reset();
+      changePlan.reset();
     }
-  }, [selectedPlan, startSubscription]);
+  }, [selectedPlan, startSubscription, changePlan]);
 
-  const handlePlanSubmit = async (values: PlanFormValues) => {
+  const handlePlanSubmit = async (values: PlanChangeFormValues) => {
     if (!selectedPlan || !tenantId) {
       return;
     }
 
     try {
-      await startSubscription.mutateAsync({
-        plan_code: selectedPlan.code,
-        billing_email: values.billingEmail || undefined,
-        auto_renew: values.autoRenew,
-        seat_count: values.seatCount,
-      });
-      toast.success('Subscription updated', {
-        description: `You are now on the ${selectedPlan.name} plan.`,
-      });
+      if (subscription) {
+        const response = await changePlan.mutateAsync({
+          plan_code: selectedPlan.code,
+          seat_count: values.seatCount ?? undefined,
+          timing: values.timing ?? 'period_end',
+        });
+        const changeLabel =
+          response.timing === 'period_end'
+            ? 'Plan change scheduled for the end of the current period.'
+            : 'Plan change will take effect immediately.';
+        success({
+          title: 'Plan change requested',
+          description: changeLabel,
+        });
+      } else {
+        await startSubscription.mutateAsync({
+          plan_code: selectedPlan.code,
+          billing_email: values.billingEmail?.trim() ? values.billingEmail.trim() : undefined,
+          auto_renew: values.autoRenew ?? true,
+          seat_count: values.seatCount ?? undefined,
+        });
+        success({
+          title: 'Subscription started',
+          description: `You are now on the ${selectedPlan.name} plan.`,
+        });
+      }
       setSelectedPlan(null);
       startSubscription.reset();
+      changePlan.reset();
       refetchSubscription();
     } catch (error) {
-      toast.error('Plan update failed', {
-        description: 'Double-check the details and try again.',
+      showError({
+        title: 'Plan update failed',
+        description: error instanceof Error ? error.message : 'Double-check the details and try again.',
       });
-      throw error;
     }
   };
 
@@ -103,6 +109,8 @@ export function PlanManagement() {
   }
 
   const currentPlanCode = subscription?.plan_code ?? null;
+  const planMutationError = (subscription ? changePlan.error : startSubscription.error) as Error | null;
+  const isSubmitting = subscription ? changePlan.isPending : startSubscription.isPending;
 
   return (
     <section className="space-y-8">
@@ -118,6 +126,26 @@ export function PlanManagement() {
         error={subscriptionError}
         onRetry={refetchSubscription}
       />
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <BillingPortalCard tenantId={tenantId} billingEmail={subscription?.billing_email ?? null} />
+        <UpcomingInvoicePreviewCard
+          tenantId={tenantId}
+          seatCount={subscription?.seat_count ?? null}
+          enabled={Boolean(subscription)}
+        />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <SubscriptionSettingsCard
+          tenantId={tenantId}
+          subscription={subscription ?? null}
+          isLoading={isLoadingSubscription}
+          error={subscriptionError}
+          onRetry={refetchSubscription}
+        />
+        <PaymentMethodsPanel tenantId={tenantId} billingEmail={subscription?.billing_email ?? null} />
+      </div>
 
       <div className="space-y-6">
         <SectionHeader
@@ -141,7 +169,7 @@ export function PlanManagement() {
                 key={plan.code}
                 plan={plan}
                 current={currentPlanCode === plan.code}
-                disabled={!plan.is_active}
+                disabled={!plan.is_active || (Boolean(subscription) && currentPlanCode === plan.code)}
                 onSelect={() => setSelectedPlan(plan)}
               />
             ))}
@@ -152,12 +180,11 @@ export function PlanManagement() {
       <PlanChangeDialog
         open={Boolean(selectedPlan)}
         plan={selectedPlan}
-        form={form}
+        subscription={subscription ?? null}
         onSubmit={handlePlanSubmit}
         onClose={() => setSelectedPlan(null)}
-        isSubmitting={startSubscription.isPending}
-        errorMessage={(startSubscription.error as Error)?.message}
-        isUpdatingCurrentPlan={Boolean(selectedPlan && selectedPlan.code === currentPlanCode)}
+        isSubmitting={isSubmitting}
+        errorMessage={planMutationError?.message}
       />
     </section>
   );

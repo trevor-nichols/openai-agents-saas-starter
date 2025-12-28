@@ -1,28 +1,23 @@
 import type {
   SubscriptionCancelPayload,
   SubscriptionStartPayload,
+  SubscriptionPlanChangePayload,
   SubscriptionUpdatePayload,
   TenantSubscription,
   UsageRecordPayload,
+  PlanChange,
+  SuccessNoData,
 } from '@/lib/types/billing';
 import { apiV1Path } from '@/lib/apiPaths';
+import {
+  buildBillingHeaders,
+  isBillingDisabled,
+  parseBillingResponse,
+  resolveBillingErrorMessage,
+} from './billingUtils';
 
 interface RequestOptions {
   tenantRole?: string | null;
-}
-
-type ErrorPayload = {
-  message?: string;
-  error?: string;
-};
-
-function isBillingDisabled(status: number, payload: ErrorPayload | TenantSubscription | null): boolean {
-  if (status !== 404 || !payload) return false;
-  const message =
-    (typeof payload === 'object' && 'message' in payload && payload.message) ||
-    (typeof payload === 'object' && 'error' in payload && (payload as ErrorPayload).error) ||
-    '';
-  return typeof message === 'string' && message.toLowerCase().includes('billing is disabled');
 }
 
 const subscriptionPath = (tenantId: string) => {
@@ -40,38 +35,7 @@ const usagePath = (tenantId: string) => {
 };
 
 const cancelPath = (tenantId: string) => `${subscriptionPath(tenantId)}/cancel`;
-
-function buildHeaders(options: RequestOptions | undefined, includeJson = false): HeadersInit {
-  const headers: Record<string, string> = {};
-  if (includeJson) {
-    headers['Content-Type'] = 'application/json';
-  }
-  if (options?.tenantRole) {
-    headers['X-Tenant-Role'] = options.tenantRole;
-  }
-  return headers;
-}
-
-function resolveErrorMessage(payload: unknown, fallbackMessage: string): string {
-  if (payload && typeof payload === 'object') {
-    const candidate = payload as ErrorPayload;
-    if (candidate.message && typeof candidate.message === 'string') {
-      return candidate.message;
-    }
-    if (candidate.error && typeof candidate.error === 'string') {
-      return candidate.error;
-    }
-  }
-  return fallbackMessage;
-}
-
-async function parseResponse<T>(response: Response): Promise<T | ErrorPayload> {
-  try {
-    return (await response.json()) as T;
-  } catch (_error) {
-    return {};
-  }
-}
+const planPath = (tenantId: string) => `${subscriptionPath(tenantId)}/plan`;
 
 export async function fetchTenantSubscription(
   tenantId: string,
@@ -79,17 +43,17 @@ export async function fetchTenantSubscription(
 ): Promise<TenantSubscription> {
   const response = await fetch(subscriptionPath(tenantId), {
     method: 'GET',
-    headers: buildHeaders(options, false),
+    headers: buildBillingHeaders(options, false),
     cache: 'no-store',
   });
 
-  const payload = await parseResponse<TenantSubscription>(response);
+  const payload = await parseBillingResponse<TenantSubscription>(response);
   if (isBillingDisabled(response.status, payload)) {
     throw new Error('Billing is disabled.');
   }
 
   if (!response.ok) {
-    throw new Error(resolveErrorMessage(payload, 'Failed to load subscription.'));
+    throw new Error(resolveBillingErrorMessage(payload, 'Failed to load subscription.'));
   }
 
   if (!payload) {
@@ -106,17 +70,17 @@ export async function startSubscriptionRequest(
 ): Promise<TenantSubscription> {
   const response = await fetch(subscriptionPath(tenantId), {
     method: 'POST',
-    headers: buildHeaders(options, true),
+    headers: buildBillingHeaders(options, true),
     cache: 'no-store',
     body: JSON.stringify(payload),
   });
-  const data = await parseResponse<TenantSubscription>(response);
+  const data = await parseBillingResponse<TenantSubscription>(response);
   if (isBillingDisabled(response.status, data)) {
     throw new Error('Billing is disabled.');
   }
 
   if (!response.ok) {
-    throw new Error(resolveErrorMessage(data, 'Failed to start subscription.'));
+    throw new Error(resolveBillingErrorMessage(data, 'Failed to start subscription.'));
   }
   if (!data) {
     throw new Error('Subscription start returned empty response.');
@@ -131,17 +95,17 @@ export async function updateSubscriptionRequest(
 ): Promise<TenantSubscription> {
   const response = await fetch(subscriptionPath(tenantId), {
     method: 'PATCH',
-    headers: buildHeaders(options, true),
+    headers: buildBillingHeaders(options, true),
     cache: 'no-store',
     body: JSON.stringify(payload),
   });
-  const data = await parseResponse<TenantSubscription>(response);
+  const data = await parseBillingResponse<TenantSubscription>(response);
   if (isBillingDisabled(response.status, data)) {
     throw new Error('Billing is disabled.');
   }
 
   if (!response.ok) {
-    throw new Error(resolveErrorMessage(data, 'Failed to update subscription.'));
+    throw new Error(resolveBillingErrorMessage(data, 'Failed to update subscription.'));
   }
   if (!data) {
     throw new Error('Subscription update returned empty response.');
@@ -156,22 +120,47 @@ export async function cancelSubscriptionRequest(
 ): Promise<TenantSubscription> {
   const response = await fetch(cancelPath(tenantId), {
     method: 'POST',
-    headers: buildHeaders(options, true),
+    headers: buildBillingHeaders(options, true),
     cache: 'no-store',
     body: JSON.stringify(payload),
   });
-  const data = await parseResponse<TenantSubscription>(response);
+  const data = await parseBillingResponse<TenantSubscription>(response);
   if (isBillingDisabled(response.status, data)) {
     throw new Error('Billing is disabled.');
   }
 
   if (!response.ok) {
-    throw new Error(resolveErrorMessage(data, 'Failed to cancel subscription.'));
+    throw new Error(resolveBillingErrorMessage(data, 'Failed to cancel subscription.'));
   }
   if (!data) {
     throw new Error('Subscription cancel returned empty response.');
   }
   return data as TenantSubscription;
+}
+
+export async function changeSubscriptionPlanRequest(
+  tenantId: string,
+  payload: SubscriptionPlanChangePayload,
+  options?: RequestOptions,
+): Promise<PlanChange> {
+  const response = await fetch(planPath(tenantId), {
+    method: 'POST',
+    headers: buildBillingHeaders(options, true),
+    cache: 'no-store',
+    body: JSON.stringify(payload),
+  });
+  const data = await parseBillingResponse<PlanChange>(response);
+  if (isBillingDisabled(response.status, data)) {
+    throw new Error('Billing is disabled.');
+  }
+
+  if (!response.ok) {
+    throw new Error(resolveBillingErrorMessage(data, 'Failed to change subscription plan.'));
+  }
+  if (!data) {
+    throw new Error('Plan change returned empty response.');
+  }
+  return data as PlanChange;
 }
 
 export async function recordUsageRequest(
@@ -181,18 +170,18 @@ export async function recordUsageRequest(
 ): Promise<void> {
   const response = await fetch(usagePath(tenantId), {
     method: 'POST',
-    headers: buildHeaders(options, true),
+    headers: buildBillingHeaders(options, true),
     cache: 'no-store',
     body: JSON.stringify(payload),
   });
 
-  const data = await parseResponse<ErrorPayload>(response);
+  const data = await parseBillingResponse<SuccessNoData>(response);
 
   if (isBillingDisabled(response.status, data)) {
     throw new Error('Billing is disabled.');
   }
 
   if (!response.ok) {
-    throw new Error(resolveErrorMessage(data, 'Failed to record usage.'));
+    throw new Error(resolveBillingErrorMessage(data, 'Failed to record usage.'));
   }
 }

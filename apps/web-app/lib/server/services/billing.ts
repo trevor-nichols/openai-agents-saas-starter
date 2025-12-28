@@ -1,22 +1,39 @@
 'use server';
 
 import {
+  changeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPost,
   cancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPost,
+  createPortalSessionApiV1BillingTenantsTenantIdPortalPost,
+  createSetupIntentApiV1BillingTenantsTenantIdPaymentMethodsSetupIntentPost,
+  detachPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDelete,
   getTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGet,
   listBillingEventsApiV1BillingTenantsTenantIdEventsGet,
   listBillingPlansApiV1BillingPlansGet,
+  listPaymentMethodsApiV1BillingTenantsTenantIdPaymentMethodsGet,
+  previewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePost,
   recordUsageApiV1BillingTenantsTenantIdUsagePost,
+  setDefaultPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDefaultPost,
   startSubscriptionApiV1BillingTenantsTenantIdSubscriptionPost,
   updateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatch,
 } from '@/lib/api/client/sdk.gen';
 import type {
   BillingPlanResponse,
+  ChangeSubscriptionPlanRequest,
   StartSubscriptionRequest,
   TenantSubscriptionResponse,
   UpdateSubscriptionRequest,
   CancelSubscriptionRequest,
   UsageRecordRequest,
   StripeEventStatus,
+  PortalSessionRequest,
+  PortalSessionResponse,
+  PaymentMethodResponse,
+  SetupIntentRequest,
+  SetupIntentResponse,
+  UpcomingInvoicePreviewRequest,
+  UpcomingInvoicePreviewResponse,
+  PlanChangeResponse,
+  SuccessNoDataResponse,
 } from '@/lib/api/client/types.gen';
 import type { BillingEventHistoryResponse } from '@/types/billing';
 
@@ -228,6 +245,39 @@ export async function updateTenantSubscription(
   return data;
 }
 
+export async function changeTenantSubscriptionPlan(
+  tenantId: string,
+  payload: ChangeSubscriptionPlanRequest,
+  options?: { tenantRole?: string | null },
+): Promise<PlanChangeResponse> {
+  if (!tenantId) {
+    throw new Error('Tenant id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+  const response = await changeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPost({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: true,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options?.tenantRole ? { 'X-Tenant-Role': options.tenantRole } : {}),
+    },
+    path: {
+      tenant_id: tenantId,
+    },
+    body: payload,
+  });
+
+  const data = response.data;
+  if (!data) {
+    throw new Error('Plan change returned empty payload.');
+  }
+
+  return data;
+}
+
 export async function cancelTenantSubscription(
   tenantId: string,
   payload: CancelSubscriptionRequest,
@@ -285,6 +335,200 @@ export async function recordTenantUsage(
     },
     body: payload,
   });
+}
+
+export async function createTenantPortalSession(
+  tenantId: string,
+  payload: PortalSessionRequest,
+  options?: { tenantRole?: string | null },
+): Promise<PortalSessionResponse> {
+  if (!tenantId) {
+    throw new Error('Tenant id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+  const response = await createPortalSessionApiV1BillingTenantsTenantIdPortalPost({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: true,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options?.tenantRole ? { 'X-Tenant-Role': options.tenantRole } : {}),
+    },
+    path: {
+      tenant_id: tenantId,
+    },
+    body: payload,
+  });
+
+  const data = response.data;
+  if (!data) {
+    throw new Error('Portal session returned empty payload.');
+  }
+
+  return data;
+}
+
+export async function listTenantPaymentMethods(
+  tenantId: string,
+  options?: { tenantRole?: string | null },
+): Promise<PaymentMethodResponse[]> {
+  if (!tenantId) {
+    throw new Error('Tenant id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+  const response = await listPaymentMethodsApiV1BillingTenantsTenantIdPaymentMethodsGet({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: true,
+    headers: {
+      ...(options?.tenantRole ? { 'X-Tenant-Role': options.tenantRole } : {}),
+    },
+    path: {
+      tenant_id: tenantId,
+    },
+  });
+
+  return response.data ?? [];
+}
+
+export async function createTenantSetupIntent(
+  tenantId: string,
+  payload: SetupIntentRequest,
+  options?: { tenantRole?: string | null },
+): Promise<SetupIntentResponse> {
+  if (!tenantId) {
+    throw new Error('Tenant id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+  const response = await createSetupIntentApiV1BillingTenantsTenantIdPaymentMethodsSetupIntentPost({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: true,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options?.tenantRole ? { 'X-Tenant-Role': options.tenantRole } : {}),
+    },
+    path: {
+      tenant_id: tenantId,
+    },
+    body: payload,
+  });
+
+  const data = response.data;
+  if (!data) {
+    throw new Error('Setup intent returned empty payload.');
+  }
+
+  return data;
+}
+
+export async function setTenantDefaultPaymentMethod(
+  tenantId: string,
+  paymentMethodId: string,
+  options?: { tenantRole?: string | null },
+): Promise<SuccessNoDataResponse> {
+  if (!tenantId) {
+    throw new Error('Tenant id is required.');
+  }
+  if (!paymentMethodId) {
+    throw new Error('Payment method id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+  const response = await setDefaultPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDefaultPost({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: true,
+    headers: {
+      ...(options?.tenantRole ? { 'X-Tenant-Role': options.tenantRole } : {}),
+    },
+    path: {
+      tenant_id: tenantId,
+      payment_method_id: paymentMethodId,
+    },
+  });
+
+  const data = response.data;
+  if (!data) {
+    throw new Error('Default payment method response missing.');
+  }
+
+  return data;
+}
+
+export async function detachTenantPaymentMethod(
+  tenantId: string,
+  paymentMethodId: string,
+  options?: { tenantRole?: string | null },
+): Promise<SuccessNoDataResponse> {
+  if (!tenantId) {
+    throw new Error('Tenant id is required.');
+  }
+  if (!paymentMethodId) {
+    throw new Error('Payment method id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+  const response = await detachPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDelete({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: true,
+    headers: {
+      ...(options?.tenantRole ? { 'X-Tenant-Role': options.tenantRole } : {}),
+    },
+    path: {
+      tenant_id: tenantId,
+      payment_method_id: paymentMethodId,
+    },
+  });
+
+  const data = response.data;
+  if (!data) {
+    throw new Error('Detach payment method response missing.');
+  }
+
+  return data;
+}
+
+export async function previewTenantUpcomingInvoice(
+  tenantId: string,
+  payload: UpcomingInvoicePreviewRequest,
+  options?: { tenantRole?: string | null },
+): Promise<UpcomingInvoicePreviewResponse> {
+  if (!tenantId) {
+    throw new Error('Tenant id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+  const response = await previewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePost({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: true,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options?.tenantRole ? { 'X-Tenant-Role': options.tenantRole } : {}),
+    },
+    path: {
+      tenant_id: tenantId,
+    },
+    body: payload,
+  });
+
+  const data = response.data;
+  if (!data) {
+    throw new Error('Upcoming invoice preview returned empty payload.');
+  }
+
+  return data;
 }
 
 function createMockBillingStream(): Response {

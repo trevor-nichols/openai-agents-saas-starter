@@ -45,8 +45,15 @@ export interface BillingOverviewData {
   };
 }
 
-export interface PlanFormValues {
+export interface SubscriptionSettingsFormValues {
   billingEmail: string;
   autoRenew: boolean;
   seatCount?: number;
+}
+
+export interface PlanChangeFormValues {
+  billingEmail?: string;
+  autoRenew?: boolean;
+  seatCount?: number;
+  timing?: 'immediate' | 'period_end';
 }

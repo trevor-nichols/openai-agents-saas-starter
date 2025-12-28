@@ -1,7 +1,5 @@
-import type { UseFormReturn } from 'react-hook-form';
-
-import type { PlanSnapshot, InvoiceSummary, UsageRow, PlanFormValues } from '../types';
-import type { BillingEvent, BillingPlan, BillingStreamStatus } from '@/types/billing';
+import type { PlanSnapshot, InvoiceSummary, UsageRow } from '../types';
+import type { BillingEvent, BillingPlan, BillingStreamStatus, BillingPaymentMethod, UpcomingInvoicePreview } from '@/types/billing';
 import type { TenantSubscription } from '@/lib/types/billing';
 
 const now = new Date();
@@ -64,8 +62,8 @@ export const mockBillingEvents: BillingEvent[] = [
     invoice: undefined,
     subscription: undefined,
     usage: [
-      { feature_key: 'vector_search', quantity: 2000, amount_cents: 20000, period_start: '2024-12-07', period_end: '2024-12-08' },
-      { feature_key: 'gen_ai_tokens', quantity: 500000, amount_cents: 50000, period_start: '2024-12-07', period_end: '2024-12-08' },
+      { feature_key: 'vector_search', quantity: 2000, amount_cents: 20000, period_start: '2025-12-07', period_end: '2025-12-08' },
+      { feature_key: 'gen_ai_tokens', quantity: 500000, amount_cents: 50000, period_start: '2025-12-07', period_end: '2025-12-08' },
     ],
   },
   {
@@ -80,8 +78,8 @@ export const mockBillingEvents: BillingEvent[] = [
       status: 'active',
       seat_count: 15,
       auto_renew: true,
-      current_period_start: '2024-12-01',
-      current_period_end: '2024-12-31',
+      current_period_start: '2025-12-01',
+      current_period_end: '2025-12-31',
       trial_ends_at: null,
       cancel_at: null,
     },
@@ -97,9 +95,9 @@ export const mockSubscription: TenantSubscription = {
   auto_renew: true,
   seat_count: 15,
   billing_email: 'billing@example.com',
-  starts_at: '2024-10-01',
-  current_period_start: '2024-12-01',
-  current_period_end: '2024-12-31',
+  starts_at: '2025-10-01',
+  current_period_start: '2025-12-01',
+  current_period_end: '2025-12-31',
   trial_ends_at: null,
   cancel_at: null,
   metadata: {},
@@ -151,10 +149,50 @@ export const mockPlans: BillingPlan[] = [
   },
 ];
 
-export function resetFormDefaults(form: UseFormReturn<PlanFormValues>) {
-  form.reset({
-    billingEmail: mockSubscription.billing_email ?? '',
-    autoRenew: mockSubscription.auto_renew ?? true,
-    seatCount: mockSubscription.seat_count ?? undefined,
-  });
-}
+export const mockPaymentMethods: BillingPaymentMethod[] = [
+  {
+    id: 'pm_visa',
+    brand: 'visa',
+    last4: '4242',
+    exp_month: 12,
+    exp_year: 2027,
+    is_default: true,
+  },
+  {
+    id: 'pm_mastercard',
+    brand: 'mastercard',
+    last4: '4444',
+    exp_month: 6,
+    exp_year: 2026,
+    is_default: false,
+  },
+];
+
+export const mockUpcomingInvoicePreview: UpcomingInvoicePreview = {
+  plan_code: 'pro_plus',
+  plan_name: 'Pro Plus',
+  seat_count: 15,
+  invoice_id: 'inv_preview_123',
+  amount_due_cents: 124900,
+  currency: 'USD',
+  period_start: '2025-12-01',
+  period_end: '2025-12-31',
+  lines: [
+    {
+      description: 'Base subscription',
+      amount_cents: 99000,
+      currency: 'USD',
+      quantity: 1,
+      unit_amount_cents: 99000,
+      price_id: 'price_base',
+    },
+    {
+      description: 'Additional seats',
+      amount_cents: 25900,
+      currency: 'USD',
+      quantity: 5,
+      unit_amount_cents: 5180,
+      price_id: 'price_seat',
+    },
+  ],
+};

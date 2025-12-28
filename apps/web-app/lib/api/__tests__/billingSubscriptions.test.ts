@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { fetchTenantSubscription, recordUsageRequest } from '../billingSubscriptions';
+import { changeSubscriptionPlanRequest, fetchTenantSubscription, recordUsageRequest } from '../billingSubscriptions';
 
 describe('billingSubscriptions helpers', () => {
   it('throws explicit billing disabled message on 404 with disabled payload', async () => {
@@ -48,6 +48,19 @@ describe('billingSubscriptions helpers', () => {
     await expect(
       recordUsageRequest('tenant-1', { quantity: 1, feature_key: 'messages' }, {}),
     ).rejects.toThrow('Billing is disabled.');
+    fetchSpy.mockRestore();
+  });
+
+  it('surfaces plan change errors', async () => {
+    const mockResponse = new Response(
+      JSON.stringify({ message: 'Plan change not allowed.' }),
+      { status: 409, headers: { 'Content-Type': 'application/json' } },
+    );
+    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse as unknown as Response);
+
+    await expect(
+      changeSubscriptionPlanRequest('tenant-1', { plan_code: 'pro', timing: 'immediate' }),
+    ).rejects.toThrow('Plan change not allowed.');
     fetchSpy.mockRestore();
   });
 });
