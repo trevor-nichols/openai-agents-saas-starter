@@ -2,20 +2,55 @@
 
 from __future__ import annotations
 
-import asyncio
-import logging
-import random
-import time
-from collections.abc import Callable, Iterable
-from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any, cast
+from typing import Any
 
-import stripe
-
-from app.infrastructure.stripe.types import (
-    RETRYABLE_ERRORS as STRIPE_RETRYABLE_ERRORS,
+from app.infrastructure.stripe.errors import StripeClientError
+from app.infrastructure.stripe.mappers import (
+    extract_default_payment_method_id,
+    extract_payment_method_customer_id,
+    iter_items,
+    to_datetime,
+    to_invoice_line,
+    to_payment_method,
+    to_schedule,
+    to_subscription,
 )
+from app.infrastructure.stripe.models import (
+    StripeCustomer,
+    StripePaymentMethodDetail,
+    StripePaymentMethodList,
+    StripePortalSession,
+    StripeSetupIntent,
+    StripeSubscription,
+    StripeSubscriptionSchedule,
+    StripeUpcomingInvoice,
+    StripeUsageRecord,
+)
+from app.infrastructure.stripe.sdk import (
+    SUBSCRIPTION_EXPAND_FIELDS,
+    configure_stripe_sdk,
+    create_billing_portal_session,
+    create_customer,
+    create_setup_intent,
+    create_subscription,
+    create_subscription_schedule,
+    create_usage_record,
+    delete_subscription,
+    detach_payment_method,
+    list_payment_methods,
+    modify_customer,
+    modify_subscription,
+    modify_subscription_schedule,
+    preview_upcoming_invoice,
+    release_subscription_schedule,
+    retrieve_customer,
+    retrieve_payment_method,
+    retrieve_subscription,
+    retrieve_subscription_schedule,
+    set_default_payment_method,
+)
+from app.infrastructure.stripe.transport import StripeRequestExecutor
 from app.infrastructure.stripe.types import (
     SubscriptionCreateParams,
     SubscriptionModifyItemPayload,
@@ -24,146 +59,11 @@ from app.infrastructure.stripe.types import (
     SubscriptionScheduleModifyParams,
     SubscriptionSchedulePhasePayload,
     UsageRecordPayload,
-    call_create_usage_record,
-    call_subscription_create,
-    call_subscription_delete,
-    call_subscription_modify,
-    call_subscription_schedule_create,
-    call_subscription_schedule_modify,
-    call_subscription_schedule_release,
-    call_subscription_schedule_retrieve,
 )
-from app.observability.metrics import observe_stripe_api_call
-
-StripeLibraryError = cast(
-    type[Exception], getattr(getattr(stripe, "error", None), "StripeError", Exception)
-)
-
-logger = logging.getLogger("api-service.infrastructure.stripe")
-
-
-@dataclass(slots=True)
-class StripeCustomer:
-    id: str
-    email: str | None = None
-
-
-@dataclass(slots=True)
-class StripeSubscriptionItem:
-    id: str
-    price_id: str | None
-    quantity: int | None
-
-
-@dataclass(slots=True)
-class StripeSubscription:
-    id: str
-    customer_id: str
-    status: str
-    cancel_at_period_end: bool
-    current_period_start: datetime | None
-    current_period_end: datetime | None
-    trial_end: datetime | None
-    items: list[StripeSubscriptionItem]
-    schedule_id: str | None = None
-    metadata: dict[str, str] | None = None
-
-    @property
-    def primary_item(self) -> StripeSubscriptionItem | None:
-        return self.items[0] if self.items else None
-
-
-@dataclass(slots=True)
-class StripeSubscriptionSchedulePhase:
-    start_date: datetime | None
-    end_date: datetime | None
-    items: list[StripeSubscriptionItem]
-    proration_behavior: str | None = None
-
-
-@dataclass(slots=True)
-class StripeSubscriptionSchedule:
-    id: str
-    status: str
-    subscription_id: str | None
-    phases: list[StripeSubscriptionSchedulePhase]
-    current_phase: StripeSubscriptionSchedulePhase | None = None
-    metadata: dict[str, str] | None = None
-
-
-@dataclass(slots=True)
-class StripeUsageRecord:
-    id: str
-    subscription_item_id: str
-    quantity: int
-    timestamp: datetime
-
-
-@dataclass(slots=True)
-class StripePortalSession:
-    url: str
-
-
-@dataclass(slots=True)
-class StripePaymentMethod:
-    id: str
-    brand: str | None
-    last4: str | None
-    exp_month: int | None
-    exp_year: int | None
-
-
-@dataclass(slots=True)
-class StripePaymentMethodDetail:
-    id: str
-    customer_id: str | None = None
-
-
-@dataclass(slots=True)
-class StripePaymentMethodList:
-    items: list[StripePaymentMethod]
-    default_payment_method_id: str | None = None
-
-
-@dataclass(slots=True)
-class StripeSetupIntent:
-    id: str
-    client_secret: str | None
-
-
-@dataclass(slots=True)
-class StripeUpcomingInvoiceLine:
-    description: str | None
-    amount: int
-    currency: str | None
-    quantity: int | None
-    unit_amount: int | None
-    price_id: str | None
-
-
-@dataclass(slots=True)
-class StripeUpcomingInvoice:
-    id: str | None
-    amount_due: int
-    currency: str
-    period_start: datetime | None
-    period_end: datetime | None
-    lines: list[StripeUpcomingInvoiceLine]
-
-
-class StripeClientError(RuntimeError):
-    """Wrapper for unrecoverable Stripe API failures."""
-
-    def __init__(self, operation: str, message: str, *, code: str | None = None) -> None:
-        super().__init__(message)
-        self.operation = operation
-        self.code = code
 
 
 class StripeClient:
     """Lightweight async-friendly Stripe wrapper with retries and metrics."""
-
-    RETRYABLE_ERRORS = STRIPE_RETRYABLE_ERRORS
 
     def __init__(
         self,
@@ -174,11 +74,11 @@ class StripeClient:
     ) -> None:
         if not api_key:
             raise StripeClientError("config", "Stripe secret key is required.")
-        self._api_key = api_key
-        self._max_attempts = max(1, max_attempts)
-        self._initial_backoff = max(0.1, initial_backoff_seconds)
-        stripe.api_key = api_key
-        stripe.max_network_retries = 0  # rely on our own retry logic
+        self._executor = StripeRequestExecutor(
+            max_attempts=max_attempts,
+            initial_backoff_seconds=initial_backoff_seconds,
+        )
+        configure_stripe_sdk(api_key)
 
     async def create_customer(self, *, email: str | None, tenant_id: str) -> StripeCustomer:
         payload: dict[str, Any] = {
@@ -188,9 +88,9 @@ class StripeClient:
         if email:
             payload["email"] = email
 
-        customer = await self._request(
+        customer = await self._executor.request(
             "customer.create",
-            lambda: stripe.Customer.create(**payload),
+            lambda: create_customer(payload),
         )
         return StripeCustomer(id=customer.id, email=customer.email)
 
@@ -213,25 +113,25 @@ class StripeClient:
                 }
             ],
             "metadata": metadata or {},
-            "expand": ["items.data.price"],
+            "expand": SUBSCRIPTION_EXPAND_FIELDS,
         }
         if not auto_renew:
             params["cancel_at_period_end"] = True
         if trial_period_days:
             params["trial_period_days"] = trial_period_days
 
-        subscription = await self._request(
+        subscription = await self._executor.request(
             "subscription.create",
-            lambda: call_subscription_create(params),
+            lambda: create_subscription(params),
         )
-        return self._to_subscription(subscription)
+        return to_subscription(subscription)
 
     async def retrieve_subscription(self, subscription_id: str) -> StripeSubscription:
-        subscription = await self._request(
+        subscription = await self._executor.request(
             "subscription.retrieve",
-            lambda: stripe.Subscription.retrieve(subscription_id, expand=["items.data.price"]),
+            lambda: retrieve_subscription(subscription_id),
         )
-        return self._to_subscription(subscription)
+        return to_subscription(subscription)
 
     async def modify_subscription(
         self,
@@ -243,7 +143,7 @@ class StripeClient:
         metadata: dict[str, str] | None = None,
         proration_behavior: str | None = None,
     ) -> StripeSubscription:
-        params: SubscriptionModifyParams = {"expand": ["items.data.price"]}
+        params: SubscriptionModifyParams = {"expand": SUBSCRIPTION_EXPAND_FIELDS}
         if auto_renew is not None:
             params["cancel_at_period_end"] = not auto_renew
         if seat_count is not None or price_id is not None:
@@ -268,37 +168,36 @@ class StripeClient:
         if len(params) == 1:  # only expand present
             return subscription
 
-        updated = await self._request(
+        updated = await self._executor.request(
             "subscription.modify",
-            lambda: call_subscription_modify(subscription.id, dict(params)),
+            lambda: modify_subscription(subscription.id, dict(params)),
         )
-        return self._to_subscription(updated)
+        return to_subscription(updated)
 
     async def cancel_subscription(
         self, subscription_id: str, *, cancel_at_period_end: bool
     ) -> StripeSubscription:
         params: dict[str, Any] = {
-            "expand": ["items.data.price"],
+            "expand": SUBSCRIPTION_EXPAND_FIELDS,
         }
-        cancel_fn: Callable[[], Any]
         if cancel_at_period_end:
 
             def cancel_fn() -> Any:
                 updated_params = params | {"cancel_at_period_end": True}
-                return call_subscription_modify(subscription_id, updated_params)
+                return modify_subscription(subscription_id, updated_params)
 
         else:
 
             def cancel_fn() -> Any:
-                return call_subscription_delete(subscription_id, params)
+                return delete_subscription(subscription_id, params)
 
-        subscription = await self._request("subscription.cancel", cancel_fn)
-        return self._to_subscription(subscription)
+        subscription = await self._executor.request("subscription.cancel", cancel_fn)
+        return to_subscription(subscription)
 
     async def update_customer_email(self, customer_id: str, email: str) -> StripeCustomer:
-        customer = await self._request(
+        customer = await self._executor.request(
             "customer.modify",
-            lambda: stripe.Customer.modify(customer_id, email=email),
+            lambda: modify_customer(customer_id, email=email),
         )
         return StripeCustomer(id=customer.id, email=customer.email)
 
@@ -312,20 +211,20 @@ class StripeClient:
             "from_subscription": subscription_id,
             "end_behavior": end_behavior,
         }
-        schedule = await self._request(
+        schedule = await self._executor.request(
             "subscription_schedule.create",
-            lambda: call_subscription_schedule_create(payload),
+            lambda: create_subscription_schedule(payload),
         )
-        return self._to_schedule(schedule)
+        return to_schedule(schedule)
 
     async def retrieve_subscription_schedule(
         self, schedule_id: str
     ) -> StripeSubscriptionSchedule:
-        schedule = await self._request(
+        schedule = await self._executor.request(
             "subscription_schedule.retrieve",
-            lambda: call_subscription_schedule_retrieve(schedule_id),
+            lambda: retrieve_subscription_schedule(schedule_id),
         )
-        return self._to_schedule(schedule)
+        return to_schedule(schedule)
 
     async def update_subscription_schedule(
         self,
@@ -344,21 +243,21 @@ class StripeClient:
         if metadata is not None:
             params["metadata"] = metadata
 
-        schedule = await self._request(
+        schedule = await self._executor.request(
             "subscription_schedule.modify",
-            lambda: call_subscription_schedule_modify(schedule_id, dict(params)),
+            lambda: modify_subscription_schedule(schedule_id, dict(params)),
         )
-        return self._to_schedule(schedule)
+        return to_schedule(schedule)
 
     async def release_subscription_schedule(
         self,
         schedule_id: str,
     ) -> StripeSubscriptionSchedule:
-        schedule = await self._request(
+        schedule = await self._executor.request(
             "subscription_schedule.release",
-            lambda: call_subscription_schedule_release(schedule_id),
+            lambda: release_subscription_schedule(schedule_id),
         )
-        return self._to_schedule(schedule)
+        return to_schedule(schedule)
 
     async def create_usage_record(
         self,
@@ -376,11 +275,11 @@ class StripeClient:
             "idempotency_key": idempotency_key,
             "feature_key": feature_key,
         }
-        record = await self._request(
+        record = await self._executor.request(
             "usage_record.create",
-            lambda: call_create_usage_record(request_payload),
+            lambda: create_usage_record(request_payload),
         )
-        ts = _to_datetime(record.timestamp)
+        ts = to_datetime(record.timestamp)
         return StripeUsageRecord(
             id=record.id,
             subscription_item_id=record.subscription_item,
@@ -391,66 +290,56 @@ class StripeClient:
     async def create_billing_portal_session(
         self, *, customer_id: str, return_url: str
     ) -> StripePortalSession:
-        session = await self._request(
+        session = await self._executor.request(
             "billing_portal.create",
-            lambda: stripe.billing_portal.Session.create(
-                customer=customer_id,
-                return_url=return_url,
-            ),
+            lambda: create_billing_portal_session(customer_id, return_url),
         )
         return StripePortalSession(url=session.url)
 
     async def list_payment_methods(self, customer_id: str) -> StripePaymentMethodList:
-        payment_methods = await self._request(
+        payment_methods = await self._executor.request(
             "payment_method.list",
-            lambda: stripe.PaymentMethod.list(customer=customer_id, type="card"),
+            lambda: list_payment_methods(customer_id),
         )
-        customer = await self._request(
+        customer = await self._executor.request(
             "customer.retrieve",
-            lambda: stripe.Customer.retrieve(customer_id),
+            lambda: retrieve_customer(customer_id),
         )
-        default_id = _extract_default_payment_method_id(customer)
-        items = [self._to_payment_method(method) for method in _iter_items(payment_methods)]
+        default_id = extract_default_payment_method_id(customer)
+        items = [to_payment_method(method) for method in iter_items(payment_methods)]
         return StripePaymentMethodList(items=items, default_payment_method_id=default_id)
 
     async def retrieve_payment_method(
         self, payment_method_id: str
     ) -> StripePaymentMethodDetail:
-        method = await self._request(
+        method = await self._executor.request(
             "payment_method.retrieve",
-            lambda: stripe.PaymentMethod.retrieve(payment_method_id),
+            lambda: retrieve_payment_method(payment_method_id),
         )
         return StripePaymentMethodDetail(
             id=method.id,
-            customer_id=_extract_payment_method_customer_id(method),
+            customer_id=extract_payment_method_customer_id(method),
         )
 
     async def create_setup_intent(self, customer_id: str) -> StripeSetupIntent:
-        intent = await self._request(
+        intent = await self._executor.request(
             "setup_intent.create",
-            lambda: stripe.SetupIntent.create(
-                customer=customer_id,
-                payment_method_types=["card"],
-                usage="off_session",
-            ),
+            lambda: create_setup_intent(customer_id),
         )
         return StripeSetupIntent(id=intent.id, client_secret=getattr(intent, "client_secret", None))
 
     async def set_default_payment_method(
         self, *, customer_id: str, payment_method_id: str
     ) -> None:
-        await self._request(
+        await self._executor.request(
             "customer.set_default_payment_method",
-            lambda: stripe.Customer.modify(
-                customer_id,
-                invoice_settings={"default_payment_method": payment_method_id},
-            ),
+            lambda: set_default_payment_method(customer_id, payment_method_id),
         )
 
     async def detach_payment_method(self, payment_method_id: str) -> None:
-        await self._request(
+        await self._executor.request(
             "payment_method.detach",
-            lambda: stripe.PaymentMethod.detach(payment_method_id),
+            lambda: detach_payment_method(payment_method_id),
         )
 
     async def preview_upcoming_invoice(
@@ -473,11 +362,11 @@ class StripeClient:
         if proration_behavior:
             params["subscription_proration_behavior"] = proration_behavior
 
-        invoice = await self._request(
+        invoice = await self._executor.request(
             "invoice.upcoming",
-            lambda: stripe.Invoice.upcoming(**params),
+            lambda: preview_upcoming_invoice(params),
         )
-        lines = [self._to_invoice_line(item) for item in _iter_items(invoice.lines)]
+        lines = [to_invoice_line(item) for item in iter_items(invoice.lines)]
         amount_due = getattr(invoice, "amount_due", None)
         if amount_due is None:
             amount_due = getattr(invoice, "total", 0)
@@ -485,227 +374,10 @@ class StripeClient:
             id=getattr(invoice, "id", None),
             amount_due=int(amount_due or 0),
             currency=str(getattr(invoice, "currency", "usd")),
-            period_start=_to_datetime(getattr(invoice, "period_start", None)),
-            period_end=_to_datetime(getattr(invoice, "period_end", None)),
+            period_start=to_datetime(getattr(invoice, "period_start", None)),
+            period_end=to_datetime(getattr(invoice, "period_end", None)),
             lines=lines,
         )
 
-    async def _request(self, operation: str, func: Callable[[], Any]) -> Any:
-        attempt = 0
-        last_error: Exception | None = None
-        while attempt < self._max_attempts:
-            attempt += 1
-            start = time.perf_counter()
-            try:
-                loop = asyncio.get_running_loop()
-                result = await loop.run_in_executor(None, func)
-                observe_stripe_api_call(
-                    operation=operation,
-                    result="success",
-                    duration_seconds=time.perf_counter() - start,
-                )
-                return result
-            except StripeLibraryError as exc:
-                observe_stripe_api_call(
-                    operation=operation,
-                    result=_stripe_error_code(exc),
-                    duration_seconds=time.perf_counter() - start,
-                )
-                logger.warning(
-                    "Stripe API error on %s (attempt %s/%s): %s",
-                    operation,
-                    attempt,
-                    self._max_attempts,
-                    _stripe_user_message(exc),
-                )
-                if attempt >= self._max_attempts or not self._should_retry(exc):
-                    raise StripeClientError(
-                        operation, _stripe_user_message(exc), code=_stripe_error_code(exc)
-                    ) from exc
-                await asyncio.sleep(self._backoff(attempt))
-                last_error = exc
-            except Exception as exc:  # pragma: no cover - unexpected runtime failure
-                observe_stripe_api_call(
-                    operation=operation,
-                    result="exception",
-                    duration_seconds=time.perf_counter() - start,
-                )
-                logger.exception("Unexpected error during Stripe operation %s", operation)
-                raise StripeClientError(operation, str(exc)) from exc
-        raise StripeClientError(operation, str(last_error or "Unknown Stripe error"))
 
-    def _backoff(self, attempt: int) -> float:
-        jitter = random.uniform(0, self._initial_backoff)
-        return self._initial_backoff * (2 ** (attempt - 1)) + jitter
-
-    def _should_retry(self, exc: Exception) -> bool:
-        return isinstance(exc, self.RETRYABLE_ERRORS)
-
-    def _to_subscription(self, subscription: Any) -> StripeSubscription:
-        items = [self._to_subscription_item(item) for item in _iter_items(subscription.items)]
-        metadata = dict(getattr(subscription, "metadata", None) or {})
-        return StripeSubscription(
-            id=subscription.id,
-            customer_id=subscription.customer,
-            status=subscription.status,
-            cancel_at_period_end=bool(subscription.cancel_at_period_end),
-            current_period_start=_to_datetime(getattr(subscription, "current_period_start", None)),
-            current_period_end=_to_datetime(getattr(subscription, "current_period_end", None)),
-            trial_end=_to_datetime(getattr(subscription, "trial_end", None)),
-            items=items,
-            schedule_id=_extract_schedule_id(getattr(subscription, "schedule", None)),
-            metadata=metadata,
-        )
-
-    def _to_subscription_item(self, item: Any) -> StripeSubscriptionItem:
-        price = getattr(item, "price", None)
-        price_id = getattr(price, "id", None) if price else None
-        return StripeSubscriptionItem(
-            id=item.id,
-            price_id=price_id,
-            quantity=getattr(item, "quantity", None),
-        )
-
-    def _to_schedule(self, schedule: Any) -> StripeSubscriptionSchedule:
-        phases_data = getattr(schedule, "phases", None)
-        phases: list[StripeSubscriptionSchedulePhase] = []
-        if isinstance(phases_data, list):
-            for phase in phases_data:
-                if isinstance(phase, dict):
-                    items_raw = phase.get("items")
-                    start_raw = phase.get("start_date")
-                    end_raw = phase.get("end_date")
-                    proration = phase.get("proration_behavior")
-                else:
-                    items_raw = getattr(phase, "items", None)
-                    start_raw = getattr(phase, "start_date", None)
-                    end_raw = getattr(phase, "end_date", None)
-                    proration = getattr(phase, "proration_behavior", None)
-
-                items = [
-                    self._to_subscription_item(item)
-                    for item in _iter_items(items_raw)
-                ]
-                phases.append(
-                    StripeSubscriptionSchedulePhase(
-                        start_date=_to_datetime(start_raw),
-                        end_date=_to_datetime(end_raw),
-                        items=items,
-                        proration_behavior=proration,
-                    )
-                )
-
-        current = getattr(schedule, "current_phase", None)
-        current_phase = None
-        if isinstance(current, dict):
-            current_phase = StripeSubscriptionSchedulePhase(
-                start_date=_to_datetime(current.get("start_date")),
-                end_date=_to_datetime(current.get("end_date")),
-                items=[],
-                proration_behavior=None,
-            )
-
-        subscription_id = getattr(schedule, "subscription", None)
-        if isinstance(subscription_id, dict):
-            subscription_id = subscription_id.get("id")
-
-        return StripeSubscriptionSchedule(
-            id=schedule.id,
-            status=getattr(schedule, "status", "unknown"),
-            subscription_id=subscription_id,
-            phases=phases,
-            current_phase=current_phase,
-            metadata=dict(getattr(schedule, "metadata", None) or {}),
-        )
-
-    def _to_payment_method(self, method: Any) -> StripePaymentMethod:
-        card = getattr(method, "card", None)
-        brand = getattr(card, "brand", None) if card else None
-        last4 = getattr(card, "last4", None) if card else None
-        exp_month = getattr(card, "exp_month", None) if card else None
-        exp_year = getattr(card, "exp_year", None) if card else None
-        return StripePaymentMethod(
-            id=method.id,
-            brand=brand,
-            last4=last4,
-            exp_month=exp_month,
-            exp_year=exp_year,
-        )
-
-    def _to_invoice_line(self, line: Any) -> StripeUpcomingInvoiceLine:
-        price = getattr(line, "price", None)
-        price_id = None
-        unit_amount = None
-        if price is not None:
-            price_id = getattr(price, "id", None)
-            unit_amount = getattr(price, "unit_amount", None)
-        return StripeUpcomingInvoiceLine(
-            description=getattr(line, "description", None),
-            amount=int(getattr(line, "amount", 0) or 0),
-            currency=getattr(line, "currency", None),
-            quantity=getattr(line, "quantity", None),
-            unit_amount=unit_amount,
-            price_id=price_id,
-        )
-
-
-def _iter_items(items: Any) -> Iterable[Any]:
-    data = getattr(items, "data", None)
-    if isinstance(data, list):
-        return data
-    return []
-
-
-def _extract_default_payment_method_id(customer: Any) -> str | None:
-    invoice_settings = getattr(customer, "invoice_settings", None)
-    if isinstance(invoice_settings, dict):
-        value = invoice_settings.get("default_payment_method")
-    else:
-        value = getattr(invoice_settings, "default_payment_method", None)
-    if isinstance(value, dict):
-        return value.get("id")
-    return str(value) if value else None
-
-
-def _extract_payment_method_customer_id(method: Any) -> str | None:
-    customer = getattr(method, "customer", None)
-    if isinstance(customer, dict):
-        value = customer.get("id")
-    else:
-        value = customer
-    return str(value) if value else None
-
-
-def _extract_schedule_id(schedule: Any) -> str | None:
-    if schedule is None:
-        return None
-    if isinstance(schedule, str):
-        return schedule
-    if isinstance(schedule, dict):
-        return schedule.get("id")
-    return getattr(schedule, "id", None)
-
-
-def _stripe_error_code(exc: Exception) -> str:
-    code = getattr(exc, "code", None)
-    if code:
-        return str(code)
-    error_obj = getattr(exc, "error", None)
-    if error_obj is not None:
-        error_type = getattr(error_obj, "type", None)
-        if error_type:
-            return str(error_type)
-    return exc.__class__.__name__
-
-
-def _stripe_user_message(exc: Exception) -> str:
-    message = getattr(exc, "user_message", None)
-    if message:
-        return str(message)
-    return str(exc)
-
-
-def _to_datetime(value: int | float | None) -> datetime | None:
-    if value is None:
-        return None
-    return datetime.fromtimestamp(float(value), tz=UTC)
+__all__ = ["StripeClient"]

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, TypedDict, cast
+from typing import Any, TypedDict, cast
 
 import stripe
 
@@ -76,43 +76,6 @@ class UsageRecordPayload(TypedDict):
     timestamp: int
     idempotency_key: str
     feature_key: str
-
-
-if TYPE_CHECKING:
-
-    class StripeAPIConnectionError(Exception):
-        ...
-
-    class StripeAPIError(Exception):
-        ...
-
-    class StripeRateLimitError(Exception):
-        ...
-
-    class StripeIdempotencyError(Exception):
-        ...
-
-else:
-    _stripe_error_ns = getattr(stripe, "error", None)
-
-    def _resolve_error(name: str) -> type[Exception]:
-        candidate = getattr(_stripe_error_ns, name, None) if _stripe_error_ns else None
-        if isinstance(candidate, type):
-            return cast(type[Exception], candidate)
-        return Exception
-
-    StripeAPIConnectionError = _resolve_error("APIConnectionError")
-    StripeAPIError = _resolve_error("APIError")
-    StripeRateLimitError = _resolve_error("RateLimitError")
-    StripeIdempotencyError = _resolve_error("IdempotencyError")
-
-
-RETRYABLE_ERRORS: tuple[type[Exception], ...] = (
-    StripeAPIConnectionError,
-    StripeAPIError,
-    StripeRateLimitError,
-    StripeIdempotencyError,
-)
 
 
 def call_subscription_delete(subscription_id: str, params: dict[str, Any]) -> Any:

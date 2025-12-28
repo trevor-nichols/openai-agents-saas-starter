@@ -1,8 +1,8 @@
 """Stripe client helpers."""
 
-from .client import (
-    StripeClient,
-    StripeClientError,
+from .client import StripeClient
+from .errors import StripeClientError
+from .models import (
     StripeCustomer,
     StripePaymentMethod,
     StripePaymentMethodDetail,
