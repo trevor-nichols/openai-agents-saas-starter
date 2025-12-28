@@ -102,6 +102,9 @@ export const mockSubscription: TenantSubscription = {
   current_period_end: '2024-12-31',
   trial_ends_at: null,
   cancel_at: null,
+  pending_plan_code: 'starter',
+  pending_plan_effective_at: '2025-01-31',
+  pending_seat_count: 10,
   metadata: {},
 };
 
@@ -156,5 +159,6 @@ export function resetFormDefaults(form: UseFormReturn<PlanFormValues>) {
     billingEmail: mockSubscription.billing_email ?? '',
     autoRenew: mockSubscription.auto_renew ?? true,
     seatCount: mockSubscription.seat_count ?? undefined,
+    timing: 'auto',
   });
 }

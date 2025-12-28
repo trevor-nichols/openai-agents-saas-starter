@@ -2,6 +2,7 @@
 
 import {
   cancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPost,
+  changeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPost,
   getTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGet,
   listBillingEventsApiV1BillingTenantsTenantIdEventsGet,
   listBillingPlansApiV1BillingPlansGet,
@@ -11,9 +12,11 @@ import {
 } from '@/lib/api/client/sdk.gen';
 import type {
   BillingPlanResponse,
+  ChangeSubscriptionPlanRequest,
   StartSubscriptionRequest,
   TenantSubscriptionResponse,
   UpdateSubscriptionRequest,
+  PlanChangeResponse,
   CancelSubscriptionRequest,
   UsageRecordRequest,
   StripeEventStatus,
@@ -223,6 +226,39 @@ export async function updateTenantSubscription(
   const data = response.data;
   if (!data) {
     throw new Error('Subscription update returned empty payload.');
+  }
+
+  return data;
+}
+
+export async function changeTenantSubscriptionPlan(
+  tenantId: string,
+  payload: ChangeSubscriptionPlanRequest,
+  options?: { tenantRole?: string | null },
+): Promise<PlanChangeResponse> {
+  if (!tenantId) {
+    throw new Error('Tenant id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+  const response = await changeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPost({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: true,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options?.tenantRole ? { 'X-Tenant-Role': options.tenantRole } : {}),
+    },
+    path: {
+      tenant_id: tenantId,
+    },
+    body: payload,
+  });
+
+  const data = response.data;
+  if (!data) {
+    throw new Error('Plan change returned empty payload.');
   }
 
   return data;

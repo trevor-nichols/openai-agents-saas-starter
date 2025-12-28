@@ -30,6 +30,7 @@ class SubscriptionModifyItemPayload(TypedDict, total=False):
 
     id: str
     quantity: int
+    price: str
 
 
 class SubscriptionModifyParams(TypedDict, total=False):
@@ -38,6 +39,43 @@ class SubscriptionModifyParams(TypedDict, total=False):
     cancel_at_period_end: bool
     items: list[SubscriptionModifyItemPayload]
     expand: list[str]
+    metadata: dict[str, str]
+    proration_behavior: str
+
+
+class SubscriptionSchedulePhaseItemPayload(TypedDict):
+    """Item payload for subscription schedule phases."""
+
+    price: str
+    quantity: int
+
+
+class SubscriptionSchedulePhasePayload(TypedDict, total=False):
+    """Phase payload for subscription schedules."""
+
+    items: list[SubscriptionSchedulePhaseItemPayload]
+    start_date: int
+    end_date: int
+    proration_behavior: str
+    metadata: dict[str, str]
+
+
+class SubscriptionScheduleCreateParams(TypedDict, total=False):
+    """Payload for stripe.SubscriptionSchedule.create."""
+
+    from_subscription: str
+    end_behavior: str
+    phases: list[SubscriptionSchedulePhasePayload]
+    metadata: dict[str, str]
+
+
+class SubscriptionScheduleModifyParams(TypedDict, total=False):
+    """Payload for stripe.SubscriptionSchedule.modify."""
+
+    phases: list[SubscriptionSchedulePhasePayload]
+    end_behavior: str
+    metadata: dict[str, str]
+    proration_behavior: str
 
 
 class UsageRecordPayload(TypedDict):
@@ -122,3 +160,25 @@ def call_create_usage_record(payload: UsageRecordPayload) -> Any:
         idempotency_key=payload["idempotency_key"],
         metadata={"feature": payload["feature_key"]},
     )
+
+
+def call_subscription_schedule_create(payload: SubscriptionScheduleCreateParams) -> Any:
+    schedule_api = cast(Any, stripe.SubscriptionSchedule)
+    return schedule_api.create(**payload)
+
+
+def call_subscription_schedule_modify(
+    schedule_id: str, params: dict[str, Any]
+) -> Any:
+    schedule_api = cast(Any, stripe.SubscriptionSchedule)
+    return schedule_api.modify(schedule_id, **params)
+
+
+def call_subscription_schedule_release(schedule_id: str) -> Any:
+    schedule_api = cast(Any, stripe.SubscriptionSchedule)
+    return schedule_api.release(schedule_id)
+
+
+def call_subscription_schedule_retrieve(schedule_id: str) -> Any:
+    schedule_api = cast(Any, stripe.SubscriptionSchedule)
+    return schedule_api.retrieve(schedule_id, expand=["phases.items.price", "subscription"])

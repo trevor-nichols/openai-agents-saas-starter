@@ -219,6 +219,11 @@ class StripeEventDispatcher:
         customer_id = data_obj.get("customer") or metadata.get("customer_id")
         price_id = self._extract_price_id(data_obj)
         seat_count = self._extract_quantity(data_obj)
+        schedule = data_obj.get("schedule")
+        if isinstance(schedule, dict):
+            schedule_id = schedule.get("id")
+        else:
+            schedule_id = schedule
         snapshot = ProcessorSubscriptionSnapshot(
             tenant_id=str(tenant_id),
             plan_code=str(plan_code),
@@ -235,6 +240,7 @@ class StripeEventDispatcher:
             billing_email=data_obj.get("customer_email") or metadata.get("billing_email"),
             processor_customer_id=customer_id,
             processor_subscription_id=str(data_obj.get("id")),
+            processor_schedule_id=str(schedule_id) if schedule_id else None,
             metadata={
                 "stripe_price_id": price_id or "",
                 "stripe_status": str(data_obj.get("status")),

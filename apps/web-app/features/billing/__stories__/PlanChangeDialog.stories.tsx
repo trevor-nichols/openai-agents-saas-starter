@@ -27,6 +27,7 @@ function PlanChangeDialogPreview({
       billingEmail: '',
       autoRenew: true,
       seatCount: undefined,
+      timing: 'auto',
     },
   });
 
@@ -38,12 +39,12 @@ function PlanChangeDialogPreview({
     <PlanChangeDialog
       open={open}
       plan={plan}
+      mode={updateCurrent ? 'update' : 'change'}
       form={form}
       onSubmit={(values) => console.log('submit plan', values)}
       onClose={() => console.log('close dialog')}
       isSubmitting={isSubmitting}
       errorMessage={errorMessage}
-      isUpdatingCurrentPlan={updateCurrent}
     />
   );
 }

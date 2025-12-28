@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { InlineTag } from '@/components/ui/foundation';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { SkeletonPanel } from '@/components/ui/states';
 import type { PlanFormValues } from '@/features/billing/types';
@@ -21,34 +22,52 @@ import { formatCurrency, formatInterval } from '../utils/formatters';
 interface PlanChangeDialogProps {
   open: boolean;
   plan: BillingPlan | null;
+  mode: 'start' | 'update' | 'change';
   form: UseFormReturn<PlanFormValues>;
   onSubmit: (values: PlanFormValues) => void;
   onClose: () => void;
   isSubmitting: boolean;
   errorMessage?: string;
-  isUpdatingCurrentPlan: boolean;
 }
 
 export function PlanChangeDialog({
   open,
   plan,
+  mode,
   form,
   onSubmit,
   onClose,
   isSubmitting,
   errorMessage,
-  isUpdatingCurrentPlan,
 }: PlanChangeDialogProps) {
+  const title = plan
+    ? mode === 'start'
+      ? `Start the ${plan.name} plan`
+      : mode === 'update'
+        ? `Update ${plan.name} subscription`
+        : `Switch to the ${plan.name} plan`
+    : 'Plan change';
+
+  const description = plan
+    ? mode === 'change'
+      ? `Choose seats and timing for moving to the ${plan.name} tier.`
+      : `Confirm billing contact, seat count, and auto-renew preferences for the ${plan.name} tier.`
+    : 'Select a plan to see more details.';
+
+  const submitLabel = plan
+    ? mode === 'start'
+      ? `Start ${plan.name}`
+      : mode === 'update'
+        ? 'Update subscription'
+        : `Request ${plan.name} plan`
+    : 'Submit';
+
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>{plan ? `Switch to the ${plan.name} plan` : 'Plan change'}</DialogTitle>
-          <DialogDescription>
-            {plan
-              ? `Confirm billing contact, seat count, and auto-renew preferences for the ${plan.name} tier.`
-              : 'Select a plan to see more details.'}
-          </DialogDescription>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
         {plan ? (
@@ -117,6 +136,34 @@ export function PlanChangeDialog({
                   )}
                 />
 
+                {mode === 'change' ? (
+                  <FormField
+                    control={form.control}
+                    name="timing"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Plan change timing</FormLabel>
+                        <FormDescription>
+                          Auto applies upgrades immediately and schedules downgrades for period end.
+                        </FormDescription>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select timing" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="auto">Auto (recommended)</SelectItem>
+                            <SelectItem value="immediate">Immediate</SelectItem>
+                            <SelectItem value="period_end">At period end</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ) : null}
+
                 <FormField
                   control={form.control}
                   name="autoRenew"
@@ -137,11 +184,7 @@ export function PlanChangeDialog({
 
                 <DialogFooter className="space-x-3">
                   <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting
-                      ? 'Saving...'
-                      : isUpdatingCurrentPlan
-                        ? 'Update plan'
-                        : `Move to ${plan.name}`}
+                    {isSubmitting ? 'Saving...' : submitLabel}
                   </Button>
                   <Button variant="secondary" type="button" onClick={onClose} disabled={isSubmitting}>
                     Cancel

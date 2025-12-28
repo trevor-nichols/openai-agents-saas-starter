@@ -21,6 +21,8 @@ from app.api.v1.billing.schemas import (
     BillingEventResponse,
     BillingPlanResponse,
     CancelSubscriptionRequest,
+    ChangeSubscriptionPlanRequest,
+    PlanChangeResponse,
     StartSubscriptionRequest,
     TenantSubscriptionResponse,
     UpdateSubscriptionRequest,
@@ -159,6 +161,31 @@ async def update_subscription(
     except BillingError as exc:  # pragma: no cover - translated below
         _handle_billing_error(exc)
     return TenantSubscriptionResponse.from_domain(subscription)
+
+
+@router.post(
+    "/tenants/{tenant_id}/subscription/plan",
+    response_model=PlanChangeResponse,
+)
+async def change_subscription_plan(
+    tenant_id: str,
+    payload: ChangeSubscriptionPlanRequest,
+    context: TenantContext = Depends(require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN)),
+) -> PlanChangeResponse:
+    """Request a plan change, either immediate or effective at period end."""
+
+    _assert_same_tenant(context, tenant_id)
+
+    try:
+        result = await billing_service.change_subscription_plan(
+            tenant_id=tenant_id,
+            plan_code=payload.plan_code,
+            seat_count=payload.seat_count,
+            timing=payload.timing,
+        )
+    except BillingError as exc:  # pragma: no cover - translated below
+        _handle_billing_error(exc)
+    return PlanChangeResponse.from_result(result)
 
 
 @router.post(

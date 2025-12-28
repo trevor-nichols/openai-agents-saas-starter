@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { fetchTenantSubscription, recordUsageRequest } from '../billingSubscriptions';
+import {
+  changeSubscriptionPlanRequest,
+  fetchTenantSubscription,
+  recordUsageRequest,
+} from '../billingSubscriptions';
 
 describe('billingSubscriptions helpers', () => {
   it('throws explicit billing disabled message on 404 with disabled payload', async () => {
@@ -48,6 +52,32 @@ describe('billingSubscriptions helpers', () => {
     await expect(
       recordUsageRequest('tenant-1', { quantity: 1, feature_key: 'messages' }, {}),
     ).rejects.toThrow('Billing is disabled.');
+    fetchSpy.mockRestore();
+  });
+
+  it('throws billing disabled for plan changes on 404 payload', async () => {
+    const mockResponse = new Response(
+      JSON.stringify({ message: 'Billing is disabled.' }),
+      { status: 404, headers: { 'Content-Type': 'application/json' } },
+    );
+    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse as unknown as Response);
+
+    await expect(
+      changeSubscriptionPlanRequest('tenant-1', { plan_code: 'pro', timing: 'auto' }, {}),
+    ).rejects.toThrow('Billing is disabled.');
+    fetchSpy.mockRestore();
+  });
+
+  it('propagates backend errors for plan changes', async () => {
+    const mockResponse = new Response(
+      JSON.stringify({ message: 'Plan change conflict.' }),
+      { status: 409, headers: { 'Content-Type': 'application/json' } },
+    );
+    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse as unknown as Response);
+
+    await expect(
+      changeSubscriptionPlanRequest('tenant-1', { plan_code: 'pro', timing: 'auto' }, {}),
+    ).rejects.toThrow('Plan change conflict.');
     fetchSpy.mockRestore();
   });
 });

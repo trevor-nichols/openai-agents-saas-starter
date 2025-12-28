@@ -1,5 +1,7 @@
 import type {
   SubscriptionCancelPayload,
+  SubscriptionPlanChangePayload,
+  SubscriptionPlanChangeResponse,
   SubscriptionStartPayload,
   SubscriptionUpdatePayload,
   TenantSubscription,
@@ -16,12 +18,10 @@ type ErrorPayload = {
   error?: string;
 };
 
-function isBillingDisabled(status: number, payload: ErrorPayload | TenantSubscription | null): boolean {
-  if (status !== 404 || !payload) return false;
-  const message =
-    (typeof payload === 'object' && 'message' in payload && payload.message) ||
-    (typeof payload === 'object' && 'error' in payload && (payload as ErrorPayload).error) ||
-    '';
+function isBillingDisabled(status: number, payload: unknown): boolean {
+  if (status !== 404 || !payload || typeof payload !== 'object') return false;
+  const candidate = payload as ErrorPayload;
+  const message = candidate.message ?? candidate.error ?? '';
   return typeof message === 'string' && message.toLowerCase().includes('billing is disabled');
 }
 
@@ -40,6 +40,7 @@ const usagePath = (tenantId: string) => {
 };
 
 const cancelPath = (tenantId: string) => `${subscriptionPath(tenantId)}/cancel`;
+const planChangePath = (tenantId: string) => `${subscriptionPath(tenantId)}/plan`;
 
 function buildHeaders(options: RequestOptions | undefined, includeJson = false): HeadersInit {
   const headers: Record<string, string> = {};
@@ -172,6 +173,31 @@ export async function cancelSubscriptionRequest(
     throw new Error('Subscription cancel returned empty response.');
   }
   return data as TenantSubscription;
+}
+
+export async function changeSubscriptionPlanRequest(
+  tenantId: string,
+  payload: SubscriptionPlanChangePayload,
+  options?: RequestOptions,
+): Promise<SubscriptionPlanChangeResponse> {
+  const response = await fetch(planChangePath(tenantId), {
+    method: 'POST',
+    headers: buildHeaders(options, true),
+    cache: 'no-store',
+    body: JSON.stringify(payload),
+  });
+  const data = await parseResponse<SubscriptionPlanChangeResponse>(response);
+  if (isBillingDisabled(response.status, data)) {
+    throw new Error('Billing is disabled.');
+  }
+
+  if (!response.ok) {
+    throw new Error(resolveErrorMessage(data, 'Failed to change plan.'));
+  }
+  if (!data) {
+    throw new Error('Plan change returned empty response.');
+  }
+  return data as SubscriptionPlanChangeResponse;
 }
 
 export async function recordUsageRequest(

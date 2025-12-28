@@ -7,7 +7,7 @@ import logging
 import random
 import time
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, cast
 
@@ -20,11 +20,18 @@ from app.infrastructure.stripe.types import (
     SubscriptionCreateParams,
     SubscriptionModifyItemPayload,
     SubscriptionModifyParams,
+    SubscriptionScheduleCreateParams,
+    SubscriptionScheduleModifyParams,
+    SubscriptionSchedulePhasePayload,
     UsageRecordPayload,
     call_create_usage_record,
     call_subscription_create,
     call_subscription_delete,
     call_subscription_modify,
+    call_subscription_schedule_create,
+    call_subscription_schedule_modify,
+    call_subscription_schedule_release,
+    call_subscription_schedule_retrieve,
 )
 from app.observability.metrics import observe_stripe_api_call
 
@@ -58,6 +65,8 @@ class StripeSubscription:
     current_period_end: datetime | None
     trial_end: datetime | None
     items: list[StripeSubscriptionItem]
+    metadata: dict[str, str] = field(default_factory=dict)
+    schedule_id: str | None = None
 
     @property
     def primary_item(self) -> StripeSubscriptionItem | None:
@@ -70,6 +79,24 @@ class StripeUsageRecord:
     subscription_item_id: str
     quantity: int
     timestamp: datetime
+
+
+@dataclass(slots=True)
+class StripeSubscriptionSchedulePhase:
+    start_date: datetime | None
+    end_date: datetime | None
+    items: list[StripeSubscriptionItem]
+    proration_behavior: str | None = None
+
+
+@dataclass(slots=True)
+class StripeSubscriptionSchedule:
+    id: str
+    status: str
+    subscription_id: str | None
+    phases: list[StripeSubscriptionSchedulePhase]
+    current_phase: StripeSubscriptionSchedulePhase | None = None
+    metadata: dict[str, str] = field(default_factory=dict)
 
 
 class StripeClientError(RuntimeError):
@@ -160,18 +187,31 @@ class StripeClient:
         *,
         auto_renew: bool | None = None,
         seat_count: int | None = None,
+        price_id: str | None = None,
+        metadata: dict[str, str] | None = None,
+        proration_behavior: str | None = None,
     ) -> StripeSubscription:
         params: SubscriptionModifyParams = {"expand": ["items.data.price"]}
         if auto_renew is not None:
             params["cancel_at_period_end"] = not auto_renew
-        if seat_count is not None:
+        if seat_count is not None or price_id is not None:
             item = subscription.primary_item
             if item is None:
                 raise StripeClientError(
                     "subscription.modify", "Subscription has no items to update quantity."
                 )
             items: list[SubscriptionModifyItemPayload] = params.setdefault("items", [])
-            items.append({"id": item.id, "quantity": seat_count})
+            payload: SubscriptionModifyItemPayload = {"id": item.id}
+            if seat_count is not None:
+                payload["quantity"] = seat_count
+            if price_id is not None:
+                payload["price"] = price_id
+            items.append(payload)
+
+        if metadata is not None:
+            params["metadata"] = metadata
+        if proration_behavior is not None:
+            params["proration_behavior"] = proration_behavior
 
         if len(params) == 1:  # only expand present
             return subscription
@@ -209,6 +249,64 @@ class StripeClient:
             lambda: stripe.Customer.modify(customer_id, email=email),
         )
         return StripeCustomer(id=customer.id, email=customer.email)
+
+    async def create_subscription_schedule_from_subscription(
+        self,
+        subscription_id: str,
+        *,
+        end_behavior: str = "release",
+    ) -> StripeSubscriptionSchedule:
+        payload: SubscriptionScheduleCreateParams = {
+            "from_subscription": subscription_id,
+            "end_behavior": end_behavior,
+        }
+        schedule = await self._request(
+            "subscription_schedule.create",
+            lambda: call_subscription_schedule_create(payload),
+        )
+        return self._to_schedule(schedule)
+
+    async def retrieve_subscription_schedule(
+        self, schedule_id: str
+    ) -> StripeSubscriptionSchedule:
+        schedule = await self._request(
+            "subscription_schedule.retrieve",
+            lambda: call_subscription_schedule_retrieve(schedule_id),
+        )
+        return self._to_schedule(schedule)
+
+    async def update_subscription_schedule(
+        self,
+        schedule_id: str,
+        *,
+        phases: list[SubscriptionSchedulePhasePayload],
+        end_behavior: str | None = None,
+        proration_behavior: str | None = None,
+        metadata: dict[str, str] | None = None,
+    ) -> StripeSubscriptionSchedule:
+        params: SubscriptionScheduleModifyParams = {"phases": phases}
+        if end_behavior is not None:
+            params["end_behavior"] = end_behavior
+        if proration_behavior is not None:
+            params["proration_behavior"] = proration_behavior
+        if metadata is not None:
+            params["metadata"] = metadata
+
+        schedule = await self._request(
+            "subscription_schedule.modify",
+            lambda: call_subscription_schedule_modify(schedule_id, dict(params)),
+        )
+        return self._to_schedule(schedule)
+
+    async def release_subscription_schedule(
+        self,
+        schedule_id: str,
+    ) -> StripeSubscriptionSchedule:
+        schedule = await self._request(
+            "subscription_schedule.release",
+            lambda: call_subscription_schedule_release(schedule_id),
+        )
+        return self._to_schedule(schedule)
 
     async def create_usage_record(
         self,
@@ -300,6 +398,8 @@ class StripeClient:
             current_period_end=_to_datetime(getattr(subscription, "current_period_end", None)),
             trial_end=_to_datetime(getattr(subscription, "trial_end", None)),
             items=items,
+            metadata=dict(getattr(subscription, "metadata", None) or {}),
+            schedule_id=_extract_schedule_id(getattr(subscription, "schedule", None)),
         )
 
     def _to_subscription_item(self, item: Any) -> StripeSubscriptionItem:
@@ -311,12 +411,74 @@ class StripeClient:
             quantity=getattr(item, "quantity", None),
         )
 
+    def _to_schedule(self, schedule: Any) -> StripeSubscriptionSchedule:
+        phases_data = getattr(schedule, "phases", None)
+        phases = []
+        if isinstance(phases_data, list):
+            for phase in phases_data:
+                if isinstance(phase, dict):
+                    items_raw = phase.get("items")
+                    start_raw = phase.get("start_date")
+                    end_raw = phase.get("end_date")
+                    proration = phase.get("proration_behavior")
+                else:
+                    items_raw = getattr(phase, "items", None)
+                    start_raw = getattr(phase, "start_date", None)
+                    end_raw = getattr(phase, "end_date", None)
+                    proration = getattr(phase, "proration_behavior", None)
+
+                items = [
+                    self._to_subscription_item(item)
+                    for item in _iter_items(items_raw)
+                ]
+                phases.append(
+                    StripeSubscriptionSchedulePhase(
+                        start_date=_to_datetime(start_raw),
+                        end_date=_to_datetime(end_raw),
+                        items=items,
+                        proration_behavior=proration,
+                    )
+                )
+
+        current = getattr(schedule, "current_phase", None)
+        current_phase = None
+        if isinstance(current, dict):
+            current_phase = StripeSubscriptionSchedulePhase(
+                start_date=_to_datetime(current.get("start_date")),
+                end_date=_to_datetime(current.get("end_date")),
+                items=[],
+                proration_behavior=None,
+            )
+
+        subscription_id = getattr(schedule, "subscription", None)
+        if isinstance(subscription_id, dict):
+            subscription_id = subscription_id.get("id")
+
+        return StripeSubscriptionSchedule(
+            id=schedule.id,
+            status=getattr(schedule, "status", "unknown"),
+            subscription_id=subscription_id,
+            phases=phases,
+            current_phase=current_phase,
+            metadata=dict(getattr(schedule, "metadata", None) or {}),
+        )
+
 
 def _iter_items(items: Any) -> Iterable[Any]:
     data = getattr(items, "data", None)
     if isinstance(data, list):
         return data
     return []
+
+
+def _extract_schedule_id(schedule: Any) -> str | None:
+    if schedule is None:
+        return None
+    if isinstance(schedule, str):
+        return schedule
+    if isinstance(schedule, dict):
+        return schedule.get("id")
+    return getattr(schedule, "id", None)
 
 
 def _stripe_error_code(exc: Exception) -> str:

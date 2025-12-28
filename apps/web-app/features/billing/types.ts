@@ -1,4 +1,5 @@
 import type { BillingEvent, BillingStreamStatus } from '@/types/billing';
+import type { PlanChangeTiming } from '@/lib/types/billing';
 
 export type StatusTone = 'positive' | 'warning' | 'default';
 
@@ -49,4 +50,5 @@ export interface PlanFormValues {
   billingEmail: string;
   autoRenew: boolean;
   seatCount?: number;
+  timing: PlanChangeTiming;
 }

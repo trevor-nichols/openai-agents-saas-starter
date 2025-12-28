@@ -7,8 +7,14 @@ import { EmptyState, ErrorState, SkeletonPanel } from '@/components/ui/states';
 import { SectionHeader } from '@/components/ui/foundation';
 import { readClientSessionMeta } from '@/lib/auth/clientMeta';
 import { useBillingPlans } from '@/lib/queries/billingPlans';
-import { useStartSubscriptionMutation, useTenantSubscription } from '@/lib/queries/billingSubscriptions';
+import {
+  useChangeSubscriptionPlanMutation,
+  useStartSubscriptionMutation,
+  useTenantSubscription,
+  useUpdateSubscriptionMutation,
+} from '@/lib/queries/billingSubscriptions';
 import type { BillingPlan } from '@/types/billing';
+import type { SubscriptionUpdatePayload } from '@/lib/types/billing';
 import { toast } from 'sonner';
 
 import { BILLING_COPY } from './constants';
@@ -29,14 +35,18 @@ export function PlanManagement() {
     refetchSubscription,
   } = useTenantSubscription({ tenantId });
   const startSubscription = useStartSubscriptionMutation({ tenantId });
+  const updateSubscription = useUpdateSubscriptionMutation({ tenantId });
+  const changePlan = useChangeSubscriptionPlanMutation({ tenantId });
 
   const [selectedPlan, setSelectedPlan] = useState<BillingPlan | null>(null);
 
+  const hasSubscription = Boolean(subscription);
   const form = useForm<PlanFormValues>({
     defaultValues: {
       billingEmail: subscription?.billing_email ?? '',
       autoRenew: subscription?.auto_renew ?? true,
       seatCount: subscription?.seat_count ?? undefined,
+      timing: 'auto',
     },
   });
 
@@ -45,6 +55,7 @@ export function PlanManagement() {
       billingEmail: subscription?.billing_email ?? '',
       autoRenew: subscription?.auto_renew ?? true,
       seatCount: subscription?.seat_count ?? selectedPlan?.seat_included ?? undefined,
+      timing: 'auto',
     });
   }, [
     form,
@@ -57,8 +68,10 @@ export function PlanManagement() {
   useEffect(() => {
     if (selectedPlan) {
       startSubscription.reset();
+      updateSubscription.reset();
+      changePlan.reset();
     }
-  }, [selectedPlan, startSubscription]);
+  }, [changePlan, selectedPlan, startSubscription, updateSubscription]);
 
   const handlePlanSubmit = async (values: PlanFormValues) => {
     if (!selectedPlan || !tenantId) {
@@ -66,21 +79,65 @@ export function PlanManagement() {
     }
 
     try {
-      await startSubscription.mutateAsync({
-        plan_code: selectedPlan.code,
-        billing_email: values.billingEmail || undefined,
-        auto_renew: values.autoRenew,
-        seat_count: values.seatCount,
-      });
-      toast.success('Subscription updated', {
-        description: `You are now on the ${selectedPlan.name} plan.`,
-      });
+      if (!hasSubscription) {
+        await startSubscription.mutateAsync({
+          plan_code: selectedPlan.code,
+          billing_email: values.billingEmail || undefined,
+          auto_renew: values.autoRenew,
+          seat_count: values.seatCount,
+        });
+        toast.success('Subscription started', {
+          description: `You are now on the ${selectedPlan.name} plan.`,
+        });
+      } else if (selectedPlan.code === subscription?.plan_code) {
+        await updateSubscription.mutateAsync({
+          billing_email: values.billingEmail || undefined,
+          auto_renew: values.autoRenew,
+          seat_count: values.seatCount,
+        });
+        toast.success('Subscription updated', {
+          description: 'Your subscription settings were saved.',
+        });
+      } else {
+        const preferenceUpdates: SubscriptionUpdatePayload = {};
+        if (values.billingEmail !== subscription?.billing_email) {
+          preferenceUpdates.billing_email = values.billingEmail || undefined;
+        }
+        if (values.autoRenew !== subscription?.auto_renew) {
+          preferenceUpdates.auto_renew = values.autoRenew;
+        }
+        if (Object.keys(preferenceUpdates).length > 0) {
+          await updateSubscription.mutateAsync(preferenceUpdates);
+        }
+
+        const planChange = await changePlan.mutateAsync({
+          plan_code: selectedPlan.code,
+          seat_count: values.seatCount,
+          timing: values.timing,
+        });
+        const effectiveAtLabel = planChange.effective_at
+          ? new Date(planChange.effective_at).toLocaleDateString()
+          : null;
+        if (planChange.timing === 'period_end') {
+          toast.success('Plan change scheduled', {
+            description: effectiveAtLabel
+              ? `Your plan will change on ${effectiveAtLabel}.`
+              : 'Your plan will update at the end of the billing period.',
+          });
+        } else {
+          toast.success('Plan updated', {
+            description: `You are now on the ${selectedPlan.name} plan.`,
+          });
+        }
+      }
       setSelectedPlan(null);
       startSubscription.reset();
+      updateSubscription.reset();
+      changePlan.reset();
       refetchSubscription();
     } catch (error) {
       toast.error('Plan update failed', {
-        description: 'Double-check the details and try again.',
+        description: error instanceof Error ? error.message : 'Double-check the details and try again.',
       });
       throw error;
     }
@@ -103,6 +160,16 @@ export function PlanManagement() {
   }
 
   const currentPlanCode = subscription?.plan_code ?? null;
+  const dialogMode: 'start' | 'update' | 'change' = !hasSubscription
+    ? 'start'
+    : selectedPlan?.code === currentPlanCode
+      ? 'update'
+      : 'change';
+  const isSubmitting = startSubscription.isPending || updateSubscription.isPending || changePlan.isPending;
+  const errorMessage =
+    (startSubscription.error as Error)?.message ||
+    (updateSubscription.error as Error)?.message ||
+    (changePlan.error as Error)?.message;
 
   return (
     <section className="space-y-8">
@@ -152,12 +219,12 @@ export function PlanManagement() {
       <PlanChangeDialog
         open={Boolean(selectedPlan)}
         plan={selectedPlan}
+        mode={dialogMode}
         form={form}
         onSubmit={handlePlanSubmit}
         onClose={() => setSelectedPlan(null)}
-        isSubmitting={startSubscription.isPending}
-        errorMessage={(startSubscription.error as Error)?.message}
-        isUpdatingCurrentPlan={Boolean(selectedPlan && selectedPlan.code === currentPlanCode)}
+        isSubmitting={isSubmitting}
+        errorMessage={errorMessage}
       />
     </section>
   );

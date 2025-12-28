@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -13,8 +13,11 @@ from app.infrastructure.stripe import (
     StripeCustomer,
     StripeSubscription,
     StripeSubscriptionItem,
+    StripeSubscriptionSchedule,
+    StripeSubscriptionSchedulePhase,
     StripeUsageRecord,
 )
+from app.infrastructure.stripe.types import SubscriptionSchedulePhasePayload
 from app.services.billing.payment_gateway import PaymentGatewayError, StripeGateway
 
 
@@ -27,9 +30,17 @@ class FakeStripeClient:
             status="active",
             cancel_at_period_end=False,
             current_period_start=now,
-            current_period_end=now,
+            current_period_end=now + timedelta(days=30),
             trial_end=None,
             items=[StripeSubscriptionItem(id="si_123", price_id="price_123", quantity=1)],
+            metadata={"tenant_id": "tenant", "plan_code": "starter"},
+        )
+        self.schedule = StripeSubscriptionSchedule(
+            id="sched_123",
+            status="active",
+            subscription_id=self.subscription.id,
+            phases=[],
+            metadata={},
         )
         self.created_customers: list[dict[str, Any]] = []
         self.created_subscriptions: list[dict[str, Any]] = []
@@ -37,6 +48,10 @@ class FakeStripeClient:
         self.updated_emails: list[str] = []
         self.cancelled: list[bool] = []
         self.usage_calls: list[dict[str, Any]] = []
+        self.created_schedules: list[dict[str, Any]] = []
+        self.retrieved_schedules: list[str] = []
+        self.updated_schedule_calls: list[dict[str, Any]] = []
+        self.released_schedules: list[str] = []
 
     async def create_customer(self, *, email: str | None, tenant_id: str) -> StripeCustomer:
         payload = {"email": email, "tenant_id": tenant_id}
@@ -75,11 +90,97 @@ class FakeStripeClient:
         *,
         auto_renew: bool | None = None,
         seat_count: int | None = None,
+        price_id: str | None = None,
+        metadata: dict[str, str] | None = None,
+        proration_behavior: str | None = None,
     ) -> StripeSubscription:
         self.updated_subscription_calls.append(
-            {"auto_renew": auto_renew, "seat_count": seat_count}
+            {
+                "auto_renew": auto_renew,
+                "seat_count": seat_count,
+                "price_id": price_id,
+                "metadata": metadata,
+                "proration_behavior": proration_behavior,
+            }
         )
+        if seat_count is not None and subscription.primary_item:
+            subscription.primary_item.quantity = seat_count
+        if price_id is not None and subscription.primary_item:
+            subscription.primary_item.price_id = price_id
+        if metadata is not None:
+            subscription.metadata = metadata
         return subscription
+
+    async def create_subscription_schedule_from_subscription(
+        self,
+        subscription_id: str,
+        *,
+        end_behavior: str = "release",
+    ) -> StripeSubscriptionSchedule:
+        payload = {"subscription_id": subscription_id, "end_behavior": end_behavior}
+        self.created_schedules.append(payload)
+        self.schedule = StripeSubscriptionSchedule(
+            id="sched_123",
+            status="active",
+            subscription_id=subscription_id,
+            phases=[],
+            metadata={},
+        )
+        self.subscription.schedule_id = self.schedule.id
+        return self.schedule
+
+    async def retrieve_subscription_schedule(
+        self, schedule_id: str
+    ) -> StripeSubscriptionSchedule:
+        self.retrieved_schedules.append(schedule_id)
+        assert schedule_id == self.schedule.id
+        return self.schedule
+
+    async def update_subscription_schedule(
+        self,
+        schedule_id: str,
+        *,
+        phases: list[SubscriptionSchedulePhasePayload],
+        end_behavior: str | None = None,
+        proration_behavior: str | None = None,
+        metadata: dict[str, str] | None = None,
+    ) -> StripeSubscriptionSchedule:
+        payload: dict[str, Any] = {
+            "schedule_id": schedule_id,
+            "phases": phases,
+            "end_behavior": end_behavior,
+            "proration_behavior": proration_behavior,
+            "metadata": metadata,
+        }
+        self.updated_schedule_calls.append(payload)
+        phase_models: list[StripeSubscriptionSchedulePhase] = []
+        for idx, phase in enumerate(phases):
+            items = [
+                StripeSubscriptionItem(
+                    id=f"si_phase_{idx}_{item_idx}",
+                    price_id=item["price"],
+                    quantity=item.get("quantity"),
+                )
+                for item_idx, item in enumerate(phase.get("items", []))
+            ]
+            phase_models.append(
+                StripeSubscriptionSchedulePhase(
+                    start_date=_to_datetime(phase.get("start_date")),
+                    end_date=_to_datetime(phase.get("end_date")),
+                    items=items,
+                    proration_behavior=phase.get("proration_behavior"),
+                )
+            )
+        self.schedule.phases = phase_models
+        if metadata is not None:
+            self.schedule.metadata = metadata
+        return self.schedule
+
+    async def release_subscription_schedule(
+        self, schedule_id: str
+    ) -> StripeSubscriptionSchedule:
+        self.released_schedules.append(schedule_id)
+        return self.schedule
 
     async def cancel_subscription(
         self, subscription_id: str, *, cancel_at_period_end: bool
@@ -189,6 +290,56 @@ async def test_update_subscription_updates_quantity_and_email():
 
 
 @pytest.mark.asyncio
+async def test_swap_subscription_plan_updates_price_and_metadata():
+    client = FakeStripeClient()
+    settings = _settings({"starter": "price_123", "pro": "price_456"})
+    gateway = StripeGateway(client=client, settings_factory=lambda: settings)
+
+    result = await gateway.swap_subscription_plan(
+        "sub_123",
+        plan_code="pro",
+        seat_count=None,
+        schedule_id="sched_123",
+    )
+
+    assert client.updated_subscription_calls
+    change = client.updated_subscription_calls[0]
+    assert change["price_id"] == "price_456"
+    assert change["seat_count"] == 1
+    assert change["proration_behavior"] == "always_invoice"
+    assert change["metadata"]["plan_code"] == "pro"
+    assert change["metadata"]["tenant_id"] == "tenant"
+    assert client.released_schedules == ["sched_123"]
+    assert result.price_id == "price_456"
+
+
+@pytest.mark.asyncio
+async def test_schedule_subscription_plan_creates_schedule_and_phases():
+    client = FakeStripeClient()
+    settings = _settings({"starter": "price_123", "pro": "price_456"})
+    gateway = StripeGateway(client=client, settings_factory=lambda: settings)
+
+    result = await gateway.schedule_subscription_plan(
+        "sub_123",
+        plan_code="pro",
+        seat_count=3,
+    )
+
+    assert client.created_schedules
+    assert client.updated_schedule_calls
+    update = client.updated_schedule_calls[0]
+    assert update["end_behavior"] == "release"
+    assert update["proration_behavior"] == "none"
+    assert update["metadata"]["plan_code"] == "pro"
+    phases = update["phases"]
+    assert phases[0]["items"][0]["price"] == "price_123"
+    assert phases[1]["items"][0]["price"] == "price_456"
+    assert phases[1]["items"][0]["quantity"] == 3
+    assert result.schedule_id == "sched_123"
+    assert result.price_id == "price_456"
+
+
+@pytest.mark.asyncio
 async def test_record_usage_passes_idempotency_key():
     client = FakeStripeClient()
     settings = _settings({"starter": "price_123"})
@@ -287,3 +438,9 @@ async def test_stripe_errors_wrapped_with_gateway_error(monkeypatch: pytest.Monk
     assert exc_info.value.code == "api_error"
     assert calls, "expected metrics to capture Stripe error"
     assert calls[-1]["result"] == "api_error"
+
+
+def _to_datetime(value: int | None) -> datetime | None:
+    if value is None:
+        return None
+    return datetime.fromtimestamp(float(value), tz=UTC)

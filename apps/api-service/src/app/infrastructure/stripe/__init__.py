@@ -6,6 +6,8 @@ from .client import (
     StripeCustomer,
     StripeSubscription,
     StripeSubscriptionItem,
+    StripeSubscriptionSchedule,
+    StripeSubscriptionSchedulePhase,
     StripeUsageRecord,
 )
 
@@ -15,5 +17,7 @@ __all__ = [
     "StripeCustomer",
     "StripeSubscription",
     "StripeSubscriptionItem",
+    "StripeSubscriptionSchedule",
+    "StripeSubscriptionSchedulePhase",
     "StripeUsageRecord",
 ]

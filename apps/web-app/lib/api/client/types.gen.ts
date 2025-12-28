@@ -969,6 +969,28 @@ export type CancelSubscriptionRequest = {
 };
 
 /**
+ * ChangeSubscriptionPlanRequest
+ */
+export type ChangeSubscriptionPlanRequest = {
+  /**
+   * Plan Code
+   *
+   * Billing plan to activate.
+   */
+  plan_code: string;
+  /**
+   * Seat Count
+   *
+   * Optional seat count override for the new plan.
+   */
+  seat_count?: number | null;
+  /**
+   * When the plan change takes effect (auto selects immediate for upgrades and period-end for downgrades when intervals match).
+   */
+  timing?: PlanChangeTiming;
+};
+
+/**
  * ChatMessage
  *
  * Single conversational message.
@@ -3983,6 +4005,31 @@ export type PasswordResetTokenResponse = {
 };
 
 /**
+ * PlanChangeResponse
+ */
+export type PlanChangeResponse = {
+  subscription: TenantSubscriptionResponse;
+  /**
+   * Target Plan Code
+   */
+  target_plan_code: string;
+  /**
+   * Effective At
+   */
+  effective_at?: string | null;
+  /**
+   * Seat Count
+   */
+  seat_count?: number | null;
+  timing?: PlanChangeTiming;
+};
+
+/**
+ * PlanChangeTiming
+ */
+export type PlanChangeTiming = "auto" | "immediate" | "period_end";
+
+/**
  * PlanFeatureResponse
  */
 export type PlanFeatureResponse = {
@@ -5853,6 +5900,18 @@ export type TenantSubscriptionResponse = {
    * Seat Count
    */
   seat_count?: number | null;
+  /**
+   * Pending Plan Code
+   */
+  pending_plan_code?: string | null;
+  /**
+   * Pending Plan Effective At
+   */
+  pending_plan_effective_at?: string | null;
+  /**
+   * Pending Seat Count
+   */
+  pending_seat_count?: number | null;
   /**
    * Metadata
    */
@@ -18566,6 +18625,95 @@ export type StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostResponse
 
 export type StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostResponse =
   StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostResponses[keyof StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostResponses];
+
+export type ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostData =
+  {
+    body: ChangeSubscriptionPlanRequest;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Tenant Id
+       */
+      tenant_id: string;
+    };
+    query?: never;
+    url: "/api/v1/billing/tenants/{tenant_id}/subscription/plan";
+  };
+
+export type ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostError =
+  ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostErrors[keyof ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostErrors];
+
+export type ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: PlanChangeResponse;
+  };
+
+export type ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostResponse =
+  ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostResponses[keyof ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostResponses];
 
 export type CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostData =
   {

@@ -40,6 +40,9 @@ import type {
   ChangePasswordApiV1AuthPasswordChangePostData,
   ChangePasswordApiV1AuthPasswordChangePostErrors,
   ChangePasswordApiV1AuthPasswordChangePostResponses,
+  ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostData,
+  ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostErrors,
+  ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostResponses,
   ChatWithAgentApiV1ChatPostData,
   ChatWithAgentApiV1ChatPostErrors,
   ChatWithAgentApiV1ChatPostResponses,
@@ -3818,6 +3821,38 @@ export const startSubscriptionApiV1BillingTenantsTenantIdSubscriptionPost = <
     },
   });
 };
+
+/**
+ * Change Subscription Plan
+ *
+ * Request a plan change, either immediate or effective at period end.
+ */
+export const changeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPost =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).post<
+      ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostResponses,
+      ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/billing/tenants/{tenant_id}/subscription/plan",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    });
+  };
 
 /**
  * Cancel Subscription

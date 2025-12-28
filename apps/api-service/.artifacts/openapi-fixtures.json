@@ -23173,6 +23173,206 @@
         }
       }
     },
+    "/api/v1/billing/tenants/{tenant_id}/subscription/plan": {
+      "post": {
+        "tags": [
+          "billing"
+        ],
+        "summary": "Change Subscription Plan",
+        "description": "Request a plan change, either immediate or effective at period end.",
+        "operationId": "change_subscription_plan_api_v1_billing_tenants__tenant_id__subscription_plan_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Tenant Id"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Tenant-Role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Role"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeSubscriptionPlanRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanChangeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request Entity Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/billing/tenants/{tenant_id}/subscription/cancel": {
       "post": {
         "tags": [
@@ -26284,6 +26484,38 @@
         },
         "type": "object",
         "title": "CancelSubscriptionRequest"
+      },
+      "ChangeSubscriptionPlanRequest": {
+        "properties": {
+          "plan_code": {
+            "type": "string",
+            "title": "Plan Code",
+            "description": "Billing plan to activate."
+          },
+          "seat_count": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seat Count",
+            "description": "Optional seat count override for the new plan."
+          },
+          "timing": {
+            "$ref": "#/components/schemas/PlanChangeTiming",
+            "description": "When the plan change takes effect (auto selects immediate for upgrades and period-end for downgrades when intervals match).",
+            "default": "auto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "plan_code"
+        ],
+        "title": "ChangeSubscriptionPlanRequest"
       },
       "ChatMessage": {
         "properties": {
@@ -31696,6 +31928,59 @@
         ],
         "title": "PasswordResetTokenResponse"
       },
+      "PlanChangeResponse": {
+        "properties": {
+          "subscription": {
+            "$ref": "#/components/schemas/TenantSubscriptionResponse"
+          },
+          "target_plan_code": {
+            "type": "string",
+            "title": "Target Plan Code"
+          },
+          "effective_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective At"
+          },
+          "seat_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seat Count"
+          },
+          "timing": {
+            "$ref": "#/components/schemas/PlanChangeTiming",
+            "default": "auto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "subscription",
+          "target_plan_code"
+        ],
+        "title": "PlanChangeResponse"
+      },
+      "PlanChangeTiming": {
+        "type": "string",
+        "enum": [
+          "auto",
+          "immediate",
+          "period_end"
+        ],
+        "title": "PlanChangeTiming"
+      },
       "PlanFeatureResponse": {
         "properties": {
           "key": {
@@ -34888,6 +35173,40 @@
               }
             ],
             "title": "Seat Count"
+          },
+          "pending_plan_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending Plan Code"
+          },
+          "pending_plan_effective_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending Plan Effective At"
+          },
+          "pending_seat_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending Seat Count"
           },
           "metadata": {
             "additionalProperties": {

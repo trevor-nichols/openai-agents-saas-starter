@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type {
   SubscriptionCancelPayload,
+  SubscriptionPlanChangePayload,
+  SubscriptionPlanChangeResponse,
   SubscriptionStartPayload,
   SubscriptionUpdatePayload,
   TenantSubscription,
@@ -9,6 +11,7 @@ import type {
 } from '@/lib/types/billing';
 import {
   cancelSubscriptionRequest,
+  changeSubscriptionPlanRequest,
   fetchTenantSubscription,
   recordUsageRequest,
   startSubscriptionRequest,
@@ -86,6 +89,30 @@ export function useUpdateSubscriptionMutation(options: SubscriptionOptions) {
       queryClient.setQueryData(
         [...queryKeys.billing.all, 'subscription', tenantId],
         subscription,
+      );
+    },
+  });
+}
+
+export function useChangeSubscriptionPlanMutation(options: SubscriptionOptions) {
+  const queryClient = useQueryClient();
+  const { tenantId, tenantRole = null } = options;
+
+  return useMutation({
+    mutationFn: async (payload: SubscriptionPlanChangePayload) => {
+      if (!billingEnabled) {
+        throw new Error('Billing is disabled.');
+      }
+      if (!tenantId) {
+        throw new Error('Tenant id required');
+      }
+      return changeSubscriptionPlanRequest(tenantId, payload, { tenantRole });
+    },
+    onSuccess: (response: SubscriptionPlanChangeResponse) => {
+      if (!tenantId) return;
+      queryClient.setQueryData(
+        [...queryKeys.billing.all, 'subscription', tenantId],
+        response.subscription,
       );
     },
   });

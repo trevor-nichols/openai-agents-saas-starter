@@ -16,8 +16,10 @@ from app.infrastructure.stripe import (
     StripeClientError,
     StripeCustomer,
     StripeSubscription,
+    StripeSubscriptionSchedule,
     StripeUsageRecord,
 )
+from app.infrastructure.stripe.types import SubscriptionSchedulePhasePayload
 from app.observability.metrics import observe_stripe_gateway_operation
 
 logger = logging.getLogger("api-service.services.payment_gateway")
@@ -34,6 +36,26 @@ class SubscriptionProvisionResult:
     current_period_start: datetime | None = None
     current_period_end: datetime | None = None
     trial_ends_at: datetime | None = None
+    metadata: dict[str, str] | None = None
+
+
+@dataclass(slots=True)
+class SubscriptionPlanSwapResult:
+    price_id: str
+    subscription_item_id: str | None
+    current_period_start: datetime | None
+    current_period_end: datetime | None
+    quantity: int | None
+    metadata: dict[str, str] | None = None
+
+
+@dataclass(slots=True)
+class SubscriptionPlanScheduleResult:
+    schedule_id: str
+    price_id: str
+    current_period_start: datetime | None
+    current_period_end: datetime | None
+    quantity: int | None
     metadata: dict[str, str] | None = None
 
 
@@ -59,6 +81,24 @@ class PaymentGateway(Protocol):
         seat_count: int | None = None,
         billing_email: str | None = None,
     ) -> None: ...
+
+    async def swap_subscription_plan(
+        self,
+        subscription_id: str,
+        *,
+        plan_code: str,
+        seat_count: int | None,
+        schedule_id: str | None = None,
+        proration_behavior: str | None = None,
+    ) -> SubscriptionPlanSwapResult: ...
+
+    async def schedule_subscription_plan(
+        self,
+        subscription_id: str,
+        *,
+        plan_code: str,
+        seat_count: int | None,
+    ) -> SubscriptionPlanScheduleResult: ...
 
     async def cancel_subscription(
         self,
@@ -109,7 +149,35 @@ class StripeGatewayClient(Protocol):
         *,
         auto_renew: bool | None = None,
         seat_count: int | None = None,
+        price_id: str | None = None,
+        metadata: dict[str, str] | None = None,
+        proration_behavior: str | None = None,
     ) -> StripeSubscription: ...
+
+    async def create_subscription_schedule_from_subscription(
+        self,
+        subscription_id: str,
+        *,
+        end_behavior: str = "release",
+    ) -> StripeSubscriptionSchedule: ...
+
+    async def retrieve_subscription_schedule(
+        self, schedule_id: str
+    ) -> StripeSubscriptionSchedule: ...
+
+    async def update_subscription_schedule(
+        self,
+        schedule_id: str,
+        *,
+        phases: list[SubscriptionSchedulePhasePayload],
+        end_behavior: str | None = None,
+        proration_behavior: str | None = None,
+        metadata: dict[str, str] | None = None,
+    ) -> StripeSubscriptionSchedule: ...
+
+    async def release_subscription_schedule(
+        self, schedule_id: str
+    ) -> StripeSubscriptionSchedule: ...
 
     async def cancel_subscription(
         self, subscription_id: str, *, cancel_at_period_end: bool
@@ -251,6 +319,153 @@ class StripeGateway(PaymentGateway):
                 "auto_renew": auto_renew,
                 "seat_count": seat_count,
                 "has_billing_email": bool(billing_email),
+            },
+            action=_action,
+        )
+
+    async def swap_subscription_plan(
+        self,
+        subscription_id: str,
+        *,
+        plan_code: str,
+        seat_count: int | None,
+        schedule_id: str | None = None,
+        proration_behavior: str | None = None,
+    ) -> SubscriptionPlanSwapResult:
+        async def _action() -> SubscriptionPlanSwapResult:
+            client = self._get_client()
+            price_id = self._resolve_price_id(plan_code)
+            subscription = await client.retrieve_subscription(subscription_id)
+            item = subscription.primary_item
+            if item is None:
+                raise PaymentGatewayError(
+                    "Stripe subscription has no items to swap.",
+                    code="missing_subscription_item",
+                )
+
+            quantity = seat_count if seat_count is not None else item.quantity or 1
+            metadata = dict(subscription.metadata or {})
+            metadata["plan_code"] = plan_code
+            if schedule_id:
+                await client.release_subscription_schedule(schedule_id)
+
+            updated = await client.modify_subscription(
+                subscription,
+                price_id=price_id,
+                seat_count=quantity,
+                proration_behavior=proration_behavior or "always_invoice",
+                metadata=metadata,
+            )
+            updated_item = updated.primary_item
+            return SubscriptionPlanSwapResult(
+                price_id=price_id,
+                subscription_item_id=updated_item.id if updated_item else None,
+                current_period_start=updated.current_period_start,
+                current_period_end=updated.current_period_end,
+                quantity=updated_item.quantity if updated_item else quantity,
+                metadata=updated.metadata,
+            )
+
+        return await self._execute_operation(
+            operation="swap_subscription_plan",
+            plan_code=plan_code,
+            tenant_id=None,
+            subscription_id=subscription_id,
+            context={
+                "seat_count": seat_count,
+                "schedule_released": bool(schedule_id),
+                "proration_behavior": proration_behavior or "always_invoice",
+            },
+            action=_action,
+        )
+
+    async def schedule_subscription_plan(
+        self,
+        subscription_id: str,
+        *,
+        plan_code: str,
+        seat_count: int | None,
+    ) -> SubscriptionPlanScheduleResult:
+        async def _action() -> SubscriptionPlanScheduleResult:
+            client = self._get_client()
+            subscription = await client.retrieve_subscription(subscription_id)
+            item = subscription.primary_item
+            if item is None:
+                raise PaymentGatewayError(
+                    "Stripe subscription has no items to schedule.",
+                    code="missing_subscription_item",
+                )
+            if not item.price_id:
+                raise PaymentGatewayError(
+                    "Stripe subscription item is missing a price identifier.",
+                    code="missing_price_id",
+                )
+            if subscription.current_period_start is None:
+                raise PaymentGatewayError(
+                    "Stripe subscription is missing a billing period start.",
+                    code="missing_period_start",
+                )
+            if subscription.current_period_end is None:
+                raise PaymentGatewayError(
+                    "Stripe subscription is missing a billing period end.",
+                    code="missing_period_end",
+                )
+
+            price_id = self._resolve_price_id(plan_code)
+            quantity = seat_count if seat_count is not None else item.quantity or 1
+
+            schedule_id = subscription.schedule_id
+            if schedule_id:
+                await client.retrieve_subscription_schedule(schedule_id)
+            else:
+                schedule = await client.create_subscription_schedule_from_subscription(
+                    subscription.id
+                )
+                schedule_id = schedule.id
+
+            phases: list[SubscriptionSchedulePhasePayload] = [
+                {
+                    "items": [
+                        {
+                            "price": item.price_id,
+                            "quantity": item.quantity or 1,
+                        }
+                    ],
+                    "start_date": _to_timestamp(subscription.current_period_start),
+                    "end_date": _to_timestamp(subscription.current_period_end),
+                },
+                {
+                    "items": [{"price": price_id, "quantity": quantity}],
+                    "start_date": _to_timestamp(subscription.current_period_end),
+                    "proration_behavior": "none",
+                    "metadata": {"plan_code": plan_code},
+                },
+            ]
+
+            updated = await client.update_subscription_schedule(
+                schedule_id,
+                phases=phases,
+                end_behavior="release",
+                proration_behavior="none",
+                metadata={"plan_code": plan_code},
+            )
+
+            return SubscriptionPlanScheduleResult(
+                schedule_id=updated.id,
+                price_id=price_id,
+                current_period_start=subscription.current_period_start,
+                current_period_end=subscription.current_period_end,
+                quantity=quantity,
+                metadata=updated.metadata if hasattr(updated, "metadata") else None,
+            )
+
+        return await self._execute_operation(
+            operation="schedule_subscription_plan",
+            plan_code=plan_code,
+            tenant_id=None,
+            subscription_id=subscription_id,
+            context={
+                "seat_count": seat_count,
             },
             action=_action,
         )
@@ -423,6 +638,15 @@ class StripeGateway(PaymentGateway):
 
 def _usage_timestamp(*, period_end: datetime | None, period_start: datetime | None) -> int:
     target = period_end or period_start or datetime.now(UTC)
+    if target.tzinfo is None:
+        target = target.replace(tzinfo=UTC)
+    else:
+        target = target.astimezone(UTC)
+    return int(target.timestamp())
+
+
+def _to_timestamp(value: datetime | None) -> int:
+    target = value or datetime.now(UTC)
     if target.tzinfo is None:
         target = target.replace(tzinfo=UTC)
     else:

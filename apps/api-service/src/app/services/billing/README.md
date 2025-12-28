@@ -18,6 +18,7 @@ Tenant subscription orchestration, usage metering, Stripe connectivity, and the 
 - Postgres tables defined in `infrastructure/persistence/billing/models.py`:
   - `billing_plans` + `plan_features` — plan catalog with feature toggles and metering hints.
   - `tenant_subscriptions` — current subscription state with processor IDs and metadata.
+  - Pending plan change state and Stripe schedule IDs are stored in `tenant_subscriptions.metadata_json` and surfaced in the domain model.
   - `subscription_usage` — metered usage records (idempotent via external event keys).
   - `subscription_invoices` — invoice snapshots tied to subscriptions.
 - Repository: `PostgresBillingRepository` maps the domain types and enforces UUID tenant IDs.
@@ -25,6 +26,7 @@ Tenant subscription orchestration, usage metering, Stripe connectivity, and the 
 ## Runtime flows
 - **Plan catalog**: `BillingService.list_plans()` reads the plan table; plan ↔ Stripe price mapping is provided via `STRIPE_PRODUCT_PRICE_MAP`.
 - **Start/update/cancel subscription**: `BillingService` calls the gateway (`StripeGateway`) to mutate Stripe, then persists the normalized subscription locally. Validation errors become domain-specific exceptions that translate to HTTP 4xx.
+- **Plan changes**: `BillingService.change_subscription_plan()` resolves timing (auto vs explicit). Upgrades on matching intervals apply immediately with proration; downgrades schedule a Stripe subscription schedule to swap price IDs at period end. Pending plan details are stored and exposed via `pending_*` fields.
 - **Usage recording**: `BillingService.record_usage()` posts usage to Stripe (metered subscription item) and records the same usage row in Postgres with idempotency support.
 - **Processor sync (webhooks)**:
   1) Stripe webhook payloads are stored under `infrastructure/persistence/stripe`.
@@ -42,6 +44,7 @@ Tenant subscription orchestration, usage metering, Stripe connectivity, and the 
 - `GET /billing/tenants/{tenant_id}/subscription` — fetch current subscription.
 - `POST /billing/tenants/{tenant_id}/subscription` — start a subscription (owner/admin only).
 - `PATCH /billing/tenants/{tenant_id}/subscription` — update auto-renew, seats, billing email.
+- `POST /billing/tenants/{tenant_id}/subscription/plan` — request a plan change (auto/immediate/period_end).
 - `POST /billing/tenants/{tenant_id}/subscription/cancel` — cancel now or at period end.
 - `POST /billing/tenants/{tenant_id}/usage` — record metered usage (idempotent key optional).
 - `GET /billing/tenants/{tenant_id}/events` — paginated Stripe event history.
@@ -59,4 +62,5 @@ Tenant subscription orchestration, usage metering, Stripe connectivity, and the 
 - Stripe event handling is idempotent: dispatcher tracks per-event dispatch rows; usage/invoice upserts guard via idempotency keys.
 - Tenant IDs must be UUIDs at the persistence layer; non-UUIDs are treated as missing to avoid 500s.
 - When changing plan codes or adding features, update both the database seed/migration and `STRIPE_PRODUCT_PRICE_MAP`.
+- Plan changes default to `auto` timing: upgrades are immediate with `proration_behavior=always_invoice`, downgrades schedule via Stripe subscription schedules (`proration_behavior=none` on the future phase). Explicit `timing` overrides the default.
 - The billing stream is optional but powers the UI’s live billing timeline; ensure Redis is available if enabled.
