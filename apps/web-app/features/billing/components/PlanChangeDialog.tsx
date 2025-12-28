@@ -55,17 +55,17 @@ export function PlanChangeDialog({
       billingEmail: subscription?.billing_email ?? '',
       autoRenew: subscription?.auto_renew ?? true,
       seatCount: subscription?.seat_count ?? plan?.seat_included ?? undefined,
-      timing: isStartingSubscription ? 'immediate' : 'period_end',
+      timing: isStartingSubscription ? 'immediate' : 'auto',
     },
   });
-  const timingValue = form.watch('timing') ?? 'period_end';
+  const timingValue = form.watch('timing') ?? 'auto';
 
   useEffect(() => {
     form.reset({
       billingEmail: subscription?.billing_email ?? '',
       autoRenew: subscription?.auto_renew ?? true,
       seatCount: subscription?.seat_count ?? plan?.seat_included ?? undefined,
-      timing: isStartingSubscription ? 'immediate' : 'period_end',
+      timing: isStartingSubscription ? 'immediate' : 'auto',
     });
   }, [form, subscription, plan?.seat_included, plan?.code, isStartingSubscription]);
 
@@ -185,9 +185,13 @@ export function PlanChangeDialog({
                         <FormControl>
                           <RadioGroup
                             className="grid gap-3 pt-2"
-                            value={field.value ?? 'period_end'}
+                            value={field.value ?? 'auto'}
                             onValueChange={field.onChange}
                           >
+                            <label className="flex items-center justify-between gap-3 rounded-xl border border-white/5 bg-white/5 px-4 py-3 text-sm">
+                              <span>{BILLING_COPY.planManagement.planChange.autoLabel}</span>
+                              <RadioGroupItem value="auto" />
+                            </label>
                             <label className="flex items-center justify-between gap-3 rounded-xl border border-white/5 bg-white/5 px-4 py-3 text-sm">
                               <span>{BILLING_COPY.planManagement.planChange.immediateLabel}</span>
                               <RadioGroupItem value="immediate" />
@@ -217,7 +221,9 @@ export function PlanChangeDialog({
                         ? `Start ${plan.name}`
                         : timingValue === 'immediate'
                           ? 'Change now'
-                          : 'Schedule change'}
+                          : timingValue === 'period_end'
+                            ? 'Schedule change'
+                            : 'Request change'}
                   </Button>
                   <Button variant="secondary" type="button" onClick={onClose} disabled={isSubmitting}>
                     Cancel

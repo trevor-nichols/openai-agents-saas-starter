@@ -220,10 +220,10 @@ class StripeEventDispatcher:
         price_id = self._extract_price_id(data_obj)
         seat_count = self._extract_quantity(data_obj)
         schedule_id = _extract_schedule_id(data_obj.get("schedule"))
-        if schedule_id is not None:
-            metadata["processor_schedule_id"] = schedule_id
-        else:
-            metadata["processor_schedule_id"] = ""
+        metadata.pop("processor_schedule_id", None)
+        metadata.pop("pending_plan_code", None)
+        metadata.pop("pending_plan_effective_at", None)
+        metadata.pop("pending_seat_count", None)
         snapshot = ProcessorSubscriptionSnapshot(
             tenant_id=str(tenant_id),
             plan_code=str(plan_code),
@@ -240,6 +240,7 @@ class StripeEventDispatcher:
             billing_email=data_obj.get("customer_email") or metadata.get("billing_email"),
             processor_customer_id=customer_id,
             processor_subscription_id=str(data_obj.get("id")),
+            processor_schedule_id=schedule_id,
             metadata={
                 **metadata,
                 "processor_price_id": price_id or "",

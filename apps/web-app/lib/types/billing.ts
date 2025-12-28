@@ -1,6 +1,7 @@
 import type {
   CancelSubscriptionRequest,
   ChangeSubscriptionPlanRequest,
+  PlanChangeTiming as PlanChangeTimingDto,
   PlanChangeResponse,
   PortalSessionRequest,
   PortalSessionResponse,
@@ -20,6 +21,8 @@ export type SubscriptionStartPayload = StartSubscriptionRequest;
 export type SubscriptionUpdatePayload = UpdateSubscriptionRequest;
 export type SubscriptionCancelPayload = CancelSubscriptionRequest;
 export type SubscriptionPlanChangePayload = ChangeSubscriptionPlanRequest;
+export type SubscriptionPlanChangeResponse = PlanChangeResponse;
+export type PlanChangeTiming = PlanChangeTimingDto;
 export type UsageRecordPayload = UsageRecordRequest;
 
 export type TenantSubscription = TenantSubscriptionResponse;

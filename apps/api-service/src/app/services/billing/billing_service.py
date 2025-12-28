@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Literal
+from enum import StrEnum
 
 from app.core.settings import get_settings
 from app.domain.billing import (
@@ -21,8 +21,6 @@ from app.services.billing.payment_gateway import (
     PaymentMethodSummary,
     PortalSessionResult,
     SetupIntentResult,
-    SubscriptionPlanScheduleResult,
-    SubscriptionPlanSwapResult,
     stripe_gateway,
 )
 
@@ -55,7 +53,10 @@ class PaymentProviderError(BillingError):
     """Raised when the payment gateway rejects a request."""
 
 
-PlanChangeTiming = Literal["immediate", "period_end"]
+class PlanChangeTiming(StrEnum):
+    AUTO = "auto"
+    IMMEDIATE = "immediate"
+    PERIOD_END = "period_end"
 
 
 @dataclass(slots=True)
@@ -73,6 +74,7 @@ class ProcessorSubscriptionSnapshot:
     billing_email: str | None
     processor_customer_id: str | None
     processor_subscription_id: str
+    processor_schedule_id: str | None
     metadata: dict[str, str]
 
 
@@ -104,12 +106,11 @@ class ProcessorInvoiceSnapshot:
 
 @dataclass(slots=True)
 class PlanChangeResult:
-    plan_code: str
-    timing: PlanChangeTiming
-    seat_count: int | None
+    subscription: TenantSubscription
+    target_plan_code: str
     effective_at: datetime | None
-    current_period_end: datetime | None
-    schedule_id: str | None = None
+    seat_count: int | None
+    timing: PlanChangeTiming
 
 
 @dataclass(slots=True)
@@ -456,78 +457,6 @@ class BillingService:
             )
         return subscription
 
-    async def _swap_plan_now(
-        self,
-        subscription: TenantSubscription,
-        *,
-        plan_code: str,
-        seat_count: int | None,
-    ) -> SubscriptionPlanSwapResult:
-        schedule_id = subscription.metadata.get("processor_schedule_id")
-        try:
-            swap = await self._gateway.swap_subscription_plan(
-                subscription.processor_subscription_id or "",
-                plan_code=plan_code,
-                seat_count=seat_count,
-                schedule_id=schedule_id if isinstance(schedule_id, str) else None,
-                proration_behavior="always_invoice",
-            )
-        except PaymentGatewayError as exc:
-            raise PaymentProviderError(str(exc)) from exc
-
-        updated_metadata = dict(subscription.metadata or {})
-        updated_metadata.update(
-            {
-                "processor_price_id": swap.price_id,
-                "processor_subscription_item_id": swap.subscription_item_id or "",
-            }
-        )
-        updated_metadata.pop("processor_schedule_id", None)
-        updated_metadata.pop("pending_plan_code", None)
-
-        subscription.plan_code = plan_code
-        subscription.seat_count = swap.quantity
-        if swap.current_period_start:
-            subscription.current_period_start = swap.current_period_start
-        if swap.current_period_end:
-            subscription.current_period_end = swap.current_period_end
-        subscription.metadata = updated_metadata
-
-        try:
-            await self._require_repository().upsert_subscription(subscription)
-        except ValueError as exc:
-            raise InvalidTenantIdentifierError("Tenant identifier is not a valid UUID.") from exc
-
-        return swap
-
-    async def _schedule_plan_change(
-        self,
-        subscription: TenantSubscription,
-        *,
-        plan_code: str,
-        seat_count: int | None,
-    ) -> SubscriptionPlanScheduleResult:
-        try:
-            schedule = await self._gateway.schedule_subscription_plan(
-                subscription.processor_subscription_id or "",
-                plan_code=plan_code,
-                seat_count=seat_count,
-            )
-        except PaymentGatewayError as exc:
-            raise PaymentProviderError(str(exc)) from exc
-
-        updated_metadata = dict(subscription.metadata or {})
-        updated_metadata["processor_schedule_id"] = schedule.schedule_id
-        updated_metadata["pending_plan_code"] = plan_code
-        subscription.metadata = updated_metadata
-
-        try:
-            await self._require_repository().upsert_subscription(subscription)
-        except ValueError as exc:
-            raise InvalidTenantIdentifierError("Tenant identifier is not a valid UUID.") from exc
-
-        return schedule
-
     async def update_subscription(
         self,
         tenant_id: str,
@@ -572,43 +501,97 @@ class BillingService:
         *,
         tenant_id: str,
         plan_code: str,
-        seat_count: int | None,
-        timing: PlanChangeTiming,
+        seat_count: int | None = None,
+        timing: PlanChangeTiming = PlanChangeTiming.AUTO,
     ) -> PlanChangeResult:
         subscription = await self._require_subscription(tenant_id)
+        current_plan = await self._ensure_plan_exists(subscription.plan_code)
+        target_plan = await self._ensure_plan_exists(plan_code)
+
+        if subscription.pending_plan_code == plan_code:
+            raise SubscriptionStateError("A plan change is already scheduled for this plan.")
+        if subscription.plan_code == plan_code:
+            raise SubscriptionStateError("Subscription is already on the requested plan.")
         if not subscription.processor_subscription_id:
             raise SubscriptionStateError("Subscription is missing processor identifier.")
 
-        await self._ensure_plan_exists(plan_code)
-
-        if timing == "period_end":
-            schedule = await self._schedule_plan_change(
-                subscription,
-                plan_code=plan_code,
-                seat_count=seat_count,
-            )
-            effective_at = subscription.current_period_end
-            return PlanChangeResult(
-                plan_code=plan_code,
-                timing=timing,
-                seat_count=seat_count or subscription.seat_count,
-                effective_at=effective_at,
-                current_period_end=subscription.current_period_end,
-                schedule_id=schedule.schedule_id,
-            )
-
-        swap = await self._swap_plan_now(
-            subscription,
-            plan_code=plan_code,
-            seat_count=seat_count,
+        resolved_timing = _resolve_plan_change_timing(
+            timing, current_plan=current_plan, target_plan=target_plan
         )
+        effective_seat_count = (
+            seat_count
+            if seat_count is not None
+            else subscription.seat_count
+            or target_plan.seat_included
+            or current_plan.seat_included
+            or 1
+        )
+
+        if resolved_timing == PlanChangeTiming.IMMEDIATE:
+            try:
+                swap_result = await self._gateway.swap_subscription_plan(
+                    subscription.processor_subscription_id,
+                    plan_code=plan_code,
+                    seat_count=effective_seat_count,
+                    schedule_id=subscription.processor_schedule_id,
+                    proration_behavior="always_invoice",
+                )
+            except PaymentGatewayError as exc:
+                raise PaymentProviderError(str(exc)) from exc
+
+            subscription.plan_code = target_plan.code
+            subscription.seat_count = effective_seat_count
+            subscription.pending_plan_code = None
+            subscription.pending_plan_effective_at = None
+            subscription.pending_seat_count = None
+            subscription.processor_schedule_id = None
+            subscription.current_period_start = (
+                swap_result.current_period_start or subscription.current_period_start
+            )
+            subscription.current_period_end = (
+                swap_result.current_period_end or subscription.current_period_end
+            )
+
+            metadata = dict(subscription.metadata or {})
+            metadata["processor_price_id"] = swap_result.price_id
+            if swap_result.subscription_item_id:
+                metadata["processor_subscription_item_id"] = swap_result.subscription_item_id
+            subscription.metadata = metadata
+
+            effective_at = datetime.now(UTC)
+        else:
+            try:
+                schedule_result = await self._gateway.schedule_subscription_plan(
+                    subscription.processor_subscription_id,
+                    plan_code=plan_code,
+                    seat_count=effective_seat_count,
+                )
+            except PaymentGatewayError as exc:
+                raise PaymentProviderError(str(exc)) from exc
+
+            subscription.pending_plan_code = plan_code
+            subscription.pending_plan_effective_at = schedule_result.current_period_end
+            subscription.pending_seat_count = effective_seat_count
+            subscription.processor_schedule_id = schedule_result.schedule_id
+            subscription.current_period_start = (
+                schedule_result.current_period_start or subscription.current_period_start
+            )
+            subscription.current_period_end = (
+                schedule_result.current_period_end or subscription.current_period_end
+            )
+            effective_at = subscription.pending_plan_effective_at
+
+        try:
+            await self._require_repository().upsert_subscription(subscription)
+        except ValueError as exc:
+            raise InvalidTenantIdentifierError("Tenant identifier is not a valid UUID.") from exc
+
         return PlanChangeResult(
-            plan_code=plan_code,
-            timing=timing,
-            seat_count=swap.quantity,
-            effective_at=datetime.now(UTC),
-            current_period_end=swap.current_period_end,
-            schedule_id=None,
+            subscription=subscription,
+            target_plan_code=plan_code,
+            effective_at=effective_at,
+            seat_count=effective_seat_count,
+            timing=resolved_timing,
         )
 
     async def create_portal_session(
@@ -773,8 +756,21 @@ class BillingService:
         merged_metadata = _merge_subscription_metadata(
             existing.metadata if existing else None,
             snapshot.metadata,
-            plan_code=snapshot.plan_code,
         )
+        pending_plan_code = existing.pending_plan_code if existing else None
+        pending_effective_at = existing.pending_plan_effective_at if existing else None
+        pending_seat_count = existing.pending_seat_count if existing else None
+        schedule_id = snapshot.processor_schedule_id
+
+        if not schedule_id:
+            pending_plan_code = None
+            pending_effective_at = None
+            pending_seat_count = None
+        elif pending_plan_code and pending_plan_code == snapshot.plan_code:
+            pending_plan_code = None
+            pending_effective_at = None
+            pending_seat_count = None
+
         subscription = TenantSubscription(
             tenant_id=snapshot.tenant_id,
             plan_code=snapshot.plan_code,
@@ -787,10 +783,14 @@ class BillingService:
             trial_ends_at=snapshot.trial_ends_at,
             cancel_at=snapshot.cancel_at,
             seat_count=snapshot.seat_count or plan.seat_included,
+            pending_plan_code=pending_plan_code,
+            pending_plan_effective_at=pending_effective_at,
+            pending_seat_count=pending_seat_count,
             metadata=merged_metadata,
             processor=processor_name,
             processor_customer_id=snapshot.processor_customer_id,
             processor_subscription_id=snapshot.processor_subscription_id,
+            processor_schedule_id=schedule_id,
         )
         try:
             await repository.upsert_subscription(subscription)
@@ -861,29 +861,45 @@ def _to_utc(dt: datetime) -> datetime:
 def _merge_subscription_metadata(
     existing: dict[str, str] | None,
     incoming: dict[str, str] | None,
-    *,
-    plan_code: str,
 ) -> dict[str, str]:
     merged: dict[str, str] = dict(existing or {})
+    reserved_keys = {
+        "pending_plan_code",
+        "pending_plan_effective_at",
+        "pending_seat_count",
+        "processor_schedule_id",
+    }
     if incoming:
         for key, value in incoming.items():
             if value is None:
                 continue
-            merged[str(key)] = str(value)
+            key_str = str(key)
+            if key_str in reserved_keys:
+                continue
+            merged[key_str] = str(value)
 
-    pending_plan = merged.get("pending_plan_code")
-    schedule_id = merged.get("processor_schedule_id") or ""
-
-    if pending_plan:
-        if pending_plan == plan_code or not schedule_id:
-            merged.pop("pending_plan_code", None)
-            if pending_plan == plan_code:
-                merged.pop("processor_schedule_id", None)
-
-    if not schedule_id:
-        merged.pop("processor_schedule_id", None)
+    for reserved in reserved_keys:
+        merged.pop(reserved, None)
 
     return merged
+
+
+def _resolve_plan_change_timing(
+    timing: PlanChangeTiming,
+    *,
+    current_plan: BillingPlan,
+    target_plan: BillingPlan,
+) -> PlanChangeTiming:
+    if timing != PlanChangeTiming.AUTO:
+        return timing
+    if (
+        current_plan.interval == target_plan.interval
+        and current_plan.interval_count == target_plan.interval_count
+    ):
+        if target_plan.price_cents > current_plan.price_cents:
+            return PlanChangeTiming.IMMEDIATE
+        return PlanChangeTiming.PERIOD_END
+    return PlanChangeTiming.PERIOD_END
 
 
 def get_billing_service() -> BillingService:

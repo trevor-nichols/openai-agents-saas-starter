@@ -18,6 +18,7 @@ from app.api.v1.billing import router as billing_router  # noqa: E402
 from app.domain.billing import BillingPlan, TenantSubscription  # noqa: E402
 from app.services.billing.billing_service import (  # noqa: E402
     PlanChangeResult,
+    PlanChangeTiming,
     UpcomingInvoiceLineSnapshot,
     UpcomingInvoicePreview,
 )
@@ -281,13 +282,27 @@ def test_preview_upcoming_invoice_returns_payload(
 def test_change_subscription_plan_returns_response(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    result = PlanChangeResult(
+    now = datetime.now(UTC)
+    subscription = TenantSubscription(
+        tenant_id=TEST_TENANT_ID,
         plan_code="pro",
-        timing="immediate",
+        status="active",
+        auto_renew=True,
+        billing_email="billing@example.com",
+        starts_at=now,
+        current_period_start=now,
+        current_period_end=now + timedelta(days=30),
         seat_count=2,
-        effective_at=datetime.now(UTC),
-        current_period_end=None,
-        schedule_id=None,
+        processor="stripe",
+        processor_subscription_id="sub_test",
+        processor_customer_id="cus_test",
+    )
+    result = PlanChangeResult(
+        subscription=subscription,
+        target_plan_code="pro",
+        effective_at=now,
+        seat_count=2,
+        timing=PlanChangeTiming.IMMEDIATE,
     )
     monkeypatch.setattr(
         billing_router.billing_service,
@@ -301,4 +316,5 @@ def test_change_subscription_plan_returns_response(
     )
     assert response.status_code == 200
     payload = response.json()
-    assert payload["plan_code"] == "pro"
+    assert payload["target_plan_code"] == "pro"
+    assert payload["subscription"]["plan_code"] == "pro"

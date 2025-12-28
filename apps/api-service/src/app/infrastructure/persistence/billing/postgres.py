@@ -98,7 +98,7 @@ class PostgresBillingRepository(BillingRepository):
                     trial_ends_at=subscription.trial_ends_at,
                     cancel_at=subscription.cancel_at,
                     seat_count=subscription.seat_count,
-                    metadata_json=subscription.metadata or {},
+                    metadata_json=_serialize_subscription_metadata(subscription),
                 )
                 session.add(entity)
             else:
@@ -115,7 +115,7 @@ class PostgresBillingRepository(BillingRepository):
                 existing.trial_ends_at = subscription.trial_ends_at
                 existing.cancel_at = subscription.cancel_at
                 existing.seat_count = subscription.seat_count
-                existing.metadata_json = subscription.metadata or {}
+                existing.metadata_json = _serialize_subscription_metadata(subscription)
                 existing.updated_at = datetime.now(UTC)
 
             await session.commit()
@@ -424,6 +424,18 @@ class PostgresBillingRepository(BillingRepository):
 
     @staticmethod
     def _to_domain_subscription(subscription: ORMTenantSubscription) -> TenantSubscription:
+        metadata_payload = dict(subscription.metadata_json or {})
+        pending_plan_code = metadata_payload.pop("pending_plan_code", None)
+        if pending_plan_code == "":
+            pending_plan_code = None
+        pending_plan_effective_at = _parse_metadata_datetime(
+            metadata_payload.pop("pending_plan_effective_at", None)
+        )
+        pending_seat_count = metadata_payload.pop("pending_seat_count", None)
+        processor_schedule_id = metadata_payload.pop("processor_schedule_id", None)
+        if processor_schedule_id == "":
+            processor_schedule_id = None
+
         return TenantSubscription(
             tenant_id=str(subscription.tenant_id),
             plan_code=_safe_plan_code(subscription),
@@ -436,10 +448,14 @@ class PostgresBillingRepository(BillingRepository):
             trial_ends_at=subscription.trial_ends_at,
             cancel_at=subscription.cancel_at,
             seat_count=subscription.seat_count,
-            metadata=subscription.metadata_json or {},
+            pending_plan_code=pending_plan_code,
+            pending_plan_effective_at=pending_plan_effective_at,
+            pending_seat_count=_coerce_int(pending_seat_count),
+            metadata=metadata_payload,
             processor=subscription.processor,
             processor_customer_id=subscription.processor_customer_id,
             processor_subscription_id=subscription.processor_subscription_id,
+            processor_schedule_id=processor_schedule_id,
         )
 
     @staticmethod
@@ -463,3 +479,56 @@ def _safe_plan_code(subscription: ORMTenantSubscription) -> str:
     if subscription.plan:
         return subscription.plan.code
     return str(subscription.plan_id)
+
+
+def _serialize_subscription_metadata(subscription: TenantSubscription) -> dict[str, object]:
+    metadata: dict[str, object] = dict(subscription.metadata or {})
+    _set_metadata_value(metadata, "processor_schedule_id", subscription.processor_schedule_id)
+    _set_metadata_value(metadata, "pending_plan_code", subscription.pending_plan_code)
+    _set_metadata_value(
+        metadata,
+        "pending_plan_effective_at",
+        _format_metadata_datetime(subscription.pending_plan_effective_at),
+    )
+    _set_metadata_value(metadata, "pending_seat_count", subscription.pending_seat_count)
+    return metadata
+
+
+def _set_metadata_value(metadata: dict[str, object], key: str, value: object | None) -> None:
+    if value is None or value == "":
+        metadata.pop(key, None)
+        return
+    metadata[key] = value
+
+
+def _format_metadata_datetime(value: datetime | None) -> str | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=UTC)
+    return value.isoformat()
+
+
+def _parse_metadata_datetime(value: object | None) -> datetime | None:
+    if value is None or value == "":
+        return None
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=UTC)
+    if isinstance(value, str):
+        try:
+            parsed = datetime.fromisoformat(value)
+        except ValueError:
+            return None
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+    return None
+
+
+def _coerce_int(value: object | None) -> int | None:
+    if value is None or value == "":
+        return None
+    if isinstance(value, (int, float, str)):
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+    return None

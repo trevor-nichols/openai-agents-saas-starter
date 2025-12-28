@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import Annotated
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -13,11 +13,14 @@ from app.services.billing.billing_events import (
     BillingEventSubscription,
     BillingEventUsage,
 )
-from app.services.billing.billing_service import PlanChangeResult, UpcomingInvoicePreview
+from app.services.billing.billing_service import (
+    PlanChangeResult,
+    PlanChangeTiming,
+    UpcomingInvoicePreview,
+)
 
 PositiveSeatCount = Annotated[int, Field(gt=0)]
 PositiveUsageQuantity = Annotated[int, Field(gt=0)]
-PlanChangeTiming = Literal["immediate", "period_end"]
 
 
 class PlanFeatureResponse(BaseModel):
@@ -82,6 +85,9 @@ class TenantSubscriptionResponse(BaseModel):
     trial_ends_at: datetime | None = None
     cancel_at: datetime | None = None
     seat_count: int | None = None
+    pending_plan_code: str | None = None
+    pending_plan_effective_at: datetime | None = None
+    pending_seat_count: int | None = None
     metadata: dict[str, str] = Field(default_factory=dict)
 
     @classmethod
@@ -98,6 +104,9 @@ class TenantSubscriptionResponse(BaseModel):
             trial_ends_at=subscription.trial_ends_at,
             cancel_at=subscription.cancel_at,
             seat_count=subscription.seat_count,
+            pending_plan_code=subscription.pending_plan_code,
+            pending_plan_effective_at=subscription.pending_plan_effective_at,
+            pending_seat_count=subscription.pending_seat_count,
             metadata=subscription.metadata,
         )
 
@@ -120,33 +129,35 @@ class UpdateSubscriptionRequest(BaseModel):
 
 
 class ChangeSubscriptionPlanRequest(BaseModel):
-    plan_code: str = Field(..., description="Target billing plan code.")
+    plan_code: str = Field(..., description="Billing plan to activate.")
     seat_count: PositiveSeatCount | None = Field(
-        default=None, description="Optional seat count override for the new plan."
+        default=None,
+        description="Optional seat count override for the new plan.",
     )
     timing: PlanChangeTiming = Field(
-        default="immediate",
-        description="Whether the plan changes immediately or at the period end.",
+        default=PlanChangeTiming.AUTO,
+        description=(
+            "When the plan change takes effect (auto selects immediate for upgrades and "
+            "period-end for downgrades when intervals match)."
+        ),
     )
 
 
 class PlanChangeResponse(BaseModel):
-    plan_code: str
-    timing: PlanChangeTiming
-    seat_count: int | None = None
+    subscription: TenantSubscriptionResponse
+    target_plan_code: str
     effective_at: datetime | None = None
-    current_period_end: datetime | None = None
-    schedule_id: str | None = None
+    seat_count: int | None = None
+    timing: PlanChangeTiming = PlanChangeTiming.AUTO
 
     @classmethod
     def from_result(cls, result: PlanChangeResult) -> PlanChangeResponse:
         return cls(
-            plan_code=result.plan_code,
-            timing=result.timing,
-            seat_count=result.seat_count,
+            subscription=TenantSubscriptionResponse.from_domain(result.subscription),
+            target_plan_code=result.target_plan_code,
             effective_at=result.effective_at,
-            current_period_end=result.current_period_end,
-            schedule_id=result.schedule_id,
+            seat_count=result.seat_count,
+            timing=result.timing,
         )
 
 

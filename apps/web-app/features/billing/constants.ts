@@ -49,7 +49,8 @@ export const BILLING_COPY = {
     },
     planChange: {
       timingLabel: 'Plan change timing',
-      timingHelp: 'Immediate changes apply right away. Period-end changes activate after the current cycle.',
+      timingHelp: 'Auto applies upgrades immediately and schedules downgrades for the period end. You can override below.',
+      autoLabel: 'Auto (recommended)',
       immediateLabel: 'Change now',
       periodEndLabel: 'Change at period end',
     },

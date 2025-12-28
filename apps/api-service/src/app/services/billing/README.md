@@ -46,7 +46,7 @@ Tenant subscription orchestration, usage metering, Stripe connectivity, and the 
 - `GET /billing/tenants/{tenant_id}/subscription` — fetch current subscription.
 - `POST /billing/tenants/{tenant_id}/subscription` — start a subscription (owner/admin only).
 - `PATCH /billing/tenants/{tenant_id}/subscription` — update auto-renew, seats, billing email.
-- `POST /billing/tenants/{tenant_id}/subscription/plan` — change plan immediately or at period end.
+- `POST /billing/tenants/{tenant_id}/subscription/plan` — change plan with auto timing (upgrades immediate, downgrades scheduled) and returns pending plan details when applicable.
 - `POST /billing/tenants/{tenant_id}/subscription/cancel` — cancel now or at period end.
 - `POST /billing/tenants/{tenant_id}/portal` — create a Stripe billing portal session.
 - `GET /billing/tenants/{tenant_id}/payment-methods` — list saved payment methods.

@@ -130,7 +130,9 @@ async def test_billing_subscription_lifecycle_and_events(
         )
         assert change.status_code == 200, change.text
         change_body = change.json()
-        assert change_body.get("plan_code") == alternate_plan
+        assert change_body.get("target_plan_code") == alternate_plan
+        subscription_payload = change_body.get("subscription", {})
+        assert subscription_payload.get("pending_plan_code") == alternate_plan
 
     usage = await http_client.post(
         f"/api/v1/billing/tenants/{smoke_state.tenant_id}/usage",

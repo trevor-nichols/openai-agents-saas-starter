@@ -3,9 +3,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   SubscriptionCancelPayload,
   SubscriptionPlanChangePayload,
+  SubscriptionPlanChangeResponse,
   SubscriptionStartPayload,
   SubscriptionUpdatePayload,
-  PlanChange,
   TenantSubscription,
   UsageRecordPayload,
 } from '@/lib/types/billing';
@@ -111,7 +111,7 @@ export function useChangeSubscriptionPlanMutation(options: SubscriptionOptions) 
   const queryClient = useQueryClient();
   const { tenantId, tenantRole = null } = options;
 
-  return useMutation<PlanChange, Error, SubscriptionPlanChangePayload>({
+  return useMutation<SubscriptionPlanChangeResponse, Error, SubscriptionPlanChangePayload>({
     mutationFn: async (payload: SubscriptionPlanChangePayload) => {
       if (!billingEnabled) {
         throw new Error('Billing is disabled.');
@@ -121,9 +121,9 @@ export function useChangeSubscriptionPlanMutation(options: SubscriptionOptions) 
       }
       return changeSubscriptionPlanRequest(tenantId, payload, { tenantRole });
     },
-    onSuccess: () => {
+    onSuccess: (response) => {
       if (!tenantId) return;
-      queryClient.invalidateQueries({ queryKey: queryKeys.billing.subscription(tenantId) });
+      queryClient.setQueryData(queryKeys.billing.subscription(tenantId), response.subscription);
       queryClient.invalidateQueries({ queryKey: queryKeys.billing.upcomingInvoiceBase(tenantId) });
     },
   });

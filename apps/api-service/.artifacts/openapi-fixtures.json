@@ -27682,7 +27682,7 @@
           "plan_code": {
             "type": "string",
             "title": "Plan Code",
-            "description": "Target billing plan code."
+            "description": "Billing plan to activate."
           },
           "seat_count": {
             "anyOf": [
@@ -27698,14 +27698,9 @@
             "description": "Optional seat count override for the new plan."
           },
           "timing": {
-            "type": "string",
-            "enum": [
-              "immediate",
-              "period_end"
-            ],
-            "title": "Timing",
-            "description": "Whether the plan changes immediately or at the period end.",
-            "default": "immediate"
+            "$ref": "#/components/schemas/PlanChangeTiming",
+            "description": "When the plan change takes effect (auto selects immediate for upgrades and period-end for downgrades when intervals match).",
+            "default": "auto"
           }
         },
         "type": "object",
@@ -33189,28 +33184,12 @@
       },
       "PlanChangeResponse": {
         "properties": {
-          "plan_code": {
-            "type": "string",
-            "title": "Plan Code"
+          "subscription": {
+            "$ref": "#/components/schemas/TenantSubscriptionResponse"
           },
-          "timing": {
+          "target_plan_code": {
             "type": "string",
-            "enum": [
-              "immediate",
-              "period_end"
-            ],
-            "title": "Timing"
-          },
-          "seat_count": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Seat Count"
+            "title": "Target Plan Code"
           },
           "effective_at": {
             "anyOf": [
@@ -33224,36 +33203,37 @@
             ],
             "title": "Effective At"
           },
-          "current_period_end": {
+          "seat_count": {
             "anyOf": [
               {
-                "type": "string",
-                "format": "date-time"
+                "type": "integer"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Current Period End"
+            "title": "Seat Count"
           },
-          "schedule_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Schedule Id"
+          "timing": {
+            "$ref": "#/components/schemas/PlanChangeTiming",
+            "default": "auto"
           }
         },
         "type": "object",
         "required": [
-          "plan_code",
-          "timing"
+          "subscription",
+          "target_plan_code"
         ],
         "title": "PlanChangeResponse"
+      },
+      "PlanChangeTiming": {
+        "type": "string",
+        "enum": [
+          "auto",
+          "immediate",
+          "period_end"
+        ],
+        "title": "PlanChangeTiming"
       },
       "PlanFeatureResponse": {
         "properties": {
@@ -36522,6 +36502,40 @@
               }
             ],
             "title": "Seat Count"
+          },
+          "pending_plan_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending Plan Code"
+          },
+          "pending_plan_effective_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending Plan Effective At"
+          },
+          "pending_seat_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending Seat Count"
           },
           "metadata": {
             "additionalProperties": {

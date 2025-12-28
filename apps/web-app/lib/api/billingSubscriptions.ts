@@ -2,10 +2,10 @@ import type {
   SubscriptionCancelPayload,
   SubscriptionStartPayload,
   SubscriptionPlanChangePayload,
+  SubscriptionPlanChangeResponse,
   SubscriptionUpdatePayload,
   TenantSubscription,
   UsageRecordPayload,
-  PlanChange,
   SuccessNoData,
 } from '@/lib/types/billing';
 import { apiV1Path } from '@/lib/apiPaths';
@@ -142,14 +142,14 @@ export async function changeSubscriptionPlanRequest(
   tenantId: string,
   payload: SubscriptionPlanChangePayload,
   options?: RequestOptions,
-): Promise<PlanChange> {
+): Promise<SubscriptionPlanChangeResponse> {
   const response = await fetch(planPath(tenantId), {
     method: 'POST',
     headers: buildBillingHeaders(options, true),
     cache: 'no-store',
     body: JSON.stringify(payload),
   });
-  const data = await parseBillingResponse<PlanChange>(response);
+  const data = await parseBillingResponse<SubscriptionPlanChangeResponse>(response);
   if (isBillingDisabled(response.status, data)) {
     throw new Error('Billing is disabled.');
   }
@@ -160,7 +160,7 @@ export async function changeSubscriptionPlanRequest(
   if (!data) {
     throw new Error('Plan change returned empty response.');
   }
-  return data as PlanChange;
+  return data as SubscriptionPlanChangeResponse;
 }
 
 export async function recordUsageRequest(

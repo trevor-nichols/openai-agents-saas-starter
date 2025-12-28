@@ -30,12 +30,24 @@ describe('/api/billing/tenants/[tenantId]/subscription/plan route', () => {
   it('returns plan change response on success', async () => {
     const requestPayload: ChangeSubscriptionPlanRequest = { plan_code: 'pro', timing: 'period_end', seat_count: 12 };
     const responsePayload: PlanChangeResponse = {
-      plan_code: 'pro',
+      subscription: {
+        tenant_id: 'tenant-1',
+        plan_code: 'pro',
+        status: 'active',
+        auto_renew: true,
+        billing_email: 'billing@example.com',
+        starts_at: '2025-12-01T00:00:00Z',
+        current_period_end: '2025-12-31T00:00:00Z',
+        seat_count: 12,
+        pending_plan_code: null,
+        pending_plan_effective_at: null,
+        pending_seat_count: null,
+        metadata: {},
+      },
+      target_plan_code: 'pro',
       timing: 'period_end',
       seat_count: 12,
       effective_at: '2026-01-01T00:00:00Z',
-      current_period_end: '2025-12-31T00:00:00Z',
-      schedule_id: 'sub_sched_123',
     };
 
     changeTenantSubscriptionPlan.mockResolvedValueOnce(responsePayload);

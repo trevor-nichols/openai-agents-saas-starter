@@ -58,11 +58,17 @@ export function PlanManagement() {
         const response = await changePlan.mutateAsync({
           plan_code: selectedPlan.code,
           seat_count: values.seatCount ?? undefined,
-          timing: values.timing ?? 'period_end',
+          timing: values.timing ?? 'auto',
         });
+        const timing = response.timing ?? 'auto';
+        const effectiveAtLabel = response.effective_at
+          ? new Date(response.effective_at).toLocaleDateString()
+          : null;
         const changeLabel =
-          response.timing === 'period_end'
-            ? 'Plan change scheduled for the end of the current period.'
+          timing === 'period_end'
+            ? effectiveAtLabel
+              ? `Plan change scheduled for ${effectiveAtLabel}.`
+              : 'Plan change scheduled for the end of the current period.'
             : 'Plan change will take effect immediately.';
         success({
           title: 'Plan change requested',
