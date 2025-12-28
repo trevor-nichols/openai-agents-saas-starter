@@ -53,6 +53,14 @@ class TenantSubscription:
 
 
 @dataclass(slots=True)
+class BillingCustomerRecord:
+    tenant_id: str
+    processor: str
+    processor_customer_id: str
+    billing_email: str | None = None
+
+
+@dataclass(slots=True)
 class SubscriptionInvoiceRecord:
     tenant_id: str
     period_start: datetime
@@ -81,6 +89,14 @@ class BillingRepository(Protocol):
         billing_email: str | None = None,
         seat_count: int | None = None,
     ) -> TenantSubscription: ...
+
+    async def get_customer(
+        self, tenant_id: str, *, processor: str
+    ) -> BillingCustomerRecord | None: ...
+
+    async def upsert_customer(
+        self, customer: BillingCustomerRecord
+    ) -> BillingCustomerRecord: ...
 
     async def record_usage(
         self,

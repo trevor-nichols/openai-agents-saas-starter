@@ -11,10 +11,20 @@ from app.core.settings import Settings
 from app.infrastructure.stripe import (
     StripeClientError,
     StripeCustomer,
+    StripePaymentMethod,
+    StripePaymentMethodDetail,
+    StripePaymentMethodList,
+    StripePortalSession,
+    StripeSetupIntent,
     StripeSubscription,
     StripeSubscriptionItem,
+    StripeSubscriptionSchedule,
+    StripeSubscriptionSchedulePhase,
+    StripeUpcomingInvoice,
+    StripeUpcomingInvoiceLine,
     StripeUsageRecord,
 )
+from app.infrastructure.stripe.types import SubscriptionSchedulePhasePayload
 from app.services.billing.payment_gateway import PaymentGatewayError, StripeGateway
 
 
@@ -30,6 +40,11 @@ class FakeStripeClient:
             current_period_end=now,
             trial_end=None,
             items=[StripeSubscriptionItem(id="si_123", price_id="price_123", quantity=1)],
+            metadata={
+                "tenant_id": "tenant",
+                "billing_email": "billing@example.com",
+                "plan_code": "starter",
+            },
         )
         self.created_customers: list[dict[str, Any]] = []
         self.created_subscriptions: list[dict[str, Any]] = []
@@ -37,6 +52,8 @@ class FakeStripeClient:
         self.updated_emails: list[str] = []
         self.cancelled: list[bool] = []
         self.usage_calls: list[dict[str, Any]] = []
+        self.detached_payment_methods: list[str] = []
+        self.payment_method_customer_id = "cus_123"
 
     async def create_customer(self, *, email: str | None, tenant_id: str) -> StripeCustomer:
         payload = {"email": email, "tenant_id": tenant_id}
@@ -75,11 +92,78 @@ class FakeStripeClient:
         *,
         auto_renew: bool | None = None,
         seat_count: int | None = None,
+        price_id: str | None = None,
+        metadata: dict[str, str] | None = None,
+        proration_behavior: str | None = None,
     ) -> StripeSubscription:
         self.updated_subscription_calls.append(
-            {"auto_renew": auto_renew, "seat_count": seat_count}
+            {
+                "auto_renew": auto_renew,
+                "seat_count": seat_count,
+                "price_id": price_id,
+                "metadata": metadata,
+                "proration_behavior": proration_behavior,
+            }
         )
         return subscription
+
+    async def create_subscription_schedule_from_subscription(
+        self,
+        subscription_id: str,
+        *,
+        end_behavior: str = "release",
+    ) -> StripeSubscriptionSchedule:
+        return StripeSubscriptionSchedule(
+            id="sched_123",
+            status="active",
+            subscription_id=subscription_id,
+            phases=[],
+            current_phase=None,
+            metadata={},
+        )
+
+    async def retrieve_subscription_schedule(
+        self, schedule_id: str
+    ) -> StripeSubscriptionSchedule:
+        return StripeSubscriptionSchedule(
+            id=schedule_id,
+            status="active",
+            subscription_id=self.subscription.id,
+            phases=[],
+            current_phase=None,
+            metadata={},
+        )
+
+    async def update_subscription_schedule(
+        self,
+        schedule_id: str,
+        *,
+        phases: list[SubscriptionSchedulePhasePayload],
+        end_behavior: str | None = None,
+        proration_behavior: str | None = None,
+        metadata: dict[str, str] | None = None,
+    ) -> StripeSubscriptionSchedule:
+        phase_items = [
+            StripeSubscriptionSchedulePhase(
+                start_date=None,
+                end_date=None,
+                items=[],
+                proration_behavior=None,
+            )
+        ]
+        return StripeSubscriptionSchedule(
+            id=schedule_id,
+            status="active",
+            subscription_id=self.subscription.id,
+            phases=phase_items,
+            current_phase=None,
+            metadata=metadata or {},
+        )
+
+    async def release_subscription_schedule(
+        self, schedule_id: str
+    ) -> StripeSubscriptionSchedule:
+        return await self.retrieve_subscription_schedule(schedule_id)
 
     async def cancel_subscription(
         self, subscription_id: str, *, cancel_at_period_end: bool
@@ -115,6 +199,74 @@ class FakeStripeClient:
             timestamp=datetime.now(UTC),
         )
 
+    async def create_billing_portal_session(
+        self, *, customer_id: str, return_url: str
+    ) -> StripePortalSession:
+        return StripePortalSession(url="https://portal.example.com")
+
+    async def list_payment_methods(
+        self, customer_id: str
+    ) -> StripePaymentMethodList:
+        return StripePaymentMethodList(
+            items=[
+                StripePaymentMethod(
+                    id="pm_123",
+                    brand="visa",
+                    last4="4242",
+                    exp_month=12,
+                    exp_year=2030,
+                )
+            ],
+            default_payment_method_id="pm_123",
+        )
+
+    async def retrieve_payment_method(
+        self, payment_method_id: str
+    ) -> StripePaymentMethodDetail:
+        return StripePaymentMethodDetail(
+            id=payment_method_id,
+            customer_id=self.payment_method_customer_id,
+        )
+
+    async def create_setup_intent(self, customer_id: str) -> StripeSetupIntent:
+        return StripeSetupIntent(id="seti_123", client_secret="secret")
+
+    async def set_default_payment_method(
+        self, *, customer_id: str, payment_method_id: str
+    ) -> None:
+        return None
+
+    async def detach_payment_method(self, payment_method_id: str) -> None:
+        self.detached_payment_methods.append(payment_method_id)
+        return None
+
+    async def preview_upcoming_invoice(
+        self,
+        *,
+        customer_id: str,
+        subscription_id: str,
+        subscription_item_id: str | None,
+        seat_count: int | None,
+        proration_behavior: str | None = None,
+    ) -> StripeUpcomingInvoice:
+        return StripeUpcomingInvoice(
+            id="in_123",
+            amount_due=1200,
+            currency="usd",
+            period_start=datetime.now(UTC),
+            period_end=datetime.now(UTC),
+            lines=[
+                StripeUpcomingInvoiceLine(
+                    description="Seat charge",
+                    amount=1200,
+                    currency="usd",
+                    quantity=seat_count or 1,
+                    unit_amount=1200,
+                    price_id="price_123",
+                )
+            ],
+        )
+
     def _customer(self, email: str | None) -> StripeCustomer:
         return StripeCustomer(id="cus_123", email=email)
 
@@ -144,8 +296,8 @@ async def test_start_subscription_returns_metadata():
     )
 
     assert result.metadata is not None
-    assert result.metadata["stripe_price_id"] == "price_123"
-    assert result.metadata["stripe_subscription_item_id"] == "si_123"
+    assert result.metadata["processor_price_id"] == "price_123"
+    assert result.metadata["processor_subscription_item_id"] == "si_123"
     assert client.created_customers
     assert client.created_subscriptions[0]["quantity"] == 2
 
@@ -287,3 +439,48 @@ async def test_stripe_errors_wrapped_with_gateway_error(monkeypatch: pytest.Monk
     assert exc_info.value.code == "api_error"
     assert calls, "expected metrics to capture Stripe error"
     assert calls[-1]["result"] == "api_error"
+
+
+@pytest.mark.asyncio
+async def test_detach_payment_method_requires_matching_customer():
+    client = FakeStripeClient()
+    client.payment_method_customer_id = "cus_other"
+    settings = _settings({"starter": "price_123"})
+    gateway = StripeGateway(client=client, settings_factory=lambda: settings)
+
+    with pytest.raises(PaymentGatewayError) as exc_info:
+        await gateway.detach_payment_method(customer_id="cus_123", payment_method_id="pm_123")
+
+    assert exc_info.value.code == "payment_method_mismatch"
+    assert client.detached_payment_methods == []
+
+
+@pytest.mark.asyncio
+async def test_detach_payment_method_allows_matching_customer():
+    client = FakeStripeClient()
+    settings = _settings({"starter": "price_123"})
+    gateway = StripeGateway(client=client, settings_factory=lambda: settings)
+
+    await gateway.detach_payment_method(customer_id="cus_123", payment_method_id="pm_123")
+
+    assert client.detached_payment_methods == ["pm_123"]
+
+
+@pytest.mark.asyncio
+async def test_swap_subscription_plan_preserves_metadata():
+    client = FakeStripeClient()
+    settings = _settings({"pro": "price_pro"})
+    gateway = StripeGateway(client=client, settings_factory=lambda: settings)
+
+    await gateway.swap_subscription_plan(
+        "sub_123",
+        plan_code="pro",
+        seat_count=2,
+    )
+
+    assert client.updated_subscription_calls
+    metadata = client.updated_subscription_calls[0]["metadata"]
+    assert metadata is not None
+    assert metadata["tenant_id"] == "tenant"
+    assert metadata["billing_email"] == "billing@example.com"
+    assert metadata["plan_code"] == "pro"

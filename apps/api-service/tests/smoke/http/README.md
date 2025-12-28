@@ -19,7 +19,7 @@ Fast, deterministic checks that hit a running api-service over HTTP. Designed fo
 - Uploads agent-input presign
 - Assets list/detail/download/thumbnail/delete (gated)
 - Logs ingestion
-- Optional: Billing plans + subscription lifecycle + usage/events (and stream with `SMOKE_ENABLE_BILLING_STREAM=1`)
+- Optional: Billing plans + subscription lifecycle + portal/setup intent/payment methods + upcoming invoice preview + usage/events (and stream with `SMOKE_ENABLE_BILLING_STREAM=1`)
 - Optional: Chat + workflow run + run-stream (`SMOKE_ENABLE_AI=1` and model key available)
 - Optional: Conversation ledger events/stream + workflow replay (requires streaming, `SMOKE_ENABLE_AI=1`)
 - Optional: Activity stream (`SMOKE_ENABLE_ACTIVITY_STREAM=1`)

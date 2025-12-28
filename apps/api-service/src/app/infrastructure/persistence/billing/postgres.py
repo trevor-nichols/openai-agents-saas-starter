@@ -12,12 +12,16 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
 
 from app.domain.billing import (
+    BillingCustomerRecord,
     BillingPlan,
     BillingRepository,
     PlanFeature,
     SubscriptionInvoiceRecord,
     TenantSubscription,
     UsageTotal,
+)
+from app.infrastructure.persistence.billing.models import (
+    BillingCustomer as ORMBillingCustomer,
 )
 from app.infrastructure.persistence.billing.models import (
     BillingPlan as ORMPlan,
@@ -53,14 +57,7 @@ class PostgresBillingRepository(BillingRepository):
 
     async def get_subscription(self, tenant_id: str) -> TenantSubscription | None:
         async with self._session_factory() as session:
-            try:
-                tenant_uuid = self._parse_tenant_uuid(tenant_id)
-            except ValueError:
-                logger.debug(
-                    "Ignoring non-UUID tenant identifier '%s' for subscription lookup.",
-                    tenant_id,
-                )
-                return None
+            tenant_uuid = self._parse_tenant_uuid(tenant_id)
             result = await session.execute(
                 select(ORMTenantSubscription)
                 .options(selectinload(ORMTenantSubscription.plan))
@@ -152,6 +149,53 @@ class PostgresBillingRepository(BillingRepository):
             await session.commit()
             await session.refresh(subscription)
             return self._to_domain_subscription(subscription)
+
+    async def get_customer(
+        self, tenant_id: str, *, processor: str
+    ) -> BillingCustomerRecord | None:
+        async with self._session_factory() as session:
+            tenant_uuid = self._parse_tenant_uuid(tenant_id)
+            result = await session.execute(
+                select(ORMBillingCustomer).where(
+                    ORMBillingCustomer.tenant_id == tenant_uuid,
+                    ORMBillingCustomer.processor == processor,
+                )
+            )
+            row = result.scalar_one_or_none()
+            if row is None:
+                return None
+            return self._to_domain_customer(row)
+
+    async def upsert_customer(
+        self, customer: BillingCustomerRecord
+    ) -> BillingCustomerRecord:
+        async with self._session_factory() as session:
+            tenant_uuid = self._parse_tenant_uuid(customer.tenant_id)
+            existing = await session.scalar(
+                select(ORMBillingCustomer).where(
+                    ORMBillingCustomer.tenant_id == tenant_uuid,
+                    ORMBillingCustomer.processor == customer.processor,
+                )
+            )
+            if existing is None:
+                entity = ORMBillingCustomer(
+                    id=uuid.uuid4(),
+                    tenant_id=tenant_uuid,
+                    processor=customer.processor,
+                    processor_customer_id=customer.processor_customer_id,
+                    billing_email=customer.billing_email,
+                )
+                session.add(entity)
+                await session.commit()
+                await session.refresh(entity)
+                return self._to_domain_customer(entity)
+
+            existing.processor_customer_id = customer.processor_customer_id
+            existing.billing_email = customer.billing_email
+            existing.updated_at = datetime.now(UTC)
+            await session.commit()
+            await session.refresh(existing)
+            return self._to_domain_customer(existing)
 
     async def record_usage(
         self,
@@ -396,6 +440,15 @@ class PostgresBillingRepository(BillingRepository):
             processor=subscription.processor,
             processor_customer_id=subscription.processor_customer_id,
             processor_subscription_id=subscription.processor_subscription_id,
+        )
+
+    @staticmethod
+    def _to_domain_customer(customer: ORMBillingCustomer) -> BillingCustomerRecord:
+        return BillingCustomerRecord(
+            tenant_id=str(customer.tenant_id),
+            processor=customer.processor,
+            processor_customer_id=customer.processor_customer_id,
+            billing_email=customer.billing_email,
         )
 
     @staticmethod

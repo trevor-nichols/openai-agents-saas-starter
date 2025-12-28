@@ -21,8 +21,17 @@ from app.api.v1.billing.schemas import (
     BillingEventResponse,
     BillingPlanResponse,
     CancelSubscriptionRequest,
+    ChangeSubscriptionPlanRequest,
+    PaymentMethodResponse,
+    PlanChangeResponse,
+    PortalSessionRequest,
+    PortalSessionResponse,
+    SetupIntentRequest,
+    SetupIntentResponse,
     StartSubscriptionRequest,
     TenantSubscriptionResponse,
+    UpcomingInvoicePreviewRequest,
+    UpcomingInvoicePreviewResponse,
     UpdateSubscriptionRequest,
     UsageRecordRequest,
 )
@@ -30,6 +39,7 @@ from app.core.settings import get_settings
 from app.infrastructure.persistence.stripe.models import StripeEventStatus
 from app.services.billing.billing_events import get_billing_events_service
 from app.services.billing.billing_service import (
+    BillingCustomerNotFoundError,
     BillingError,
     InvalidTenantIdentifierError,
     PlanNotFoundError,
@@ -68,6 +78,8 @@ def _handle_billing_error(exc: BillingError) -> None:
     if isinstance(exc, PlanNotFoundError):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     if isinstance(exc, SubscriptionNotFoundError):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    if isinstance(exc, BillingCustomerNotFoundError):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     if isinstance(exc, SubscriptionStateError):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
@@ -162,6 +174,31 @@ async def update_subscription(
 
 
 @router.post(
+    "/tenants/{tenant_id}/subscription/plan",
+    response_model=PlanChangeResponse,
+)
+async def change_subscription_plan(
+    tenant_id: str,
+    payload: ChangeSubscriptionPlanRequest,
+    context: TenantContext = Depends(require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN)),
+) -> PlanChangeResponse:
+    """Request a plan change, either immediate or effective at period end."""
+
+    _assert_same_tenant(context, tenant_id)
+
+    try:
+        result = await billing_service.change_subscription_plan(
+            tenant_id=tenant_id,
+            plan_code=payload.plan_code,
+            seat_count=payload.seat_count,
+            timing=payload.timing,
+        )
+    except BillingError as exc:  # pragma: no cover - translated below
+        _handle_billing_error(exc)
+    return PlanChangeResponse.from_result(result)
+
+
+@router.post(
     "/tenants/{tenant_id}/subscription/cancel",
     response_model=TenantSubscriptionResponse,
 )
@@ -181,6 +218,149 @@ async def cancel_subscription(
     except BillingError as exc:  # pragma: no cover - translated below
         _handle_billing_error(exc)
     return TenantSubscriptionResponse.from_domain(subscription)
+
+
+@router.post(
+    "/tenants/{tenant_id}/portal",
+    response_model=PortalSessionResponse,
+)
+async def create_portal_session(
+    tenant_id: str,
+    payload: PortalSessionRequest,
+    context: TenantContext = Depends(require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN)),
+) -> PortalSessionResponse:
+    """Create a Stripe billing portal session for the tenant."""
+
+    _assert_same_tenant(context, tenant_id)
+
+    try:
+        session = await billing_service.create_portal_session(
+            tenant_id, billing_email=payload.billing_email
+        )
+    except BillingError as exc:  # pragma: no cover - translated below
+        _handle_billing_error(exc)
+    return PortalSessionResponse(url=session.url)
+
+
+@router.get(
+    "/tenants/{tenant_id}/payment-methods",
+    response_model=list[PaymentMethodResponse],
+)
+async def list_payment_methods(
+    tenant_id: str,
+    context: TenantContext = Depends(require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN)),
+) -> list[PaymentMethodResponse]:
+    """List saved payment methods for a tenant."""
+
+    _assert_same_tenant(context, tenant_id)
+
+    try:
+        methods = await billing_service.list_payment_methods(tenant_id)
+    except BillingError as exc:  # pragma: no cover - translated below
+        _handle_billing_error(exc)
+
+    return [
+        PaymentMethodResponse(
+            id=method.id,
+            brand=method.brand,
+            last4=method.last4,
+            exp_month=method.exp_month,
+            exp_year=method.exp_year,
+            is_default=method.is_default,
+        )
+        for method in methods
+    ]
+
+
+@router.post(
+    "/tenants/{tenant_id}/payment-methods/setup-intent",
+    response_model=SetupIntentResponse,
+)
+async def create_setup_intent(
+    tenant_id: str,
+    payload: SetupIntentRequest,
+    context: TenantContext = Depends(require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN)),
+) -> SetupIntentResponse:
+    """Create a setup intent for adding a new payment method."""
+
+    _assert_same_tenant(context, tenant_id)
+
+    try:
+        intent = await billing_service.create_setup_intent(
+            tenant_id, billing_email=payload.billing_email
+        )
+    except BillingError as exc:  # pragma: no cover - translated below
+        _handle_billing_error(exc)
+    return SetupIntentResponse(id=intent.id, client_secret=intent.client_secret)
+
+
+@router.post(
+    "/tenants/{tenant_id}/payment-methods/{payment_method_id}/default",
+    response_model=SuccessNoDataResponse,
+)
+async def set_default_payment_method(
+    tenant_id: str,
+    payment_method_id: str,
+    context: TenantContext = Depends(require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN)),
+) -> SuccessNoDataResponse:
+    """Set the default payment method for a tenant."""
+
+    _assert_same_tenant(context, tenant_id)
+
+    try:
+        await billing_service.set_default_payment_method(
+            tenant_id, payment_method_id=payment_method_id
+        )
+    except BillingError as exc:  # pragma: no cover - translated below
+        _handle_billing_error(exc)
+    return SuccessNoDataResponse(message="Default payment method updated.")
+
+
+@router.delete(
+    "/tenants/{tenant_id}/payment-methods/{payment_method_id}",
+    response_model=SuccessNoDataResponse,
+)
+async def detach_payment_method(
+    tenant_id: str,
+    payment_method_id: str,
+    context: TenantContext = Depends(require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN)),
+) -> SuccessNoDataResponse:
+    """Detach a payment method from the tenant's Stripe customer."""
+
+    _assert_same_tenant(context, tenant_id)
+
+    try:
+        await billing_service.detach_payment_method(
+            tenant_id, payment_method_id=payment_method_id
+        )
+    except BillingError as exc:  # pragma: no cover - translated below
+        _handle_billing_error(exc)
+    return SuccessNoDataResponse(message="Payment method detached.")
+
+
+@router.post(
+    "/tenants/{tenant_id}/upcoming-invoice",
+    response_model=UpcomingInvoicePreviewResponse,
+)
+async def preview_upcoming_invoice(
+    tenant_id: str,
+    payload: UpcomingInvoicePreviewRequest,
+    context: TenantContext = Depends(
+        require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.VIEWER)
+    ),
+) -> UpcomingInvoicePreviewResponse:
+    """Preview the next invoice for a tenant subscription."""
+
+    _assert_same_tenant(context, tenant_id)
+
+    try:
+        preview = await billing_service.preview_upcoming_invoice(
+            tenant_id,
+            seat_count=payload.seat_count,
+        )
+    except BillingError as exc:  # pragma: no cover - translated below
+        _handle_billing_error(exc)
+    return UpcomingInvoicePreviewResponse.from_domain(preview)
 
 
 @router.post(
