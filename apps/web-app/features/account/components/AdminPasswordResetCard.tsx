@@ -24,7 +24,7 @@ import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { useToast } from '@/components/ui/use-toast';
 import { useAdminResetPasswordMutation } from '@/lib/queries/accountSecurity';
-import { PASSWORD_POLICY_RULES } from '../constants';
+import { PASSWORD_POLICY_RULES } from '@/lib/auth/passwordPolicy';
 
 const adminResetSchema = z
   .object({

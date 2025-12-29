@@ -2,7 +2,7 @@
 # Milestone: Team / Org Management
 
 _Last updated: 2025-12-29_  
-**Status:** In Progress (API service complete; frontend/SDK deferred)  
+**Status:** In Progress (API + frontend complete; SDK export deferred)  
 **Owner:** TBD  
 **Domain:** Cross-cutting  
 **ID / Links:** TBD
@@ -63,7 +63,7 @@ Deliver tenant-scoped team management for existing tenants, including member lis
 | --- | --- | --- |
 | Architecture/design | ✅ | Plan aligned to existing auth/signup/invite patterns. |
 | API service (A–C, E) | ✅ | Team/org backend complete; `hatch run lint`, `hatch run typecheck`, `hatch run test` pass. |
-| Frontend/SDK (D, F) | ⏸️ | Deferred until API service signoff. |
+| Frontend/SDK (D, F) | ✅ | Frontend phases complete; QA + closeout done; SDK export deferred. |
 | Docs & runbooks | ✅ | Tracker updated for API-service closeout. |
 
 ---
@@ -103,6 +103,41 @@ Deliver tenant-scoped team management for existing tenants, including member lis
 - **Invite revocation:** Only `ACTIVE` invites are revocable. `ACCEPTED`/`EXPIRED` invites are immutable; revoke attempts return a conflict.
 - **Revocation strictness:** `REVOKED` invites are also immutable; repeat revoke returns conflict for audit integrity.
 - **Invite acceptance:** Acceptance must be atomic (single transaction) to prevent orphaned users/memberships and ensure invite state is consistent.
+- **Settings navigation:** Add a `/settings` layout with a left-rail nav; main entry points route to `/settings/team` for intuitive default.
+- **Member onboarding UI:** Provide both “Add existing user by email” and “Invite by email” flows in the Team settings surface.
+- **Role visibility:** Surface `viewer`, `member`, `admin`, `owner` in UI; enforce owner-only assignment/demotion for `owner`.
+- **Invite acceptance UX:** Allow logged-in users to accept invites directly from `/accept-invite` using “accept as current user.”
+- **Pagination UX (initial):** Ship single-page list views with client pagination; server pagination to follow once list sizes demand it.
+
+---
+
+<!-- SECTION: Frontend Phase Plan -->
+## Frontend Phase Plan (Web App)
+
+### Phase 1 — Data & BFF (Team domain)
+- Add team types, server services, BFF routes, client fetch helpers, query hooks, and query keys.
+- BFF routes for tenant members + invites (list/issue/revoke/update/remove).
+- Unit tests for API helpers + route tests for core BFF endpoints.
+- Run `pnpm lint` + `pnpm type-check`.
+
+### Phase 2 — Settings UI
+- New `features/settings/team` module with Members + Invites panels and dialogs.
+- Add `/settings/team` page and a `/settings` layout with left-rail nav.
+- Update user menus to link to `/settings/team`.
+- Add component tests for dialog validation or role gating where appropriate.
+- Run `pnpm lint` + `pnpm type-check`.
+
+### Phase 3 — Invite Acceptance
+- Add public `/accept-invite` page with new-user form + password policy surface.
+- Add “accept as current user” mutation.
+- Add server action to accept invites and persist session cookies.
+- Add tests for form validation and server action error handling.
+- Run `pnpm lint` + `pnpm type-check`.
+
+### Phase 4 — QA & Closeout
+- Run relevant unit tests + Playwright happy path (if applicable).
+- Update tracker statuses and close out Workstream D (F1 remains deferred).
+  - Status: ✅ Completed 2025-12-29 (unit tests run; lint/type-check green).
 
 ---
 
@@ -167,9 +202,11 @@ Status: In progress (active refactor to keep clean architecture).
 
 | ID | Area | Description | Status |
 |----|------|-------------|--------|
-| D1 | BFF | Add proxy routes under `app/api/v1/tenants` | ⏸️ Deferred |
-| D2 | Feature | New `features/settings/team` module | ⏸️ Deferred |
-| D3 | UI | Add `/settings/team` page + nav link | ⏸️ Deferred |
+| D1 | BFF | Add proxy routes under `app/api/v1/tenants` | ✅ |
+| D2 | Feature | New `features/settings/team` module | ✅ |
+| D3 | UI | Add `/settings/team` page + nav link | ✅ |
+| D4 | Data | Team types + API helpers + query hooks | ✅ |
+| D5 | Auth | Add `/accept-invite` flow + server action | ✅ |
 
 ### Workstream E – Tests & QA
 
@@ -239,3 +276,7 @@ Status: In progress (active refactor to keep clean architecture).
 - 2025-12-29 — Review findings + decisions updated (owner-only role changes, strict revoke, tenant-scope); new tasks added.
 - 2025-12-29 — Full backend suite (`hatch run test`) + lint/typecheck run; tracker marked ready for closeout.
 - 2025-12-29 — Added HTTP smoke coverage for tenant members/invites (issue/list/revoke) and updated smoke docs.
+- 2025-12-29 — Phase 1 web app complete: team data types, server services, BFF routes, client API + queries, and unit tests. `pnpm lint` + `pnpm type-check` run.
+- 2025-12-29 — Phase 2 web app complete: settings layout + team workspace (members/invites), nav updates, and UI utils/tests. `pnpm lint` + `pnpm type-check` run.
+- 2025-12-29 — Phase 3 web app complete: `/accept-invite` page, accept-invite form + server action, existing-user accept, and validation tests. `pnpm lint` + `pnpm type-check` run.
+- 2025-12-29 — Phase 4 web app QA: mocked `server-only` in Vitest setup, fixed route test mocks + tooltip provider, ran targeted Vitest suites, `pnpm lint`, and `pnpm type-check`.

@@ -72,7 +72,7 @@ export function AppUserMenu({ userName, userEmail, tenantId, avatarUrl }: AppUse
           <Link href="/account">Profile</Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href="/settings/access">Settings</Link>
+          <Link href="/settings/team">Settings</Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href="/billing">Billing</Link>

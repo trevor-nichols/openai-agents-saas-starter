@@ -39,6 +39,7 @@ const buildPolicy = (mode: 'public' | 'invite_only' | 'approval'): SignupAccessP
 
 describe('RegisterForm', () => {
   beforeEach(() => {
+    vi.useRealTimers();
     registerTenantAction.mockReset();
   });
 

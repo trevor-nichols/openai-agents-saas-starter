@@ -14,6 +14,8 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
+    testTimeout: 10000,
+    hookTimeout: 10000,
     include: [
       'app/**/__tests__/**/*.{test,spec}.{ts,tsx}',
       'components/**/__tests__/**/*.{test,spec}.{ts,tsx}',

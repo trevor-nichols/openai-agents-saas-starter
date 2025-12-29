@@ -2153,6 +2153,42 @@ export type EmailVerificationStatusResponseData = {
 };
 
 /**
+ * EmailVerificationTokenRequest
+ */
+export type EmailVerificationTokenRequest = {
+  /**
+   * Email
+   */
+  email: string;
+  /**
+   * Ip Address
+   */
+  ip_address?: string | null;
+  /**
+   * User Agent
+   */
+  user_agent?: string | null;
+};
+
+/**
+ * EmailVerificationTokenResponse
+ */
+export type EmailVerificationTokenResponse = {
+  /**
+   * Token
+   */
+  token: string;
+  /**
+   * User Id
+   */
+  user_id: string;
+  /**
+   * Expires At
+   */
+  expires_at: string;
+};
+
+/**
  * ErrorEvent
  */
 export type ErrorEvent = {
@@ -2389,6 +2425,341 @@ export type FinalPayload = {
    */
   attachments?: Array<MessageAttachment>;
   usage?: PublicUsage | null;
+};
+
+/**
+ * FixtureApplyResult
+ */
+export type FixtureApplyResult = {
+  /**
+   * Tenants
+   */
+  tenants: {
+    [key: string]: FixtureTenantResult;
+  };
+  /**
+   * Generated At
+   */
+  generated_at: string;
+};
+
+/**
+ * FixtureAsset
+ */
+export type FixtureAsset = {
+  /**
+   * Key
+   */
+  key: string;
+  /**
+   * Asset Type
+   */
+  asset_type?: "image" | "file";
+  /**
+   * Source Tool
+   */
+  source_tool?:
+    | "image_generation"
+    | "code_interpreter"
+    | "user_upload"
+    | "unknown"
+    | null;
+  /**
+   * Filename
+   */
+  filename: string;
+  /**
+   * Mime Type
+   */
+  mime_type?: string | null;
+  /**
+   * Size Bytes
+   */
+  size_bytes?: number | null;
+  /**
+   * Agent Key
+   */
+  agent_key?: string | null;
+  /**
+   * Conversation Key
+   */
+  conversation_key?: string | null;
+  /**
+   * Message Id
+   */
+  message_id?: number | null;
+  /**
+   * Tool Call Id
+   */
+  tool_call_id?: string | null;
+  /**
+   * Response Id
+   */
+  response_id?: string | null;
+  /**
+   * Container Id
+   */
+  container_id?: string | null;
+  /**
+   * Openai File Id
+   */
+  openai_file_id?: string | null;
+  /**
+   * User Email
+   */
+  user_email?: string | null;
+  /**
+   * Metadata
+   */
+  metadata?: {
+    [key: string]: unknown;
+  };
+};
+
+/**
+ * FixtureAssetResult
+ */
+export type FixtureAssetResult = {
+  /**
+   * Asset Id
+   */
+  asset_id: string;
+  /**
+   * Storage Object Id
+   */
+  storage_object_id: string;
+};
+
+/**
+ * FixtureConversation
+ */
+export type FixtureConversation = {
+  /**
+   * Key
+   */
+  key: string;
+  /**
+   * Agent Entrypoint
+   */
+  agent_entrypoint?: string;
+  /**
+   * Status
+   */
+  status?: "active" | "archived";
+  /**
+   * User Email
+   */
+  user_email?: string | null;
+  /**
+   * Messages
+   */
+  messages?: Array<FixtureConversationMessage>;
+};
+
+/**
+ * FixtureConversationMessage
+ */
+export type FixtureConversationMessage = {
+  /**
+   * Role
+   */
+  role: "user" | "assistant" | "system";
+  /**
+   * Text
+   */
+  text: string;
+};
+
+/**
+ * FixtureConversationResult
+ */
+export type FixtureConversationResult = {
+  /**
+   * Conversation Id
+   */
+  conversation_id: string;
+  /**
+   * Status
+   */
+  status: string;
+};
+
+/**
+ * FixtureTenant
+ */
+export type FixtureTenant = {
+  /**
+   * Slug
+   */
+  slug: string;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Plan Code
+   */
+  plan_code?: string | null;
+  /**
+   * Billing Email
+   */
+  billing_email?: string | null;
+  /**
+   * Users
+   */
+  users?: Array<FixtureUser>;
+  /**
+   * Conversations
+   */
+  conversations?: Array<FixtureConversation>;
+  /**
+   * Usage
+   */
+  usage?: Array<FixtureUsageEntry>;
+  /**
+   * Usage Counters
+   */
+  usage_counters?: Array<FixtureUsageCounter>;
+  /**
+   * Assets
+   */
+  assets?: Array<FixtureAsset>;
+};
+
+/**
+ * FixtureTenantResult
+ */
+export type FixtureTenantResult = {
+  /**
+   * Tenant Id
+   */
+  tenant_id: string;
+  /**
+   * Plan Code
+   */
+  plan_code: string | null;
+  /**
+   * Users
+   */
+  users: {
+    [key: string]: FixtureUserResult;
+  };
+  /**
+   * Conversations
+   */
+  conversations: {
+    [key: string]: FixtureConversationResult;
+  };
+  /**
+   * Assets
+   */
+  assets?: {
+    [key: string]: FixtureAssetResult;
+  };
+};
+
+/**
+ * FixtureUsageCounter
+ */
+export type FixtureUsageCounter = {
+  /**
+   * Period Start
+   */
+  period_start: string;
+  /**
+   * Granularity
+   */
+  granularity?: "day" | "month";
+  /**
+   * Input Tokens
+   */
+  input_tokens?: number;
+  /**
+   * Output Tokens
+   */
+  output_tokens?: number;
+  /**
+   * Requests
+   */
+  requests?: number;
+  /**
+   * Storage Bytes
+   */
+  storage_bytes?: number;
+  /**
+   * User Email
+   */
+  user_email?: string | null;
+};
+
+/**
+ * FixtureUsageEntry
+ */
+export type FixtureUsageEntry = {
+  /**
+   * Feature Key
+   */
+  feature_key: string;
+  /**
+   * Quantity
+   */
+  quantity: number;
+  /**
+   * Unit
+   */
+  unit?: string;
+  /**
+   * Period Start
+   */
+  period_start: string;
+  /**
+   * Period End
+   */
+  period_end?: string | null;
+  /**
+   * Idempotency Key
+   */
+  idempotency_key?: string | null;
+};
+
+/**
+ * FixtureUser
+ */
+export type FixtureUser = {
+  /**
+   * Email
+   */
+  email: string;
+  /**
+   * Password
+   */
+  password: string;
+  /**
+   * Display Name
+   */
+  display_name?: string | null;
+  /**
+   * Role
+   */
+  role?: string;
+  /**
+   * Verify Email
+   */
+  verify_email?: boolean;
+};
+
+/**
+ * FixtureUserResult
+ */
+export type FixtureUserResult = {
+  /**
+   * User Id
+   */
+  user_id: string;
+  /**
+   * Role
+   */
+  role: string;
 };
 
 /**
@@ -3598,6 +3969,42 @@ export type PasswordResetRequest = {
 };
 
 /**
+ * PasswordResetTokenRequest
+ */
+export type PasswordResetTokenRequest = {
+  /**
+   * Email
+   */
+  email: string;
+  /**
+   * Ip Address
+   */
+  ip_address?: string | null;
+  /**
+   * User Agent
+   */
+  user_agent?: string | null;
+};
+
+/**
+ * PasswordResetTokenResponse
+ */
+export type PasswordResetTokenResponse = {
+  /**
+   * Token
+   */
+  token: string;
+  /**
+   * User Id
+   */
+  user_id: string;
+  /**
+   * Expires At
+   */
+  expires_at: string;
+};
+
+/**
  * PaymentMethodResponse
  */
 export type PaymentMethodResponse = {
@@ -3705,6 +4112,16 @@ export type PlatformStatusResponse = {
    * Uptime Metrics
    */
   uptime_metrics: Array<UptimeMetricSchema>;
+};
+
+/**
+ * PlaywrightFixtureSpec
+ */
+export type PlaywrightFixtureSpec = {
+  /**
+   * Tenants
+   */
+  tenants?: Array<FixtureTenant>;
 };
 
 /**
@@ -5503,6 +5920,271 @@ export type SuccessNoDataResponse = {
    * Always null for this response type.
    */
   data?: null;
+};
+
+/**
+ * TeamInviteAcceptExistingRequest
+ */
+export type TeamInviteAcceptExistingRequest = {
+  /**
+   * Token
+   */
+  token: string;
+};
+
+/**
+ * TeamInviteAcceptRequest
+ */
+export type TeamInviteAcceptRequest = {
+  /**
+   * Token
+   */
+  token: string;
+  /**
+   * Password
+   */
+  password: string;
+  /**
+   * Display Name
+   */
+  display_name?: string | null;
+};
+
+/**
+ * TeamInviteIssueRequest
+ */
+export type TeamInviteIssueRequest = {
+  /**
+   * Invited Email
+   */
+  invited_email: string;
+  /**
+   * Role
+   */
+  role: string;
+  /**
+   * Expires In Hours
+   */
+  expires_in_hours?: number | null;
+};
+
+/**
+ * TeamInviteIssueResponse
+ */
+export type TeamInviteIssueResponse = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Tenant Id
+   */
+  tenant_id: string;
+  /**
+   * Token Hint
+   */
+  token_hint: string;
+  /**
+   * Invited Email
+   */
+  invited_email: string;
+  /**
+   * Role
+   */
+  role: string;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Created By User Id
+   */
+  created_by_user_id?: string | null;
+  /**
+   * Accepted By User Id
+   */
+  accepted_by_user_id?: string | null;
+  /**
+   * Accepted At
+   */
+  accepted_at?: string | null;
+  /**
+   * Revoked At
+   */
+  revoked_at?: string | null;
+  /**
+   * Revoked Reason
+   */
+  revoked_reason?: string | null;
+  /**
+   * Expires At
+   */
+  expires_at?: string | null;
+  /**
+   * Created At
+   */
+  created_at: string;
+  /**
+   * Invite Token
+   *
+   * Plaintext invite token (only returned once).
+   */
+  invite_token: string;
+};
+
+/**
+ * TeamInviteListResponse
+ */
+export type TeamInviteListResponse = {
+  /**
+   * Invites
+   */
+  invites: Array<TeamInviteResponse>;
+  /**
+   * Total
+   */
+  total: number;
+};
+
+/**
+ * TeamInviteResponse
+ */
+export type TeamInviteResponse = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Tenant Id
+   */
+  tenant_id: string;
+  /**
+   * Token Hint
+   */
+  token_hint: string;
+  /**
+   * Invited Email
+   */
+  invited_email: string;
+  /**
+   * Role
+   */
+  role: string;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Created By User Id
+   */
+  created_by_user_id?: string | null;
+  /**
+   * Accepted By User Id
+   */
+  accepted_by_user_id?: string | null;
+  /**
+   * Accepted At
+   */
+  accepted_at?: string | null;
+  /**
+   * Revoked At
+   */
+  revoked_at?: string | null;
+  /**
+   * Revoked Reason
+   */
+  revoked_reason?: string | null;
+  /**
+   * Expires At
+   */
+  expires_at?: string | null;
+  /**
+   * Created At
+   */
+  created_at: string;
+};
+
+/**
+ * TeamInviteStatus
+ *
+ * Lifecycle states for tenant member invites.
+ */
+export type TeamInviteStatus = "active" | "accepted" | "revoked" | "expired";
+
+/**
+ * TeamMemberAddRequest
+ */
+export type TeamMemberAddRequest = {
+  /**
+   * Email
+   */
+  email: string;
+  /**
+   * Role
+   */
+  role: string;
+};
+
+/**
+ * TeamMemberListResponse
+ */
+export type TeamMemberListResponse = {
+  /**
+   * Members
+   */
+  members: Array<TeamMemberResponse>;
+  /**
+   * Total
+   */
+  total: number;
+};
+
+/**
+ * TeamMemberResponse
+ */
+export type TeamMemberResponse = {
+  /**
+   * User Id
+   */
+  user_id: string;
+  /**
+   * Tenant Id
+   */
+  tenant_id: string;
+  /**
+   * Email
+   */
+  email: string;
+  /**
+   * Display Name
+   */
+  display_name: string | null;
+  /**
+   * Role
+   */
+  role: string;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Email Verified
+   */
+  email_verified: boolean;
+  /**
+   * Joined At
+   */
+  joined_at: string;
+};
+
+/**
+ * TeamMemberRoleUpdateRequest
+ */
+export type TeamMemberRoleUpdateRequest = {
+  /**
+   * Role
+   */
+  role: string;
 };
 
 /**
@@ -17279,6 +17961,758 @@ export type ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostResponse
 export type ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostResponse =
   ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostResponses[keyof ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostResponses];
 
+export type ListMembersApiV1TenantsMembersGetData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path?: never;
+  query?: {
+    /**
+     * Limit
+     */
+    limit?: number;
+    /**
+     * Offset
+     */
+    offset?: number;
+  };
+  url: "/api/v1/tenants/members";
+};
+
+export type ListMembersApiV1TenantsMembersGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type ListMembersApiV1TenantsMembersGetError =
+  ListMembersApiV1TenantsMembersGetErrors[keyof ListMembersApiV1TenantsMembersGetErrors];
+
+export type ListMembersApiV1TenantsMembersGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: TeamMemberListResponse;
+};
+
+export type ListMembersApiV1TenantsMembersGetResponse =
+  ListMembersApiV1TenantsMembersGetResponses[keyof ListMembersApiV1TenantsMembersGetResponses];
+
+export type AddMemberApiV1TenantsMembersPostData = {
+  body: TeamMemberAddRequest;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path?: never;
+  query?: never;
+  url: "/api/v1/tenants/members";
+};
+
+export type AddMemberApiV1TenantsMembersPostErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type AddMemberApiV1TenantsMembersPostError =
+  AddMemberApiV1TenantsMembersPostErrors[keyof AddMemberApiV1TenantsMembersPostErrors];
+
+export type AddMemberApiV1TenantsMembersPostResponses = {
+  /**
+   * Successful Response
+   */
+  201: TeamMemberResponse;
+};
+
+export type AddMemberApiV1TenantsMembersPostResponse =
+  AddMemberApiV1TenantsMembersPostResponses[keyof AddMemberApiV1TenantsMembersPostResponses];
+
+export type UpdateMemberRoleApiV1TenantsMembersUserIdRolePatchData = {
+  body: TeamMemberRoleUpdateRequest;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path: {
+    /**
+     * User Id
+     */
+    user_id: string;
+  };
+  query?: never;
+  url: "/api/v1/tenants/members/{user_id}/role";
+};
+
+export type UpdateMemberRoleApiV1TenantsMembersUserIdRolePatchErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type UpdateMemberRoleApiV1TenantsMembersUserIdRolePatchError =
+  UpdateMemberRoleApiV1TenantsMembersUserIdRolePatchErrors[keyof UpdateMemberRoleApiV1TenantsMembersUserIdRolePatchErrors];
+
+export type UpdateMemberRoleApiV1TenantsMembersUserIdRolePatchResponses = {
+  /**
+   * Successful Response
+   */
+  200: TeamMemberResponse;
+};
+
+export type UpdateMemberRoleApiV1TenantsMembersUserIdRolePatchResponse =
+  UpdateMemberRoleApiV1TenantsMembersUserIdRolePatchResponses[keyof UpdateMemberRoleApiV1TenantsMembersUserIdRolePatchResponses];
+
+export type RemoveMemberApiV1TenantsMembersUserIdDeleteData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path: {
+    /**
+     * User Id
+     */
+    user_id: string;
+  };
+  query?: never;
+  url: "/api/v1/tenants/members/{user_id}";
+};
+
+export type RemoveMemberApiV1TenantsMembersUserIdDeleteErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type RemoveMemberApiV1TenantsMembersUserIdDeleteError =
+  RemoveMemberApiV1TenantsMembersUserIdDeleteErrors[keyof RemoveMemberApiV1TenantsMembersUserIdDeleteErrors];
+
+export type RemoveMemberApiV1TenantsMembersUserIdDeleteResponses = {
+  /**
+   * Successful Response
+   */
+  200: SuccessNoDataResponse;
+};
+
+export type RemoveMemberApiV1TenantsMembersUserIdDeleteResponse =
+  RemoveMemberApiV1TenantsMembersUserIdDeleteResponses[keyof RemoveMemberApiV1TenantsMembersUserIdDeleteResponses];
+
+export type ListInvitesApiV1TenantsInvitesGetData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path?: never;
+  query?: {
+    /**
+     * Status
+     */
+    status?: TeamInviteStatus | null;
+    /**
+     * Email
+     */
+    email?: string | null;
+    /**
+     * Limit
+     */
+    limit?: number;
+    /**
+     * Offset
+     */
+    offset?: number;
+  };
+  url: "/api/v1/tenants/invites";
+};
+
+export type ListInvitesApiV1TenantsInvitesGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type ListInvitesApiV1TenantsInvitesGetError =
+  ListInvitesApiV1TenantsInvitesGetErrors[keyof ListInvitesApiV1TenantsInvitesGetErrors];
+
+export type ListInvitesApiV1TenantsInvitesGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: TeamInviteListResponse;
+};
+
+export type ListInvitesApiV1TenantsInvitesGetResponse =
+  ListInvitesApiV1TenantsInvitesGetResponses[keyof ListInvitesApiV1TenantsInvitesGetResponses];
+
+export type IssueInviteApiV1TenantsInvitesPostData = {
+  body: TeamInviteIssueRequest;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path?: never;
+  query?: never;
+  url: "/api/v1/tenants/invites";
+};
+
+export type IssueInviteApiV1TenantsInvitesPostErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type IssueInviteApiV1TenantsInvitesPostError =
+  IssueInviteApiV1TenantsInvitesPostErrors[keyof IssueInviteApiV1TenantsInvitesPostErrors];
+
+export type IssueInviteApiV1TenantsInvitesPostResponses = {
+  /**
+   * Successful Response
+   */
+  201: TeamInviteIssueResponse;
+};
+
+export type IssueInviteApiV1TenantsInvitesPostResponse =
+  IssueInviteApiV1TenantsInvitesPostResponses[keyof IssueInviteApiV1TenantsInvitesPostResponses];
+
+export type RevokeInviteApiV1TenantsInvitesInviteIdRevokePostData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path: {
+    /**
+     * Invite Id
+     */
+    invite_id: string;
+  };
+  query?: never;
+  url: "/api/v1/tenants/invites/{invite_id}/revoke";
+};
+
+export type RevokeInviteApiV1TenantsInvitesInviteIdRevokePostErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type RevokeInviteApiV1TenantsInvitesInviteIdRevokePostError =
+  RevokeInviteApiV1TenantsInvitesInviteIdRevokePostErrors[keyof RevokeInviteApiV1TenantsInvitesInviteIdRevokePostErrors];
+
+export type RevokeInviteApiV1TenantsInvitesInviteIdRevokePostResponses = {
+  /**
+   * Successful Response
+   */
+  200: TeamInviteResponse;
+};
+
+export type RevokeInviteApiV1TenantsInvitesInviteIdRevokePostResponse =
+  RevokeInviteApiV1TenantsInvitesInviteIdRevokePostResponses[keyof RevokeInviteApiV1TenantsInvitesInviteIdRevokePostResponses];
+
+export type AcceptInviteApiV1TenantsInvitesAcceptPostData = {
+  body: TeamInviteAcceptRequest;
+  path?: never;
+  query?: never;
+  url: "/api/v1/tenants/invites/accept";
+};
+
+export type AcceptInviteApiV1TenantsInvitesAcceptPostErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type AcceptInviteApiV1TenantsInvitesAcceptPostError =
+  AcceptInviteApiV1TenantsInvitesAcceptPostErrors[keyof AcceptInviteApiV1TenantsInvitesAcceptPostErrors];
+
+export type AcceptInviteApiV1TenantsInvitesAcceptPostResponses = {
+  /**
+   * Successful Response
+   */
+  201: UserSessionResponse;
+};
+
+export type AcceptInviteApiV1TenantsInvitesAcceptPostResponse =
+  AcceptInviteApiV1TenantsInvitesAcceptPostResponses[keyof AcceptInviteApiV1TenantsInvitesAcceptPostResponses];
+
+export type AcceptInviteExistingUserApiV1TenantsInvitesAcceptCurrentPostData = {
+  body: TeamInviteAcceptExistingRequest;
+  path?: never;
+  query?: never;
+  url: "/api/v1/tenants/invites/accept/current";
+};
+
+export type AcceptInviteExistingUserApiV1TenantsInvitesAcceptCurrentPostErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type AcceptInviteExistingUserApiV1TenantsInvitesAcceptCurrentPostError =
+  AcceptInviteExistingUserApiV1TenantsInvitesAcceptCurrentPostErrors[keyof AcceptInviteExistingUserApiV1TenantsInvitesAcceptCurrentPostErrors];
+
+export type AcceptInviteExistingUserApiV1TenantsInvitesAcceptCurrentPostResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: TeamInviteResponse;
+  };
+
+export type AcceptInviteExistingUserApiV1TenantsInvitesAcceptCurrentPostResponse =
+  AcceptInviteExistingUserApiV1TenantsInvitesAcceptCurrentPostResponses[keyof AcceptInviteExistingUserApiV1TenantsInvitesAcceptCurrentPostResponses];
+
 export type GetTenantSettingsApiV1TenantsSettingsGetData = {
   body?: never;
   headers?: {
@@ -19746,3 +21180,222 @@ export type BillingEventStreamApiV1BillingStreamGetResponses = {
 
 export type BillingEventStreamApiV1BillingStreamGetResponse =
   BillingEventStreamApiV1BillingStreamGetResponses[keyof BillingEventStreamApiV1BillingStreamGetResponses];
+
+export type ApplyTestFixturesApiV1TestFixturesApplyPostData = {
+  body: PlaywrightFixtureSpec;
+  path?: never;
+  query?: never;
+  url: "/api/v1/test-fixtures/apply";
+};
+
+export type ApplyTestFixturesApiV1TestFixturesApplyPostErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type ApplyTestFixturesApiV1TestFixturesApplyPostError =
+  ApplyTestFixturesApiV1TestFixturesApplyPostErrors[keyof ApplyTestFixturesApiV1TestFixturesApplyPostErrors];
+
+export type ApplyTestFixturesApiV1TestFixturesApplyPostResponses = {
+  /**
+   * Successful Response
+   */
+  201: FixtureApplyResult;
+};
+
+export type ApplyTestFixturesApiV1TestFixturesApplyPostResponse =
+  ApplyTestFixturesApiV1TestFixturesApplyPostResponses[keyof ApplyTestFixturesApiV1TestFixturesApplyPostResponses];
+
+export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostData =
+  {
+    body: EmailVerificationTokenRequest;
+    path?: never;
+    query?: never;
+    url: "/api/v1/test-fixtures/email-verification-token";
+  };
+
+export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostError =
+  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors[keyof IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors];
+
+export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses =
+  {
+    /**
+     * Successful Response
+     */
+    201: EmailVerificationTokenResponse;
+  };
+
+export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponse =
+  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses[keyof IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses];
+
+export type IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostData =
+  {
+    body: PasswordResetTokenRequest;
+    path?: never;
+    query?: never;
+    url: "/api/v1/test-fixtures/password-reset-token";
+  };
+
+export type IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostError =
+  IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostErrors[keyof IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostErrors];
+
+export type IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostResponses =
+  {
+    /**
+     * Successful Response
+     */
+    201: PasswordResetTokenResponse;
+  };
+
+export type IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostResponse =
+  IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostResponses[keyof IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostResponses];
