@@ -62,6 +62,7 @@ help:
     echo "  just stripe-listen          # Capture Stripe webhook secret" && \
     echo "  just lint-stripe-fixtures   # Validate Stripe fixtures" && \
     echo "  just openapi-export         # Export OpenAPI artifacts (billing + fixtures)" && \
+    echo "  just pre-commit-install     # Install repo pre-commit hooks" && \
     echo "  just doctor                 # CLI doctor report" && \
     echo "  just seed-dev-user          # Seed a developer account" && \
     echo "  just issue-demo-token       # Issue service-account token" && \
@@ -159,6 +160,10 @@ openapi-export:
     cd {{repo_root}}/packages/starter_console
     starter-console api export-openapi --output apps/api-service/.artifacts/openapi.json --enable-billing
     starter-console api export-openapi --output apps/api-service/.artifacts/openapi-fixtures.json --enable-billing --enable-test-fixtures
+
+pre-commit-install:
+    @command -v pre-commit >/dev/null 2>&1 || python -m pip install pre-commit
+    pre-commit install
 
 # -------------------------
 # Aggregate quality gates
