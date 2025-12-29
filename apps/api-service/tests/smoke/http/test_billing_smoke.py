@@ -147,6 +147,25 @@ async def test_billing_subscription_lifecycle_and_events(
     usage_body = usage.json()
     assert usage_body.get("message") == "Usage recorded."
 
+    totals = await http_client.get(
+        f"/api/v1/billing/tenants/{smoke_state.tenant_id}/usage-totals",
+        headers=headers,
+    )
+    assert totals.status_code == 200, totals.text
+    totals_body = totals.json()
+    assert isinstance(totals_body, list)
+    matched = next(
+        (
+            item
+            for item in totals_body
+            if item.get("feature_key") == "smoke.requests"
+        ),
+        None,
+    )
+    assert matched is not None, "Expected usage totals for smoke.requests"
+    assert isinstance(matched.get("quantity"), int)
+    assert matched.get("quantity") >= 1
+
     events = await http_client.get(
         f"/api/v1/billing/tenants/{smoke_state.tenant_id}/events",
         headers=headers,

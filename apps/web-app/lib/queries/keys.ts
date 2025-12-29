@@ -30,6 +30,8 @@ export const queryKeys = {
       [...queryKeys.billing.all, 'history', tenantId ?? 'unknown', filters] as const,
     subscription: (tenantId: string | null) =>
       [...queryKeys.billing.all, 'subscription', tenantId ?? 'unknown'] as const,
+    usageTotals: (tenantId: string | null, filters?: Record<string, unknown>) =>
+      [...queryKeys.billing.all, 'usage-totals', tenantId ?? 'unknown', filters ?? {}] as const,
     paymentMethods: (tenantId: string | null) =>
       [...queryKeys.billing.all, 'payment-methods', tenantId ?? 'unknown'] as const,
     upcomingInvoiceBase: (tenantId: string | null) =>

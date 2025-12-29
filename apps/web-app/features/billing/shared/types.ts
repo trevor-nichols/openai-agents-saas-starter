@@ -35,6 +35,11 @@ export interface BillingOverviewData {
   usageRows: UsageRow[];
   allUsageRows: UsageRow[];
   usageCount: number;
+  usageWindowLabel: string;
+  usageTotalsState: {
+    isLoading: boolean;
+    error: Error | null;
+  };
   invoiceSummary: InvoiceSummary | null;
   events: BillingEvent[];
   streamStatus: BillingStreamStatus;

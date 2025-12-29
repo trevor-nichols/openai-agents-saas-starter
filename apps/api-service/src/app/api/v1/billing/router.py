@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncIterator
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
@@ -34,6 +35,7 @@ from app.api.v1.billing.schemas import (
     UpcomingInvoicePreviewResponse,
     UpdateSubscriptionRequest,
     UsageRecordRequest,
+    UsageTotalResponse,
 )
 from app.core.settings import get_settings
 from app.infrastructure.persistence.stripe.models import StripeEventStatus
@@ -389,6 +391,42 @@ async def record_usage(
     except BillingError as exc:  # pragma: no cover - translated below
         _handle_billing_error(exc)
     return SuccessNoDataResponse(message="Usage recorded.")
+
+
+@router.get(
+    "/tenants/{tenant_id}/usage-totals",
+    response_model=list[UsageTotalResponse],
+)
+async def list_usage_totals(
+    tenant_id: str,
+    feature_keys: list[str] | None = Query(
+        default=None,
+        description="Optional list of feature keys to include.",
+    ),
+    period_start: datetime | None = Query(
+        default=None, description="Filter usage with windows ending after this time (UTC)."
+    ),
+    period_end: datetime | None = Query(
+        default=None, description="Filter usage with windows starting before this time (UTC)."
+    ),
+    context: TenantContext = Depends(
+        require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.VIEWER)
+    ),
+) -> list[UsageTotalResponse]:
+    """Return usage totals for metered features within an optional period window."""
+
+    _assert_same_tenant(context, tenant_id)
+
+    try:
+        totals = await billing_service.get_usage_totals(
+            tenant_id,
+            feature_keys=feature_keys,
+            period_start=period_start,
+            period_end=period_end,
+        )
+    except BillingError as exc:  # pragma: no cover - translated below
+        _handle_billing_error(exc)
+    return [UsageTotalResponse.from_domain(total) for total in totals]
 
 
 @router.get(

@@ -6,7 +6,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, EmailStr, Field
 
-from app.domain.billing import BillingPlan, PlanFeature, TenantSubscription
+from app.domain.billing import BillingPlan, PlanFeature, TenantSubscription, UsageTotal
 from app.services.billing.billing_events import (
     BillingEventInvoice,
     BillingEventPayload,
@@ -172,6 +172,24 @@ class UsageRecordRequest(BaseModel):
     )
     period_start: datetime | None = Field(default=None, description="Billing period start (UTC).")
     period_end: datetime | None = Field(default=None, description="Billing period end (UTC).")
+
+
+class UsageTotalResponse(BaseModel):
+    feature_key: str
+    unit: str
+    quantity: int
+    window_start: datetime
+    window_end: datetime
+
+    @classmethod
+    def from_domain(cls, total: UsageTotal) -> UsageTotalResponse:
+        return cls(
+            feature_key=total.feature_key,
+            unit=total.unit,
+            quantity=total.quantity,
+            window_start=total.window_start,
+            window_end=total.window_end,
+        )
 
 
 class CancelSubscriptionRequest(BaseModel):
