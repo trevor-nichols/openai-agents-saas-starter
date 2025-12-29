@@ -157,6 +157,9 @@ import type {
   GetGuardrailApiV1GuardrailsGuardrailKeyGetData,
   GetGuardrailApiV1GuardrailsGuardrailKeyGetErrors,
   GetGuardrailApiV1GuardrailsGuardrailKeyGetResponses,
+  GetInvoiceApiV1BillingTenantsTenantIdInvoicesInvoiceIdGetData,
+  GetInvoiceApiV1BillingTenantsTenantIdInvoicesInvoiceIdGetErrors,
+  GetInvoiceApiV1BillingTenantsTenantIdInvoicesInvoiceIdGetResponses,
   GetPlatformStatusApiV1StatusGetData,
   GetPlatformStatusApiV1StatusGetErrors,
   GetPlatformStatusApiV1StatusGetResponses,
@@ -244,6 +247,9 @@ import type {
   ListInvitesApiV1AuthInvitesGetData,
   ListInvitesApiV1AuthInvitesGetErrors,
   ListInvitesApiV1AuthInvitesGetResponses,
+  ListInvoicesApiV1BillingTenantsTenantIdInvoicesGetData,
+  ListInvoicesApiV1BillingTenantsTenantIdInvoicesGetErrors,
+  ListInvoicesApiV1BillingTenantsTenantIdInvoicesGetResponses,
   ListMfaMethodsApiV1AuthMfaGetData,
   ListMfaMethodsApiV1AuthMfaGetErrors,
   ListMfaMethodsApiV1AuthMfaGetResponses,
@@ -3840,6 +3846,64 @@ export const startSubscriptionApiV1BillingTenantsTenantIdSubscriptionPost = <
       "Content-Type": "application/json",
       ...options.headers,
     },
+  });
+};
+
+/**
+ * List Invoices
+ *
+ * List persisted invoices for the tenant subscription.
+ */
+export const listInvoicesApiV1BillingTenantsTenantIdInvoicesGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    ListInvoicesApiV1BillingTenantsTenantIdInvoicesGetData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).get<
+    ListInvoicesApiV1BillingTenantsTenantIdInvoicesGetResponses,
+    ListInvoicesApiV1BillingTenantsTenantIdInvoicesGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/billing/tenants/{tenant_id}/invoices",
+    ...options,
+  });
+};
+
+/**
+ * Get Invoice
+ *
+ * Fetch a single invoice by processor invoice identifier.
+ */
+export const getInvoiceApiV1BillingTenantsTenantIdInvoicesInvoiceIdGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    GetInvoiceApiV1BillingTenantsTenantIdInvoicesInvoiceIdGetData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).get<
+    GetInvoiceApiV1BillingTenantsTenantIdInvoicesInvoiceIdGetResponses,
+    GetInvoiceApiV1BillingTenantsTenantIdInvoicesInvoiceIdGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/billing/tenants/{tenant_id}/invoices/{invoice_id}",
+    ...options,
   });
 };
 

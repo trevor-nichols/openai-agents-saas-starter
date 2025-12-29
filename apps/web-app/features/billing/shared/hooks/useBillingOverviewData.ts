@@ -4,6 +4,7 @@ import type { BillingUsageTotal } from '@/types/billing';
 import { readClientSessionMeta } from '@/lib/auth/clientMeta';
 import { useBillingStream } from '@/lib/queries/billing';
 import { useBillingHistory } from '@/lib/queries/billingHistory';
+import { useBillingInvoices } from '@/lib/queries/billingInvoices';
 import { useBillingUsageTotals } from '@/lib/queries/billingUsageTotals';
 import { useTenantSubscription } from '@/lib/queries/billingSubscriptions';
 import { mergeBillingEvents } from '../utils/mergeEvents';
@@ -35,6 +36,11 @@ export function useBillingOverviewData(): BillingOverviewData {
     hasNextPage,
     loadMore,
   } = useBillingHistory({ pageSize: 25 });
+  const {
+    invoices,
+    isLoading: isInvoicesLoading,
+    error: invoicesError,
+  } = useBillingInvoices({ pageSize: 5 });
 
   const mergedEvents = useMemo(() => mergeBillingEvents(historyEvents, streamEvents), [historyEvents, streamEvents]);
 
@@ -111,6 +117,11 @@ export function useBillingOverviewData(): BillingOverviewData {
       error: totalsError instanceof Error ? totalsError : null,
     },
     invoiceSummary,
+    invoices,
+    invoicesState: {
+      isLoading: isInvoicesLoading,
+      error: invoicesError instanceof Error ? invoicesError : null,
+    },
     events: mergedEvents,
     streamStatus: status,
     historyState: {

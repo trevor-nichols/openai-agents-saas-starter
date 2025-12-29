@@ -9,6 +9,8 @@ import type {
   PlanChangeResponse,
   PortalSessionResponse,
   StripeEventStatus,
+  SubscriptionInvoiceListResponse,
+  SubscriptionInvoiceResponse,
   UpcomingInvoiceLineResponse,
   UpcomingInvoicePreviewResponse,
   UsageTotalResponse,
@@ -39,6 +41,14 @@ export type UpcomingInvoiceLine = UpcomingInvoiceLineResponse;
 export type PlanChange = PlanChangeResponse;
 
 export type BillingUsageTotal = UsageTotalResponse;
+
+export type BillingInvoice = SubscriptionInvoiceResponse;
+
+export type BillingInvoiceListResponse = SubscriptionInvoiceListResponse & {
+  items: BillingInvoice[];
+  next_offset: number | null;
+  message?: string;
+};
 
 export interface BillingPlanListResponse {
   success: boolean;

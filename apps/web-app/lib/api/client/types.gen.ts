@@ -5845,6 +5845,58 @@ export type StreamingWorkflowEvent =
 export type StripeEventStatus = "received" | "processed" | "failed";
 
 /**
+ * SubscriptionInvoiceListResponse
+ */
+export type SubscriptionInvoiceListResponse = {
+  /**
+   * Items
+   */
+  items?: Array<SubscriptionInvoiceResponse>;
+  /**
+   * Next Offset
+   */
+  next_offset?: number | null;
+};
+
+/**
+ * SubscriptionInvoiceResponse
+ */
+export type SubscriptionInvoiceResponse = {
+  /**
+   * Invoice Id
+   */
+  invoice_id?: string | null;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Amount Cents
+   */
+  amount_cents: number;
+  /**
+   * Currency
+   */
+  currency: string;
+  /**
+   * Period Start
+   */
+  period_start: string;
+  /**
+   * Period End
+   */
+  period_end: string;
+  /**
+   * Hosted Invoice Url
+   */
+  hosted_invoice_url?: string | null;
+  /**
+   * Created At
+   */
+  created_at?: string | null;
+};
+
+/**
  * SuccessNoDataResponse
  *
  * Success response where `data` is always null.
@@ -18813,6 +18865,192 @@ export type StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostResponse
 
 export type StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostResponse =
   StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostResponses[keyof StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostResponses];
+
+export type ListInvoicesApiV1BillingTenantsTenantIdInvoicesGetData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path: {
+    /**
+     * Tenant Id
+     */
+    tenant_id: string;
+  };
+  query?: {
+    /**
+     * Limit
+     */
+    limit?: number;
+    /**
+     * Offset
+     */
+    offset?: number;
+  };
+  url: "/api/v1/billing/tenants/{tenant_id}/invoices";
+};
+
+export type ListInvoicesApiV1BillingTenantsTenantIdInvoicesGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type ListInvoicesApiV1BillingTenantsTenantIdInvoicesGetError =
+  ListInvoicesApiV1BillingTenantsTenantIdInvoicesGetErrors[keyof ListInvoicesApiV1BillingTenantsTenantIdInvoicesGetErrors];
+
+export type ListInvoicesApiV1BillingTenantsTenantIdInvoicesGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: SubscriptionInvoiceListResponse;
+};
+
+export type ListInvoicesApiV1BillingTenantsTenantIdInvoicesGetResponse =
+  ListInvoicesApiV1BillingTenantsTenantIdInvoicesGetResponses[keyof ListInvoicesApiV1BillingTenantsTenantIdInvoicesGetResponses];
+
+export type GetInvoiceApiV1BillingTenantsTenantIdInvoicesInvoiceIdGetData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path: {
+    /**
+     * Tenant Id
+     */
+    tenant_id: string;
+    /**
+     * Invoice Id
+     */
+    invoice_id: string;
+  };
+  query?: never;
+  url: "/api/v1/billing/tenants/{tenant_id}/invoices/{invoice_id}";
+};
+
+export type GetInvoiceApiV1BillingTenantsTenantIdInvoicesInvoiceIdGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type GetInvoiceApiV1BillingTenantsTenantIdInvoicesInvoiceIdGetError =
+  GetInvoiceApiV1BillingTenantsTenantIdInvoicesInvoiceIdGetErrors[keyof GetInvoiceApiV1BillingTenantsTenantIdInvoicesInvoiceIdGetErrors];
+
+export type GetInvoiceApiV1BillingTenantsTenantIdInvoicesInvoiceIdGetResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: SubscriptionInvoiceResponse;
+  };
+
+export type GetInvoiceApiV1BillingTenantsTenantIdInvoicesInvoiceIdGetResponse =
+  GetInvoiceApiV1BillingTenantsTenantIdInvoicesInvoiceIdGetResponses[keyof GetInvoiceApiV1BillingTenantsTenantIdInvoicesInvoiceIdGetResponses];
 
 export type ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostData =
   {

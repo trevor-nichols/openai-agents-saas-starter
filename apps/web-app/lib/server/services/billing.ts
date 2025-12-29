@@ -7,8 +7,10 @@ import {
   createSetupIntentApiV1BillingTenantsTenantIdPaymentMethodsSetupIntentPost,
   detachPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDelete,
   getTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGet,
+  getInvoiceApiV1BillingTenantsTenantIdInvoicesInvoiceIdGet,
   listBillingEventsApiV1BillingTenantsTenantIdEventsGet,
   listBillingPlansApiV1BillingPlansGet,
+  listInvoicesApiV1BillingTenantsTenantIdInvoicesGet,
   listPaymentMethodsApiV1BillingTenantsTenantIdPaymentMethodsGet,
   listUsageTotalsApiV1BillingTenantsTenantIdUsageTotalsGet,
   previewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePost,
@@ -31,6 +33,8 @@ import type {
   PaymentMethodResponse,
   SetupIntentRequest,
   SetupIntentResponse,
+  SubscriptionInvoiceListResponse,
+  SubscriptionInvoiceResponse,
   UpcomingInvoicePreviewRequest,
   UpcomingInvoicePreviewResponse,
   PlanChangeResponse,
@@ -67,6 +71,12 @@ export interface ListTenantUsageTotalsOptions {
   featureKeys?: string[] | null;
   periodStart?: string | null;
   periodEnd?: string | null;
+  tenantRole?: string | null;
+}
+
+export interface ListTenantInvoicesOptions {
+  limit?: number;
+  offset?: number;
   tenantRole?: string | null;
 }
 
@@ -171,6 +181,79 @@ export async function listTenantUsageTotals(
   });
 
   return response.data ?? [];
+}
+
+export async function listTenantInvoices(
+  tenantId: string,
+  options?: ListTenantInvoicesOptions,
+): Promise<SubscriptionInvoiceListResponse> {
+  if (!tenantId) {
+    throw new Error('Tenant id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+  const response = await listInvoicesApiV1BillingTenantsTenantIdInvoicesGet({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: true,
+    headers: {
+      ...(options?.tenantRole ? { 'X-Tenant-Role': options.tenantRole } : {}),
+    },
+    path: {
+      tenant_id: tenantId,
+    },
+    query: {
+      limit: options?.limit,
+      offset: options?.offset,
+    },
+  });
+
+  const payload = response.data;
+  if (!payload) {
+    throw new Error('Failed to load invoices.');
+  }
+
+  return {
+    ...payload,
+    items: payload.items ?? [],
+    next_offset: payload.next_offset ?? null,
+  };
+}
+
+export async function getTenantInvoice(
+  tenantId: string,
+  invoiceId: string,
+  options?: { tenantRole?: string | null },
+): Promise<SubscriptionInvoiceResponse> {
+  if (!tenantId) {
+    throw new Error('Tenant id is required.');
+  }
+  if (!invoiceId) {
+    throw new Error('Invoice id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+  const response = await getInvoiceApiV1BillingTenantsTenantIdInvoicesInvoiceIdGet({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: true,
+    headers: {
+      ...(options?.tenantRole ? { 'X-Tenant-Role': options.tenantRole } : {}),
+    },
+    path: {
+      tenant_id: tenantId,
+      invoice_id: invoiceId,
+    },
+  });
+
+  const payload = response.data;
+  if (!payload) {
+    throw new Error('Invoice not found.');
+  }
+
+  return payload;
 }
 
 /**

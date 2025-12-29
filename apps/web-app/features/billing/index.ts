@@ -5,3 +5,4 @@ export { BillingOverview } from './overview/BillingOverview';
 export { PlanManagement } from './plans/PlanManagement';
 export { UsageLedger } from './usage/UsageLedger';
 export { EventsLedger } from './events/EventsLedger';
+export { InvoicesLedger } from './invoices/InvoicesLedger';

@@ -348,6 +348,56 @@ class PostgresBillingRepository(BillingRepository):
 
             await session.commit()
 
+    async def get_invoice(
+        self,
+        tenant_id: str,
+        *,
+        invoice_id: str,
+    ) -> SubscriptionInvoiceRecord | None:
+        async with self._session_factory() as session:
+            tenant_uuid = self._parse_tenant_uuid(tenant_id)
+            result = await session.execute(
+                select(ORMSubscriptionInvoice)
+                .join(
+                    ORMTenantSubscription,
+                    ORMSubscriptionInvoice.subscription_id == ORMTenantSubscription.id,
+                )
+                .where(ORMTenantSubscription.tenant_id == tenant_uuid)
+                .where(ORMSubscriptionInvoice.external_invoice_id == invoice_id)
+            )
+            row = result.scalar_one_or_none()
+            if row is None:
+                return None
+            return self._to_domain_invoice(row, tenant_id=str(tenant_uuid))
+
+    async def list_invoices(
+        self,
+        tenant_id: str,
+        *,
+        limit: int,
+        offset: int,
+    ) -> list[SubscriptionInvoiceRecord]:
+        async with self._session_factory() as session:
+            tenant_uuid = self._parse_tenant_uuid(tenant_id)
+            result = await session.execute(
+                select(ORMSubscriptionInvoice)
+                .join(
+                    ORMTenantSubscription,
+                    ORMSubscriptionInvoice.subscription_id == ORMTenantSubscription.id,
+                )
+                .where(ORMTenantSubscription.tenant_id == tenant_uuid)
+                .order_by(
+                    ORMSubscriptionInvoice.period_start.desc(),
+                    ORMSubscriptionInvoice.created_at.desc(),
+                )
+                .limit(limit)
+                .offset(offset)
+            )
+            rows = result.scalars().all()
+            return [
+                self._to_domain_invoice(row, tenant_id=str(tenant_uuid)) for row in rows
+            ]
+
     async def _get_subscription_row(
         self,
         session: AsyncSession,
@@ -465,6 +515,22 @@ class PostgresBillingRepository(BillingRepository):
             processor=customer.processor,
             processor_customer_id=customer.processor_customer_id,
             billing_email=customer.billing_email,
+        )
+
+    @staticmethod
+    def _to_domain_invoice(
+        invoice: ORMSubscriptionInvoice, *, tenant_id: str
+    ) -> SubscriptionInvoiceRecord:
+        return SubscriptionInvoiceRecord(
+            tenant_id=tenant_id,
+            period_start=invoice.period_start,
+            period_end=invoice.period_end,
+            amount_cents=invoice.amount_cents,
+            currency=invoice.currency,
+            status=invoice.status,
+            processor_invoice_id=invoice.external_invoice_id,
+            hosted_invoice_url=invoice.hosted_invoice_url,
+            created_at=invoice.created_at,
         )
 
     @staticmethod

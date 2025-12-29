@@ -1,5 +1,5 @@
 import type { PlanChangeTiming } from '@/lib/types/billing';
-import type { BillingEvent, BillingStreamStatus } from '@/types/billing';
+import type { BillingEvent, BillingInvoice, BillingStreamStatus } from '@/types/billing';
 
 export type StatusTone = 'positive' | 'warning' | 'default';
 
@@ -41,6 +41,11 @@ export interface BillingOverviewData {
     error: Error | null;
   };
   invoiceSummary: InvoiceSummary | null;
+  invoices: BillingInvoice[];
+  invoicesState: {
+    isLoading: boolean;
+    error: Error | null;
+  };
   events: BillingEvent[];
   streamStatus: BillingStreamStatus;
   historyState: {

@@ -6,6 +6,7 @@ Tenant subscription orchestration, usage metering, Stripe connectivity, and the 
 - `billing_service.py` — slim facade that composes the billing sub-services and exposes the public API surface.
 - `customers.py` — customer resolution, billing portal sessions, setup intents, and payment method operations.
 - `subscriptions.py` — plan catalog reads plus subscription lifecycle (start/update/cancel/plan changes).
+- `invoices.py` — read-only access to persisted subscription invoices.
 - `usage.py` — metered usage recording + totals queries.
 - `processor_sync.py` — ingests processor (Stripe) snapshots for subscriptions + invoices.
 - `context.py` / `errors.py` / `models.py` / `policies.py` / `queries.py` / `utils.py` — shared dependency wiring, domain errors, DTOs, policy helpers, repository guards, and time helpers.
@@ -50,6 +51,8 @@ Tenant subscription orchestration, usage metering, Stripe connectivity, and the 
 ## API surface (FastAPI `api/v1/billing/router.py`)
 - `GET /billing/plans` — list available plans.
 - `GET /billing/tenants/{tenant_id}/subscription` — fetch current subscription.
+- `GET /billing/tenants/{tenant_id}/invoices` — list persisted invoices (viewer allowed).
+- `GET /billing/tenants/{tenant_id}/invoices/{invoice_id}` — fetch an invoice by processor ID.
 - `POST /billing/tenants/{tenant_id}/subscription` — start a subscription (owner/admin only).
 - `PATCH /billing/tenants/{tenant_id}/subscription` — update auto-renew, seats, billing email.
 - `POST /billing/tenants/{tenant_id}/subscription/plan` — change plan with auto timing (upgrades immediate, downgrades scheduled) and returns pending plan details when applicable.
