@@ -128,6 +128,7 @@ You are a professional engineer and developer in charge of the OpenAI Agent SaaS
   - **Backend**: Run `hatch run lint` and `hatch run typecheck` (Pyright + Mypy) after all edits in backend; CI blocks merges on `hatch run typecheck`, so keep it green locally.
   - **Frontend**: Run `pnpm lint` and `pnpm type-check` after all edits in frontend to ensure there are no errors
   - **Console**: Run `cd packages/starter_console && hatch run lint` and `cd packages/starter_console && hatch run typecheck` after all console edits to keep the package green.
+- When adding or changing API behavior, update both unit tests and the HTTP smoke suite in `apps/api-service/tests/smoke/http` (and keep `COVERAGE_MATRIX.md` aligned).
 - Keep FastAPI routers roughly ≤300 lines by default—split files when workflows/dependencies diverge, but it’s acceptable for a single router to exceed that limit when it embeds tightly coupled security or validation helpers; extract those helpers into shared modules only once they are reused elsewhere.
 - Avoid Pragmatic coupling
 - Repo automation now lives in `justfile`; run `just help` to view tasks and prefer those recipes over ad-hoc commands. Use the Just recipes for infra + DB tasks (e.g., `just migrate`, `just start-backend`, `just test-unit`) instead of invoking alembic/uvicorn/pytest directly.
