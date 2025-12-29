@@ -11,6 +11,7 @@ import type {
   StripeEventStatus,
   UpcomingInvoiceLineResponse,
   UpcomingInvoicePreviewResponse,
+  UsageTotalResponse,
 } from '@/lib/api/client/types.gen';
 
 export type BillingEventProcessingStatus = StripeEventStatus;
@@ -36,6 +37,8 @@ export type UpcomingInvoicePreview = UpcomingInvoicePreviewResponse;
 export type UpcomingInvoiceLine = UpcomingInvoiceLineResponse;
 
 export type PlanChange = PlanChangeResponse;
+
+export type BillingUsageTotal = UsageTotalResponse;
 
 export interface BillingPlanListResponse {
   success: boolean;

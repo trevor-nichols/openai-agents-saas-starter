@@ -15,7 +15,7 @@ from tests.utils.contract_env import TEST_TENANT_ID
 
 from app.api.dependencies.auth import require_current_user  # noqa: E402
 from app.api.v1.billing import router as billing_router  # noqa: E402
-from app.domain.billing import BillingPlan, TenantSubscription  # noqa: E402
+from app.domain.billing import BillingPlan, TenantSubscription, UsageTotal  # noqa: E402
 from app.services.billing.models import (  # noqa: E402
     PlanChangeResult,
     PlanChangeTiming,
@@ -318,3 +318,54 @@ def test_change_subscription_plan_returns_response(
     payload = response.json()
     assert payload["target_plan_code"] == "pro"
     assert payload["subscription"]["plan_code"] == "pro"
+
+
+def test_list_usage_totals_returns_payload(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    period_start = datetime(2025, 1, 1, tzinfo=UTC)
+    period_end = datetime(2025, 2, 1, tzinfo=UTC)
+    totals = [
+        UsageTotal(
+            feature_key="tokens",
+            unit="tokens",
+            quantity=1200,
+            window_start=period_start,
+            window_end=period_end,
+        ),
+        UsageTotal(
+            feature_key="requests",
+            unit="requests",
+            quantity=42,
+            window_start=period_start,
+            window_end=period_end,
+        ),
+    ]
+    get_totals = AsyncMock(return_value=totals)
+    monkeypatch.setattr(billing_router.billing_service, "get_usage_totals", get_totals)
+
+    response = client.get(
+        f"/api/v1/billing/tenants/{TEST_TENANT_ID}/usage-totals",
+        params=[
+            ("feature_keys", "tokens"),
+            ("feature_keys", "requests"),
+            ("period_start", period_start.isoformat()),
+            ("period_end", period_end.isoformat()),
+        ],
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload) == 2
+    assert payload[0]["feature_key"] == "tokens"
+    assert payload[0]["quantity"] == 1200
+    window_start = payload[0]["window_start"].replace("Z", "+00:00")
+    assert datetime.fromisoformat(window_start) == period_start
+    assert payload[1]["feature_key"] == "requests"
+
+    get_totals.assert_awaited_once_with(
+        TEST_TENANT_ID,
+        feature_keys=["tokens", "requests"],
+        period_start=period_start,
+        period_end=period_end,
+    )

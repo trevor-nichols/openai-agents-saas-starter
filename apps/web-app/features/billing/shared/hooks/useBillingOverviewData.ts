@@ -1,8 +1,11 @@
 import { useMemo } from 'react';
 
-import type { BillingEventUsage } from '@/types/billing';
+import type { BillingUsageTotal } from '@/types/billing';
+import { readClientSessionMeta } from '@/lib/auth/clientMeta';
 import { useBillingStream } from '@/lib/queries/billing';
 import { useBillingHistory } from '@/lib/queries/billingHistory';
+import { useBillingUsageTotals } from '@/lib/queries/billingUsageTotals';
+import { useTenantSubscription } from '@/lib/queries/billingSubscriptions';
 import { mergeBillingEvents } from '../utils/mergeEvents';
 
 import type { BillingOverviewData, PlanSnapshot, UsageRow } from '../types';
@@ -10,17 +13,20 @@ import { formatCurrency, formatDate, formatPeriod, formatStatusLabel, resolveSta
 
 const DEFAULT_CURRENCY = 'USD';
 
-function mapUsageRow(usage: BillingEventUsage, currency: string, index: number): UsageRow {
+function mapUsageTotalRow(total: BillingUsageTotal, index: number): UsageRow {
+  const unit = total.unit ? ` ${total.unit}` : '';
   return {
-    key: `${usage.feature_key ?? 'feature'}-${index}`,
-    feature: usage.feature_key ?? 'Unknown feature',
-    quantity: usage.quantity != null ? `${usage.quantity}` : '—',
-    amount: formatCurrency(usage.amount_cents, currency),
-    period: formatPeriod(usage.period_start, usage.period_end),
+    key: `${total.feature_key}-${index}`,
+    feature: total.feature_key || 'Unknown feature',
+    quantity: `${total.quantity.toLocaleString()}${unit}`.trim(),
+    amount: '—',
+    period: formatPeriod(total.window_start, total.window_end),
   };
 }
 
 export function useBillingOverviewData(): BillingOverviewData {
+  const meta = readClientSessionMeta();
+  const tenantId = meta?.tenantId ?? null;
   const { events: streamEvents, status } = useBillingStream();
   const {
     events: historyEvents,
@@ -34,6 +40,14 @@ export function useBillingOverviewData(): BillingOverviewData {
 
   const subscriptionEvent = useMemo(() => mergedEvents.find((event) => event.subscription), [mergedEvents]);
   const invoiceEvent = useMemo(() => mergedEvents.find((event) => event.invoice), [mergedEvents]);
+  const { subscription } = useTenantSubscription({ tenantId, tenantRole: null });
+  const periodStart = subscription?.current_period_start ?? subscriptionEvent?.subscription?.current_period_start ?? null;
+  const periodEnd = subscription?.current_period_end ?? subscriptionEvent?.subscription?.current_period_end ?? null;
+
+  const { totals, isLoading: isTotalsLoading, error: totalsError } = useBillingUsageTotals({
+    periodStart,
+    periodEnd,
+  });
 
   const planSnapshot = useMemo<PlanSnapshot>(() => {
     const subscription = subscriptionEvent?.subscription;
@@ -56,11 +70,21 @@ export function useBillingOverviewData(): BillingOverviewData {
   }, [subscriptionEvent]);
 
   const usageRows = useMemo(() => {
-    const currency = invoiceEvent?.invoice?.currency ?? DEFAULT_CURRENCY;
-    return mergedEvents
-      .flatMap((event) => event.usage ?? [])
-      .map((usage, index) => mapUsageRow(usage, currency, index));
-  }, [mergedEvents, invoiceEvent]);
+    return totals
+      .slice()
+      .sort((left, right) => right.quantity - left.quantity)
+      .map((total, index) => mapUsageTotalRow(total, index));
+  }, [totals]);
+
+  const usageWindowLabel = useMemo(() => {
+    if (periodStart || periodEnd) {
+      return formatPeriod(periodStart, periodEnd);
+    }
+    if (totals.length > 0) {
+      return formatPeriod(totals[0]?.window_start ?? null, totals[0]?.window_end ?? null);
+    }
+    return 'Current billing period';
+  }, [periodStart, periodEnd, totals]);
 
   const invoiceSummary = useMemo(() => {
     const invoice = invoiceEvent?.invoice;
@@ -81,6 +105,11 @@ export function useBillingOverviewData(): BillingOverviewData {
     usageRows: usageRows.slice(0, 5),
     allUsageRows: usageRows,
     usageCount: usageRows.length,
+    usageWindowLabel,
+    usageTotalsState: {
+      isLoading: isTotalsLoading,
+      error: totalsError instanceof Error ? totalsError : null,
+    },
     invoiceSummary,
     events: mergedEvents,
     streamStatus: status,

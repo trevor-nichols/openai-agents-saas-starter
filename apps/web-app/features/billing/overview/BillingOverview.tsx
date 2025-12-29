@@ -12,7 +12,15 @@ import { UsageTable } from '../shared/components/UsageTable';
 import { useBillingOverviewData } from '../shared/hooks/useBillingOverviewData';
 
 export function BillingOverview() {
-  const { planSnapshot, usageRows, invoiceSummary, events, streamStatus } = useBillingOverviewData();
+  const {
+    planSnapshot,
+    usageRows,
+    usageWindowLabel,
+    usageTotalsState,
+    invoiceSummary,
+    events,
+    streamStatus,
+  } = useBillingOverviewData();
 
   return (
     <section className="space-y-8 max-w-7xl mx-auto">
@@ -41,12 +49,18 @@ export function BillingOverview() {
             <UsageTable
               title={BILLING_COPY.overview.usageTableTitle}
               rows={usageRows}
+              windowLabel={usageWindowLabel}
               emptyTitle={BILLING_COPY.overview.usageTableEmptyTitle}
               emptyDescription={BILLING_COPY.overview.usageTableEmptyDescription}
               ctaHref="/billing/usage"
               ctaLabel={BILLING_COPY.overview.usageCtaLabel}
-              caption="Mirror this table with your own billing pipeline."
-              showSkeleton={streamStatus === 'connecting'}
+              caption={BILLING_COPY.overview.usageTableCaption}
+              showSkeleton={usageTotalsState.isLoading}
+              errorMessage={usageTotalsState.error?.message}
+              quantityLabel="Total"
+              periodLabel="Window"
+              showAmount={false}
+              countLabel="features"
             />
           </TabsContent>
           <TabsContent value="events" className="space-y-4 outline-none">

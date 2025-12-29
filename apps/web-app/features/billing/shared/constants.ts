@@ -3,9 +3,10 @@ export const BILLING_COPY = {
     eyebrow: 'Billing',
     title: 'Subscription hub',
     description: 'Monitor plans, invoices, usage, and live events in one glass surface.',
-    usageTableTitle: 'Recent usage entries',
-    usageTableEmptyTitle: 'No usage recorded',
-    usageTableEmptyDescription: 'Metered features will populate this ledger once they emit events.',
+    usageTableTitle: 'Current period usage totals',
+    usageTableEmptyTitle: 'No usage totals yet',
+    usageTableEmptyDescription: 'Totals appear once metered features report usage.',
+    usageTableCaption: 'Totals reflect the active billing window and update after each usage report.',
     eventsTitle: 'Live billing events',
     eventsEmptyTitle: 'Awaiting activity',
     eventsEmptyDescription: 'Stripe events, invoices, and usage will show up here.',
@@ -58,7 +59,7 @@ export const BILLING_COPY = {
   usagePage: {
     eyebrow: 'Billing',
     title: 'Usage ledger',
-    description: 'Review the full metered usage history streaming from the billing pipeline.',
+    description: 'Review metered usage totals for your current billing period.',
   },
   eventsPage: {
     eyebrow: 'Billing',

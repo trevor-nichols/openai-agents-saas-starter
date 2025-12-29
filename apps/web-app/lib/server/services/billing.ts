@@ -10,6 +10,7 @@ import {
   listBillingEventsApiV1BillingTenantsTenantIdEventsGet,
   listBillingPlansApiV1BillingPlansGet,
   listPaymentMethodsApiV1BillingTenantsTenantIdPaymentMethodsGet,
+  listUsageTotalsApiV1BillingTenantsTenantIdUsageTotalsGet,
   previewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePost,
   recordUsageApiV1BillingTenantsTenantIdUsagePost,
   setDefaultPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDefaultPost,
@@ -34,6 +35,7 @@ import type {
   UpcomingInvoicePreviewResponse,
   PlanChangeResponse,
   SuccessNoDataResponse,
+  UsageTotalResponse,
 } from '@/lib/api/client/types.gen';
 import type { BillingEventHistoryResponse } from '@/types/billing';
 
@@ -58,6 +60,13 @@ export interface ListTenantBillingEventsOptions {
   cursor?: string | null;
   eventType?: string | null;
   processingStatus?: string | null;
+  tenantRole?: string | null;
+}
+
+export interface ListTenantUsageTotalsOptions {
+  featureKeys?: string[] | null;
+  periodStart?: string | null;
+  periodEnd?: string | null;
   tenantRole?: string | null;
 }
 
@@ -132,6 +141,36 @@ export async function listTenantBillingEvents(
   };
 
   return normalized;
+}
+
+export async function listTenantUsageTotals(
+  tenantId: string,
+  options?: ListTenantUsageTotalsOptions,
+): Promise<UsageTotalResponse[]> {
+  if (!tenantId) {
+    throw new Error('Tenant id is required.');
+  }
+
+  const { client, auth } = await getServerApiClient();
+  const response = await listUsageTotalsApiV1BillingTenantsTenantIdUsageTotalsGet({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: true,
+    headers: {
+      ...(options?.tenantRole ? { 'X-Tenant-Role': options.tenantRole } : {}),
+    },
+    path: {
+      tenant_id: tenantId,
+    },
+    query: {
+      feature_keys: options?.featureKeys?.length ? options.featureKeys : undefined,
+      period_start: options?.periodStart ?? undefined,
+      period_end: options?.periodEnd ?? undefined,
+    },
+  });
+
+  return response.data ?? [];
 }
 
 /**

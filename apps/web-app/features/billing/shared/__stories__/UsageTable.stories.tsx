@@ -16,7 +16,7 @@ const meta: Meta<typeof UsageTable> = {
     emptyDescription: BILLING_COPY.overview.usageTableEmptyDescription,
     ctaHref: '/billing/usage',
     ctaLabel: BILLING_COPY.overview.usageCtaLabel,
-    caption: 'Mirror this table with your own billing pipeline.',
+    caption: BILLING_COPY.overview.usageTableCaption,
   },
 };
 
@@ -35,5 +35,28 @@ export const Empty: Story = {
 export const Skeleton: Story = {
   args: {
     showSkeleton: true,
+  },
+};
+
+export const TotalsLoading: Story = {
+  args: {
+    showSkeleton: true,
+    showAmount: false,
+    windowLabel: 'Window: Aug 1–Aug 31, 2024',
+    quantityLabel: 'Total',
+    periodLabel: 'Window',
+    countLabel: 'features',
+  },
+};
+
+export const TotalsError: Story = {
+  args: {
+    rows: [],
+    showAmount: false,
+    windowLabel: 'Window: Aug 1–Aug 31, 2024',
+    quantityLabel: 'Total',
+    periodLabel: 'Window',
+    countLabel: 'features',
+    errorMessage: 'We hit a temporary issue loading your usage totals. Please try again.',
   },
 };
