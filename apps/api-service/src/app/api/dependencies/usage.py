@@ -23,7 +23,12 @@ logger = logging.getLogger(__name__)
 
 async def enforce_usage_guardrails(
     tenant_context: TenantContext = Depends(
-        require_tenant_role(TenantRole.VIEWER, TenantRole.ADMIN, TenantRole.OWNER)
+        require_tenant_role(
+            TenantRole.VIEWER,
+            TenantRole.MEMBER,
+            TenantRole.ADMIN,
+            TenantRole.OWNER,
+        )
     ),
     usage_policy_service: UsagePolicyService | None = Depends(get_usage_policy_service),
 ) -> UsagePolicyResult | None:

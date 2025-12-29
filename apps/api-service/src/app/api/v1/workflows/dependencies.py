@@ -6,6 +6,7 @@ from app.api.dependencies.tenant import TenantRole, require_tenant_role
 
 WORKFLOW_ALLOWED_ROLES: tuple[TenantRole, ...] = (
     TenantRole.VIEWER,
+    TenantRole.MEMBER,
     TenantRole.ADMIN,
     TenantRole.OWNER,
 )
@@ -24,4 +25,3 @@ __all__ = [
     "require_workflow_viewer_role",
     "require_workflow_admin_role",
 ]
-

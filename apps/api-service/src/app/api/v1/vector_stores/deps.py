@@ -9,7 +9,12 @@ from app.api.dependencies.tenant import TenantContext, TenantRole, get_tenant_co
 
 
 async def tenant_viewer(context: TenantContext = Depends(get_tenant_context)) -> TenantContext:
-    context.ensure_role(TenantRole.VIEWER, TenantRole.ADMIN, TenantRole.OWNER)
+    context.ensure_role(
+        TenantRole.VIEWER,
+        TenantRole.MEMBER,
+        TenantRole.ADMIN,
+        TenantRole.OWNER,
+    )
     return context
 
 

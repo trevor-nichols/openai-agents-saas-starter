@@ -77,7 +77,12 @@ async def download_openai_file(
     file_id: str,
     _: CurrentUser = Depends(require_verified_user()),
     tenant_context: TenantContext = Depends(
-        require_tenant_role(TenantRole.VIEWER, TenantRole.ADMIN, TenantRole.OWNER)
+        require_tenant_role(
+            TenantRole.VIEWER,
+            TenantRole.MEMBER,
+            TenantRole.ADMIN,
+            TenantRole.OWNER,
+        )
     ),
     client: AsyncOpenAI = Depends(_client),
     vector_store_service=Depends(_vector_store_service),
@@ -122,7 +127,12 @@ async def download_openai_container_file(
     filename: str | None = None,
     _: CurrentUser = Depends(require_verified_user()),
     tenant_context: TenantContext = Depends(
-        require_tenant_role(TenantRole.VIEWER, TenantRole.ADMIN, TenantRole.OWNER)
+        require_tenant_role(
+            TenantRole.VIEWER,
+            TenantRole.MEMBER,
+            TenantRole.ADMIN,
+            TenantRole.OWNER,
+        )
     ),
     containers: ContainerService = Depends(_container_service),
     ledger: ConversationLedgerQueryStore = Depends(_ledger_query_store),
