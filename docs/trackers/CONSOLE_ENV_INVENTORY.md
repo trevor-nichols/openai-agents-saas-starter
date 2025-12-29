@@ -1,7 +1,7 @@
 # Starter Console Environment Inventory
 
 This file is generated via `starter-console config write-inventory`.
-Last updated: 2025-12-24 14:17:32 UTC
+Last updated: 2025-12-28 20:09:32 UTC
 
 Legend: `✅` = wizard prompts for it, blank = requires manual population.
 
@@ -217,10 +217,11 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | STORAGE_MAX_FILE_MB | int | 512 |  |  | Maximum upload size enforced by the service (MB). |
 | STORAGE_PROVIDER | StorageProviderLiteral | memory |  | ✅ | Which storage provider implementation to use (minio, gcs, s3, azure_blob, memory). |
 | STORAGE_SIGNED_URL_TTL_SECONDS | int | 900 |  |  | TTL (seconds) for presigned URLs returned to clients. |
+| STRIPE_PORTAL_RETURN_URL | str \| NoneType | — |  |  | Return URL for Stripe billing portal sessions. |
 | STRIPE_PRODUCT_PRICE_MAP | dict[str, str] | — |  | ✅ | Mapping of billing plan codes to Stripe price IDs. Provide as JSON or comma-delimited entries such as 'starter=price_123,pro=price_456'. |
 | STRIPE_SECRET_KEY | str \| NoneType | — |  | ✅ | Stripe secret API key (sk_live_*/sk_test_*). |
 | STRIPE_WEBHOOK_SECRET | str \| NoneType | — |  | ✅ | Stripe webhook signing secret (whsec_*). |
-| TENANT_DEFAULT_SLUG | str | default |  | ✅ | Tenant slug recorded by the console when seeding the initial org. |
+| TENANT_DEFAULT_SLUG | str | default |  | ✅ | Tenant slug recorded by the CLI when seeding the initial org. |
 | USAGE_GUARDRAIL_CACHE_BACKEND | memory \| redis | redis |  | ✅ | Cache backend for usage totals (`redis` or `memory`). |
 | USAGE_GUARDRAIL_CACHE_TTL_SECONDS | int | 30 |  | ✅ | TTL for cached usage rollups (seconds). Set to 0 to disable caching. |
 | USAGE_GUARDRAIL_REDIS_URL | str \| NoneType | — |  | ✅ | Redis URL dedicated to usage guardrail caches (defaults to REDIS_URL). |

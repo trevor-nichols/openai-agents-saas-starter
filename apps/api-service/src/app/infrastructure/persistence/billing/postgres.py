@@ -12,12 +12,16 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
 
 from app.domain.billing import (
+    BillingCustomerRecord,
     BillingPlan,
     BillingRepository,
     PlanFeature,
     SubscriptionInvoiceRecord,
     TenantSubscription,
     UsageTotal,
+)
+from app.infrastructure.persistence.billing.models import (
+    BillingCustomer as ORMBillingCustomer,
 )
 from app.infrastructure.persistence.billing.models import (
     BillingPlan as ORMPlan,
@@ -53,14 +57,7 @@ class PostgresBillingRepository(BillingRepository):
 
     async def get_subscription(self, tenant_id: str) -> TenantSubscription | None:
         async with self._session_factory() as session:
-            try:
-                tenant_uuid = self._parse_tenant_uuid(tenant_id)
-            except ValueError:
-                logger.debug(
-                    "Ignoring non-UUID tenant identifier '%s' for subscription lookup.",
-                    tenant_id,
-                )
-                return None
+            tenant_uuid = self._parse_tenant_uuid(tenant_id)
             result = await session.execute(
                 select(ORMTenantSubscription)
                 .options(selectinload(ORMTenantSubscription.plan))
@@ -101,7 +98,7 @@ class PostgresBillingRepository(BillingRepository):
                     trial_ends_at=subscription.trial_ends_at,
                     cancel_at=subscription.cancel_at,
                     seat_count=subscription.seat_count,
-                    metadata_json=subscription.metadata or {},
+                    metadata_json=_serialize_subscription_metadata(subscription),
                 )
                 session.add(entity)
             else:
@@ -118,7 +115,7 @@ class PostgresBillingRepository(BillingRepository):
                 existing.trial_ends_at = subscription.trial_ends_at
                 existing.cancel_at = subscription.cancel_at
                 existing.seat_count = subscription.seat_count
-                existing.metadata_json = subscription.metadata or {}
+                existing.metadata_json = _serialize_subscription_metadata(subscription)
                 existing.updated_at = datetime.now(UTC)
 
             await session.commit()
@@ -152,6 +149,53 @@ class PostgresBillingRepository(BillingRepository):
             await session.commit()
             await session.refresh(subscription)
             return self._to_domain_subscription(subscription)
+
+    async def get_customer(
+        self, tenant_id: str, *, processor: str
+    ) -> BillingCustomerRecord | None:
+        async with self._session_factory() as session:
+            tenant_uuid = self._parse_tenant_uuid(tenant_id)
+            result = await session.execute(
+                select(ORMBillingCustomer).where(
+                    ORMBillingCustomer.tenant_id == tenant_uuid,
+                    ORMBillingCustomer.processor == processor,
+                )
+            )
+            row = result.scalar_one_or_none()
+            if row is None:
+                return None
+            return self._to_domain_customer(row)
+
+    async def upsert_customer(
+        self, customer: BillingCustomerRecord
+    ) -> BillingCustomerRecord:
+        async with self._session_factory() as session:
+            tenant_uuid = self._parse_tenant_uuid(customer.tenant_id)
+            existing = await session.scalar(
+                select(ORMBillingCustomer).where(
+                    ORMBillingCustomer.tenant_id == tenant_uuid,
+                    ORMBillingCustomer.processor == customer.processor,
+                )
+            )
+            if existing is None:
+                entity = ORMBillingCustomer(
+                    id=uuid.uuid4(),
+                    tenant_id=tenant_uuid,
+                    processor=customer.processor,
+                    processor_customer_id=customer.processor_customer_id,
+                    billing_email=customer.billing_email,
+                )
+                session.add(entity)
+                await session.commit()
+                await session.refresh(entity)
+                return self._to_domain_customer(entity)
+
+            existing.processor_customer_id = customer.processor_customer_id
+            existing.billing_email = customer.billing_email
+            existing.updated_at = datetime.now(UTC)
+            await session.commit()
+            await session.refresh(existing)
+            return self._to_domain_customer(existing)
 
     async def record_usage(
         self,
@@ -380,6 +424,18 @@ class PostgresBillingRepository(BillingRepository):
 
     @staticmethod
     def _to_domain_subscription(subscription: ORMTenantSubscription) -> TenantSubscription:
+        metadata_payload = dict(subscription.metadata_json or {})
+        pending_plan_code = metadata_payload.pop("pending_plan_code", None)
+        if pending_plan_code == "":
+            pending_plan_code = None
+        pending_plan_effective_at = _parse_metadata_datetime(
+            metadata_payload.pop("pending_plan_effective_at", None)
+        )
+        pending_seat_count = metadata_payload.pop("pending_seat_count", None)
+        processor_schedule_id = metadata_payload.pop("processor_schedule_id", None)
+        if processor_schedule_id == "":
+            processor_schedule_id = None
+
         return TenantSubscription(
             tenant_id=str(subscription.tenant_id),
             plan_code=_safe_plan_code(subscription),
@@ -392,10 +448,23 @@ class PostgresBillingRepository(BillingRepository):
             trial_ends_at=subscription.trial_ends_at,
             cancel_at=subscription.cancel_at,
             seat_count=subscription.seat_count,
-            metadata=subscription.metadata_json or {},
+            pending_plan_code=pending_plan_code,
+            pending_plan_effective_at=pending_plan_effective_at,
+            pending_seat_count=_coerce_int(pending_seat_count),
+            metadata=metadata_payload,
             processor=subscription.processor,
             processor_customer_id=subscription.processor_customer_id,
             processor_subscription_id=subscription.processor_subscription_id,
+            processor_schedule_id=processor_schedule_id,
+        )
+
+    @staticmethod
+    def _to_domain_customer(customer: ORMBillingCustomer) -> BillingCustomerRecord:
+        return BillingCustomerRecord(
+            tenant_id=str(customer.tenant_id),
+            processor=customer.processor,
+            processor_customer_id=customer.processor_customer_id,
+            billing_email=customer.billing_email,
         )
 
     @staticmethod
@@ -410,3 +479,56 @@ def _safe_plan_code(subscription: ORMTenantSubscription) -> str:
     if subscription.plan:
         return subscription.plan.code
     return str(subscription.plan_id)
+
+
+def _serialize_subscription_metadata(subscription: TenantSubscription) -> dict[str, object]:
+    metadata: dict[str, object] = dict(subscription.metadata or {})
+    _set_metadata_value(metadata, "processor_schedule_id", subscription.processor_schedule_id)
+    _set_metadata_value(metadata, "pending_plan_code", subscription.pending_plan_code)
+    _set_metadata_value(
+        metadata,
+        "pending_plan_effective_at",
+        _format_metadata_datetime(subscription.pending_plan_effective_at),
+    )
+    _set_metadata_value(metadata, "pending_seat_count", subscription.pending_seat_count)
+    return metadata
+
+
+def _set_metadata_value(metadata: dict[str, object], key: str, value: object | None) -> None:
+    if value is None or value == "":
+        metadata.pop(key, None)
+        return
+    metadata[key] = value
+
+
+def _format_metadata_datetime(value: datetime | None) -> str | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=UTC)
+    return value.isoformat()
+
+
+def _parse_metadata_datetime(value: object | None) -> datetime | None:
+    if value is None or value == "":
+        return None
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=UTC)
+    if isinstance(value, str):
+        try:
+            parsed = datetime.fromisoformat(value)
+        except ValueError:
+            return None
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+    return None
+
+
+def _coerce_int(value: object | None) -> int | None:
+    if value is None or value == "":
+        return None
+    if isinstance(value, int | float | str):
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+    return None

@@ -46,10 +46,22 @@ class TenantSubscription:
     trial_ends_at: datetime | None = None
     cancel_at: datetime | None = None
     seat_count: int | None = None
+    pending_plan_code: str | None = None
+    pending_plan_effective_at: datetime | None = None
+    pending_seat_count: int | None = None
     metadata: dict[str, str] = field(default_factory=dict)
     processor: str | None = None
     processor_customer_id: str | None = None
     processor_subscription_id: str | None = None
+    processor_schedule_id: str | None = None
+
+
+@dataclass(slots=True)
+class BillingCustomerRecord:
+    tenant_id: str
+    processor: str
+    processor_customer_id: str
+    billing_email: str | None = None
 
 
 @dataclass(slots=True)
@@ -81,6 +93,14 @@ class BillingRepository(Protocol):
         billing_email: str | None = None,
         seat_count: int | None = None,
     ) -> TenantSubscription: ...
+
+    async def get_customer(
+        self, tenant_id: str, *, processor: str
+    ) -> BillingCustomerRecord | None: ...
+
+    async def upsert_customer(
+        self, customer: BillingCustomerRecord
+    ) -> BillingCustomerRecord: ...
 
     async def record_usage(
         self,

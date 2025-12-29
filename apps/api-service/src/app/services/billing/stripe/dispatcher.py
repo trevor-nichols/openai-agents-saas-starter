@@ -15,8 +15,8 @@ from app.infrastructure.persistence.stripe.models import (
 )
 from app.infrastructure.persistence.stripe.repository import StripeEventRepository
 from app.observability.logging import log_context, log_event
-from app.services.billing.billing_service import (
-    BillingService,
+from app.services.billing.billing_service import BillingService
+from app.services.billing.models import (
     ProcessorInvoiceLineSnapshot,
     ProcessorInvoiceSnapshot,
     ProcessorSubscriptionSnapshot,
@@ -205,7 +205,7 @@ class StripeEventDispatcher:
 
     def _build_subscription_snapshot(self, payload: JSONDict) -> ProcessorSubscriptionSnapshot:
         data_obj = (payload.get("data") or {}).get("object") or {}
-        metadata = data_obj.get("metadata") or {}
+        metadata = _normalize_metadata(data_obj.get("metadata") or {})
         tenant_id = metadata.get("tenant_id") or metadata.get("tenant")
         if not tenant_id:
             raise ValueError("Missing tenant_id in subscription metadata")
@@ -219,6 +219,11 @@ class StripeEventDispatcher:
         customer_id = data_obj.get("customer") or metadata.get("customer_id")
         price_id = self._extract_price_id(data_obj)
         seat_count = self._extract_quantity(data_obj)
+        schedule_id = _extract_schedule_id(data_obj.get("schedule"))
+        metadata.pop("processor_schedule_id", None)
+        metadata.pop("pending_plan_code", None)
+        metadata.pop("pending_plan_effective_at", None)
+        metadata.pop("pending_seat_count", None)
         snapshot = ProcessorSubscriptionSnapshot(
             tenant_id=str(tenant_id),
             plan_code=str(plan_code),
@@ -235,9 +240,11 @@ class StripeEventDispatcher:
             billing_email=data_obj.get("customer_email") or metadata.get("billing_email"),
             processor_customer_id=customer_id,
             processor_subscription_id=str(data_obj.get("id")),
+            processor_schedule_id=schedule_id,
             metadata={
-                "stripe_price_id": price_id or "",
-                "stripe_status": str(data_obj.get("status")),
+                **metadata,
+                "processor_price_id": price_id or "",
+                "processor_status": str(data_obj.get("status")),
             },
         )
         return snapshot
@@ -399,6 +406,27 @@ def _coerce_datetime(value) -> datetime | None:
         return datetime.fromtimestamp(float(value), tz=UTC)
     except (TypeError, ValueError):  # pragma: no cover - guard rails for malformed data
         return None
+
+
+def _normalize_metadata(metadata: dict[str, object]) -> dict[str, str]:
+    cleaned: dict[str, str] = {}
+    for key, value in metadata.items():
+        if value is None:
+            continue
+        cleaned[str(key)] = str(value)
+    return cleaned
+
+
+def _extract_schedule_id(value: object) -> str | None:
+    if value in (None, ""):
+        return None
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict):
+        schedule_id = value.get("id")
+        return str(schedule_id) if schedule_id else None
+    schedule_id = getattr(value, "id", None)
+    return str(schedule_id) if schedule_id else None
 
 
 def get_stripe_event_dispatcher() -> StripeEventDispatcher:

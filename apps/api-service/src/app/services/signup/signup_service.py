@@ -29,12 +29,8 @@ from app.infrastructure.persistence.tenants.models import TenantAccount
 from app.observability.logging import log_event
 from app.services.activity import activity_service
 from app.services.auth_service import AuthService, UserSessionTokens, get_auth_service
-from app.services.billing.billing_service import (
-    BillingError,
-    BillingService,
-    PaymentProviderError,
-    get_billing_service,
-)
+from app.services.billing.billing_service import BillingService, get_billing_service
+from app.services.billing.errors import BillingError, PaymentProviderError
 from app.services.signup.email_verification_service import (
     EmailVerificationService,
     get_email_verification_service,

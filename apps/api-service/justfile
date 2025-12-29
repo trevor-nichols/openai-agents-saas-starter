@@ -41,6 +41,9 @@ typecheck:
 test:
     cd {{project_dir}} && hatch run test
 
+test-unit:
+    cd {{project_dir}} && hatch run test-unit
+
 smoke-http:
 	# Run HTTP smoke suite against a locally started api-service (sqlite + redis).
 	# Respects SMOKE_* flags for optional surfaces; defaults keep AI/Billing off.

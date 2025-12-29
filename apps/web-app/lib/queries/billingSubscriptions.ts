@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type {
   SubscriptionCancelPayload,
+  SubscriptionPlanChangePayload,
+  SubscriptionPlanChangeResponse,
   SubscriptionStartPayload,
   SubscriptionUpdatePayload,
   TenantSubscription,
@@ -9,6 +11,7 @@ import type {
 } from '@/lib/types/billing';
 import {
   cancelSubscriptionRequest,
+  changeSubscriptionPlanRequest,
   fetchTenantSubscription,
   recordUsageRequest,
   startSubscriptionRequest,
@@ -27,9 +30,7 @@ export function useTenantSubscription(options: SubscriptionOptions) {
   const enabled = billingEnabled && Boolean(tenantId);
 
   const query = useQuery({
-    queryKey: tenantId
-      ? [...queryKeys.billing.all, 'subscription', tenantId]
-      : [...queryKeys.billing.all, 'subscription'],
+    queryKey: queryKeys.billing.subscription(tenantId),
     queryFn: () => fetchTenantSubscription(tenantId as string, { tenantRole }),
     enabled,
     staleTime: 30 * 1000,
@@ -59,10 +60,7 @@ export function useStartSubscriptionMutation(options: SubscriptionOptions) {
     },
     onSuccess: (subscription) => {
       if (!tenantId) return;
-      queryClient.setQueryData(
-        [...queryKeys.billing.all, 'subscription', tenantId],
-        subscription,
-      );
+      queryClient.setQueryData(queryKeys.billing.subscription(tenantId), subscription);
     },
   });
 }
@@ -83,10 +81,7 @@ export function useUpdateSubscriptionMutation(options: SubscriptionOptions) {
     },
     onSuccess: (subscription) => {
       if (!tenantId) return;
-      queryClient.setQueryData(
-        [...queryKeys.billing.all, 'subscription', tenantId],
-        subscription,
-      );
+      queryClient.setQueryData(queryKeys.billing.subscription(tenantId), subscription);
     },
   });
 }
@@ -107,10 +102,29 @@ export function useCancelSubscriptionMutation(options: SubscriptionOptions) {
     },
     onSuccess: (subscription) => {
       if (!tenantId) return;
-      queryClient.setQueryData(
-        [...queryKeys.billing.all, 'subscription', tenantId],
-        subscription,
-      );
+      queryClient.setQueryData(queryKeys.billing.subscription(tenantId), subscription);
+    },
+  });
+}
+
+export function useChangeSubscriptionPlanMutation(options: SubscriptionOptions) {
+  const queryClient = useQueryClient();
+  const { tenantId, tenantRole = null } = options;
+
+  return useMutation<SubscriptionPlanChangeResponse, Error, SubscriptionPlanChangePayload>({
+    mutationFn: async (payload: SubscriptionPlanChangePayload) => {
+      if (!billingEnabled) {
+        throw new Error('Billing is disabled.');
+      }
+      if (!tenantId) {
+        throw new Error('Tenant id required');
+      }
+      return changeSubscriptionPlanRequest(tenantId, payload, { tenantRole });
+    },
+    onSuccess: (response) => {
+      if (!tenantId) return;
+      queryClient.setQueryData(queryKeys.billing.subscription(tenantId), response.subscription);
+      queryClient.invalidateQueries({ queryKey: queryKeys.billing.upcomingInvoiceBase(tenantId) });
     },
   });
 }

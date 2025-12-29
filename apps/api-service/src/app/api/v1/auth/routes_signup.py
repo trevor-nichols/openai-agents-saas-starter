@@ -13,7 +13,7 @@ from app.api.v1.auth.rate_limit_helpers import apply_signup_quota
 from app.api.v1.auth.utils import extract_client_ip, extract_user_agent, to_user_session_response
 from app.core.settings import Settings, get_settings
 from app.observability.metrics import record_signup_attempt
-from app.services.billing.billing_service import (
+from app.services.billing.errors import (
     BillingError,
     InvalidTenantIdentifierError,
     PlanNotFoundError,

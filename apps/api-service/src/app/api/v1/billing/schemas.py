@@ -13,6 +13,11 @@ from app.services.billing.billing_events import (
     BillingEventSubscription,
     BillingEventUsage,
 )
+from app.services.billing.models import (
+    PlanChangeResult,
+    PlanChangeTiming,
+    UpcomingInvoicePreview,
+)
 
 PositiveSeatCount = Annotated[int, Field(gt=0)]
 PositiveUsageQuantity = Annotated[int, Field(gt=0)]
@@ -80,6 +85,9 @@ class TenantSubscriptionResponse(BaseModel):
     trial_ends_at: datetime | None = None
     cancel_at: datetime | None = None
     seat_count: int | None = None
+    pending_plan_code: str | None = None
+    pending_plan_effective_at: datetime | None = None
+    pending_seat_count: int | None = None
     metadata: dict[str, str] = Field(default_factory=dict)
 
     @classmethod
@@ -96,6 +104,9 @@ class TenantSubscriptionResponse(BaseModel):
             trial_ends_at=subscription.trial_ends_at,
             cancel_at=subscription.cancel_at,
             seat_count=subscription.seat_count,
+            pending_plan_code=subscription.pending_plan_code,
+            pending_plan_effective_at=subscription.pending_plan_effective_at,
+            pending_seat_count=subscription.pending_seat_count,
             metadata=subscription.metadata,
         )
 
@@ -117,6 +128,39 @@ class UpdateSubscriptionRequest(BaseModel):
     )
 
 
+class ChangeSubscriptionPlanRequest(BaseModel):
+    plan_code: str = Field(..., description="Billing plan to activate.")
+    seat_count: PositiveSeatCount | None = Field(
+        default=None,
+        description="Optional seat count override for the new plan.",
+    )
+    timing: PlanChangeTiming = Field(
+        default=PlanChangeTiming.AUTO,
+        description=(
+            "When the plan change takes effect (auto selects immediate for upgrades and "
+            "period-end for downgrades when intervals match)."
+        ),
+    )
+
+
+class PlanChangeResponse(BaseModel):
+    subscription: TenantSubscriptionResponse
+    target_plan_code: str
+    effective_at: datetime | None = None
+    seat_count: int | None = None
+    timing: PlanChangeTiming = PlanChangeTiming.AUTO
+
+    @classmethod
+    def from_result(cls, result: PlanChangeResult) -> PlanChangeResponse:
+        return cls(
+            subscription=TenantSubscriptionResponse.from_domain(result.subscription),
+            target_plan_code=result.target_plan_code,
+            effective_at=result.effective_at,
+            seat_count=result.seat_count,
+            timing=result.timing,
+        )
+
+
 class UsageRecordRequest(BaseModel):
     feature_key: str = Field(..., description="Identifier of the metered feature.")
     quantity: PositiveUsageQuantity = Field(
@@ -135,6 +179,87 @@ class CancelSubscriptionRequest(BaseModel):
         default=True,
         description="If true, cancellation occurs at the current period end.",
     )
+
+
+class PortalSessionRequest(BaseModel):
+    billing_email: EmailStr | None = Field(
+        default=None, description="Optional billing email to associate with the customer."
+    )
+
+
+class PortalSessionResponse(BaseModel):
+    url: str
+
+
+class PaymentMethodResponse(BaseModel):
+    id: str
+    brand: str | None = None
+    last4: str | None = None
+    exp_month: int | None = None
+    exp_year: int | None = None
+    is_default: bool = False
+
+
+class SetupIntentRequest(BaseModel):
+    billing_email: EmailStr | None = Field(
+        default=None, description="Optional billing email to associate with the customer."
+    )
+
+
+class SetupIntentResponse(BaseModel):
+    id: str
+    client_secret: str | None = None
+
+
+class UpcomingInvoicePreviewRequest(BaseModel):
+    seat_count: PositiveSeatCount | None = Field(
+        default=None, description="Optional seat count override for previewing charges."
+    )
+
+
+class UpcomingInvoiceLineResponse(BaseModel):
+    description: str | None = None
+    amount_cents: int
+    currency: str | None = None
+    quantity: int | None = None
+    unit_amount_cents: int | None = None
+    price_id: str | None = None
+
+
+class UpcomingInvoicePreviewResponse(BaseModel):
+    plan_code: str
+    plan_name: str
+    seat_count: int | None = None
+    invoice_id: str | None = None
+    amount_due_cents: int
+    currency: str
+    period_start: datetime | None = None
+    period_end: datetime | None = None
+    lines: list[UpcomingInvoiceLineResponse] = Field(default_factory=list)
+
+    @classmethod
+    def from_domain(cls, preview: UpcomingInvoicePreview) -> UpcomingInvoicePreviewResponse:
+        return cls(
+            plan_code=preview.plan_code,
+            plan_name=preview.plan_name,
+            seat_count=preview.seat_count,
+            invoice_id=preview.invoice_id,
+            amount_due_cents=preview.amount_due_cents,
+            currency=preview.currency,
+            period_start=preview.period_start,
+            period_end=preview.period_end,
+            lines=[
+                UpcomingInvoiceLineResponse(
+                    description=line.description,
+                    amount_cents=line.amount_cents,
+                    currency=line.currency,
+                    quantity=line.quantity,
+                    unit_amount_cents=line.unit_amount_cents,
+                    price_id=line.price_id,
+                )
+                for line in preview.lines
+            ],
+        )
 
 
 class BillingEventSubscriptionResponse(BaseModel):

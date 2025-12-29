@@ -14,25 +14,30 @@ from .billing_events import (
     billing_events_service,
     get_billing_events_service,
 )
-from .billing_service import (
+from .billing_service import BillingService
+from .errors import (
     BillingError,
-    BillingService,
     InvalidTenantIdentifierError,
     PaymentProviderError,
     PlanNotFoundError,
+    SubscriptionNotFoundError,
+    SubscriptionStateError,
+)
+from .models import (
+    PlanChangeResult,
+    PlanChangeTiming,
     ProcessorInvoiceLineSnapshot,
     ProcessorInvoiceSnapshot,
     ProcessorSubscriptionSnapshot,
-    SubscriptionNotFoundError,
-    SubscriptionStateError,
+    UpcomingInvoiceLineSnapshot,
+    UpcomingInvoicePreview,
 )
 from .payment_gateway import (
     PaymentGateway,
     PaymentGatewayError,
-    StripeGateway,
     SubscriptionProvisionResult,
-    stripe_gateway,
 )
+from .stripe.gateway import StripeGateway, get_stripe_gateway
 
 __all__ = [
     "BillingEventBackend",
@@ -50,6 +55,8 @@ __all__ = [
     "PaymentGatewayError",
     "PaymentProviderError",
     "PlanNotFoundError",
+    "PlanChangeResult",
+    "PlanChangeTiming",
     "ProcessorInvoiceLineSnapshot",
     "ProcessorInvoiceSnapshot",
     "ProcessorSubscriptionSnapshot",
@@ -57,7 +64,9 @@ __all__ = [
     "SubscriptionNotFoundError",
     "SubscriptionProvisionResult",
     "SubscriptionStateError",
+    "UpcomingInvoiceLineSnapshot",
+    "UpcomingInvoicePreview",
     "billing_events_service",
     "get_billing_events_service",
-    "stripe_gateway",
+    "get_stripe_gateway",
 ]

@@ -10,9 +10,6 @@ import type {
   AdminResetPasswordApiV1AuthPasswordResetPostData,
   AdminResetPasswordApiV1AuthPasswordResetPostErrors,
   AdminResetPasswordApiV1AuthPasswordResetPostResponses,
-  ApplyTestFixturesApiV1TestFixturesApplyPostData,
-  ApplyTestFixturesApiV1TestFixturesApplyPostErrors,
-  ApplyTestFixturesApiV1TestFixturesApplyPostResponses,
   ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostData,
   ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostErrors,
   ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostResponses,
@@ -40,6 +37,9 @@ import type {
   ChangePasswordApiV1AuthPasswordChangePostData,
   ChangePasswordApiV1AuthPasswordChangePostErrors,
   ChangePasswordApiV1AuthPasswordChangePostResponses,
+  ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostData,
+  ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostErrors,
+  ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostResponses,
   ChatWithAgentApiV1ChatPostData,
   ChatWithAgentApiV1ChatPostErrors,
   ChatWithAgentApiV1ChatPostResponses,
@@ -58,9 +58,15 @@ import type {
   CreateContainerApiV1ContainersPostData,
   CreateContainerApiV1ContainersPostErrors,
   CreateContainerApiV1ContainersPostResponses,
+  CreatePortalSessionApiV1BillingTenantsTenantIdPortalPostData,
+  CreatePortalSessionApiV1BillingTenantsTenantIdPortalPostErrors,
+  CreatePortalSessionApiV1BillingTenantsTenantIdPortalPostResponses,
   CreatePresignedUploadApiV1StorageObjectsUploadUrlPostData,
   CreatePresignedUploadApiV1StorageObjectsUploadUrlPostErrors,
   CreatePresignedUploadApiV1StorageObjectsUploadUrlPostResponses,
+  CreateSetupIntentApiV1BillingTenantsTenantIdPaymentMethodsSetupIntentPostData,
+  CreateSetupIntentApiV1BillingTenantsTenantIdPaymentMethodsSetupIntentPostErrors,
+  CreateSetupIntentApiV1BillingTenantsTenantIdPaymentMethodsSetupIntentPostResponses,
   CreateStatusSubscriptionApiV1StatusSubscriptionsPostData,
   CreateStatusSubscriptionApiV1StatusSubscriptionsPostErrors,
   CreateStatusSubscriptionApiV1StatusSubscriptionsPostResponses,
@@ -91,6 +97,9 @@ import type {
   DeleteWorkflowRunApiV1WorkflowsRunsRunIdDeleteData,
   DeleteWorkflowRunApiV1WorkflowsRunsRunIdDeleteErrors,
   DeleteWorkflowRunApiV1WorkflowsRunsRunIdDeleteResponses,
+  DetachPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDeleteData,
+  DetachPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDeleteErrors,
+  DetachPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDeleteResponses,
   DisableCurrentUserAccountApiV1UsersMeDisablePostData,
   DisableCurrentUserAccountApiV1UsersMeDisablePostErrors,
   DisableCurrentUserAccountApiV1UsersMeDisablePostResponses,
@@ -181,15 +190,9 @@ import type {
   HealthCheckHealthGetData,
   HealthCheckHealthGetErrors,
   HealthCheckHealthGetResponses,
-  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostData,
-  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors,
-  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses,
   IssueInviteApiV1AuthInvitesPostData,
   IssueInviteApiV1AuthInvitesPostErrors,
   IssueInviteApiV1AuthInvitesPostResponses,
-  IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostData,
-  IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostErrors,
-  IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostResponses,
   IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostData,
   IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostErrors,
   IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostResponses,
@@ -241,6 +244,9 @@ import type {
   ListObjectsApiV1StorageObjectsGetData,
   ListObjectsApiV1StorageObjectsGetErrors,
   ListObjectsApiV1StorageObjectsGetResponses,
+  ListPaymentMethodsApiV1BillingTenantsTenantIdPaymentMethodsGetData,
+  ListPaymentMethodsApiV1BillingTenantsTenantIdPaymentMethodsGetErrors,
+  ListPaymentMethodsApiV1BillingTenantsTenantIdPaymentMethodsGetResponses,
   ListPresetsApiV1GuardrailsPresetsGetData,
   ListPresetsApiV1GuardrailsPresetsGetErrors,
   ListPresetsApiV1GuardrailsPresetsGetResponses,
@@ -283,6 +289,9 @@ import type {
   MarkAllActivityReadApiV1ActivityMarkAllReadPostData,
   MarkAllActivityReadApiV1ActivityMarkAllReadPostErrors,
   MarkAllActivityReadApiV1ActivityMarkAllReadPostResponses,
+  PreviewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePostData,
+  PreviewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePostErrors,
+  PreviewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePostResponses,
   ReadinessCheckHealthReadyGetData,
   ReadinessCheckHealthReadyGetErrors,
   ReadinessCheckHealthReadyGetResponses,
@@ -340,6 +349,9 @@ import type {
   SendEmailVerificationApiV1AuthEmailSendPostData,
   SendEmailVerificationApiV1AuthEmailSendPostErrors,
   SendEmailVerificationApiV1AuthEmailSendPostResponses,
+  SetDefaultPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDefaultPostData,
+  SetDefaultPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDefaultPostErrors,
+  SetDefaultPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDefaultPostResponses,
   StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostData,
   StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostErrors,
   StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostResponses,
@@ -3820,6 +3832,38 @@ export const startSubscriptionApiV1BillingTenantsTenantIdSubscriptionPost = <
 };
 
 /**
+ * Change Subscription Plan
+ *
+ * Request a plan change, either immediate or effective at period end.
+ */
+export const changeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPost =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).post<
+      ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostResponses,
+      ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/billing/tenants/{tenant_id}/subscription/plan",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    });
+  };
+
+/**
  * Cancel Subscription
  *
  * Cancel the tenant subscription (immediately or at period end).
@@ -3843,6 +3887,188 @@ export const cancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPost
         },
       ],
       url: "/api/v1/billing/tenants/{tenant_id}/subscription/cancel",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    });
+  };
+
+/**
+ * Create Portal Session
+ *
+ * Create a Stripe billing portal session for the tenant.
+ */
+export const createPortalSessionApiV1BillingTenantsTenantIdPortalPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    CreatePortalSessionApiV1BillingTenantsTenantIdPortalPostData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).post<
+    CreatePortalSessionApiV1BillingTenantsTenantIdPortalPostResponses,
+    CreatePortalSessionApiV1BillingTenantsTenantIdPortalPostErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/billing/tenants/{tenant_id}/portal",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * List Payment Methods
+ *
+ * List saved payment methods for a tenant.
+ */
+export const listPaymentMethodsApiV1BillingTenantsTenantIdPaymentMethodsGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    ListPaymentMethodsApiV1BillingTenantsTenantIdPaymentMethodsGetData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).get<
+    ListPaymentMethodsApiV1BillingTenantsTenantIdPaymentMethodsGetResponses,
+    ListPaymentMethodsApiV1BillingTenantsTenantIdPaymentMethodsGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/billing/tenants/{tenant_id}/payment-methods",
+    ...options,
+  });
+};
+
+/**
+ * Create Setup Intent
+ *
+ * Create a setup intent for adding a new payment method.
+ */
+export const createSetupIntentApiV1BillingTenantsTenantIdPaymentMethodsSetupIntentPost =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      CreateSetupIntentApiV1BillingTenantsTenantIdPaymentMethodsSetupIntentPostData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).post<
+      CreateSetupIntentApiV1BillingTenantsTenantIdPaymentMethodsSetupIntentPostResponses,
+      CreateSetupIntentApiV1BillingTenantsTenantIdPaymentMethodsSetupIntentPostErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/billing/tenants/{tenant_id}/payment-methods/setup-intent",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    });
+  };
+
+/**
+ * Set Default Payment Method
+ *
+ * Set the default payment method for a tenant.
+ */
+export const setDefaultPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDefaultPost =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      SetDefaultPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDefaultPostData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).post<
+      SetDefaultPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDefaultPostResponses,
+      SetDefaultPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDefaultPostErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/billing/tenants/{tenant_id}/payment-methods/{payment_method_id}/default",
+      ...options,
+    });
+  };
+
+/**
+ * Detach Payment Method
+ *
+ * Detach a payment method from the tenant's Stripe customer.
+ */
+export const detachPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDelete =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      DetachPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDeleteData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).delete<
+      DetachPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDeleteResponses,
+      DetachPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDeleteErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/billing/tenants/{tenant_id}/payment-methods/{payment_method_id}",
+      ...options,
+    });
+  };
+
+/**
+ * Preview Upcoming Invoice
+ *
+ * Preview the next invoice for a tenant subscription.
+ */
+export const previewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePost =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      PreviewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePostData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).post<
+      PreviewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePostResponses,
+      PreviewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePostErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/billing/tenants/{tenant_id}/upcoming-invoice",
       ...options,
       headers: {
         "Content-Type": "application/json",
@@ -3934,79 +4160,5 @@ export const billingEventStreamApiV1BillingStreamGet = <
     ],
     url: "/api/v1/billing/stream",
     ...options,
-  });
-};
-
-/**
- * Apply Test Fixtures
- */
-export const applyTestFixturesApiV1TestFixturesApplyPost = <
-  ThrowOnError extends boolean = false,
->(
-  options: Options<
-    ApplyTestFixturesApiV1TestFixturesApplyPostData,
-    ThrowOnError
-  >,
-) => {
-  return (options.client ?? client).post<
-    ApplyTestFixturesApiV1TestFixturesApplyPostResponses,
-    ApplyTestFixturesApiV1TestFixturesApplyPostErrors,
-    ThrowOnError
-  >({
-    url: "/api/v1/test-fixtures/apply",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
-};
-
-/**
- * Issue Email Verification Token
- */
-export const issueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPost =
-  <ThrowOnError extends boolean = false>(
-    options: Options<
-      IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostData,
-      ThrowOnError
-    >,
-  ) => {
-    return (options.client ?? client).post<
-      IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses,
-      IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors,
-      ThrowOnError
-    >({
-      url: "/api/v1/test-fixtures/email-verification-token",
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
-    });
-  };
-
-/**
- * Issue Password Reset Token
- */
-export const issuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPost = <
-  ThrowOnError extends boolean = false,
->(
-  options: Options<
-    IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostData,
-    ThrowOnError
-  >,
-) => {
-  return (options.client ?? client).post<
-    IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostResponses,
-    IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostErrors,
-    ThrowOnError
-  >({
-    url: "/api/v1/test-fixtures/password-reset-token",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
   });
 };

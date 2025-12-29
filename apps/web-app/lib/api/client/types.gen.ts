@@ -969,6 +969,28 @@ export type CancelSubscriptionRequest = {
 };
 
 /**
+ * ChangeSubscriptionPlanRequest
+ */
+export type ChangeSubscriptionPlanRequest = {
+  /**
+   * Plan Code
+   *
+   * Billing plan to activate.
+   */
+  plan_code: string;
+  /**
+   * Seat Count
+   *
+   * Optional seat count override for the new plan.
+   */
+  seat_count?: number | null;
+  /**
+   * When the plan change takes effect (auto selects immediate for upgrades and period-end for downgrades when intervals match).
+   */
+  timing?: PlanChangeTiming;
+};
+
+/**
  * ChatMessage
  *
  * Single conversational message.
@@ -2131,42 +2153,6 @@ export type EmailVerificationStatusResponseData = {
 };
 
 /**
- * EmailVerificationTokenRequest
- */
-export type EmailVerificationTokenRequest = {
-  /**
-   * Email
-   */
-  email: string;
-  /**
-   * Ip Address
-   */
-  ip_address?: string | null;
-  /**
-   * User Agent
-   */
-  user_agent?: string | null;
-};
-
-/**
- * EmailVerificationTokenResponse
- */
-export type EmailVerificationTokenResponse = {
-  /**
-   * Token
-   */
-  token: string;
-  /**
-   * User Id
-   */
-  user_id: string;
-  /**
-   * Expires At
-   */
-  expires_at: string;
-};
-
-/**
  * ErrorEvent
  */
 export type ErrorEvent = {
@@ -2403,341 +2389,6 @@ export type FinalPayload = {
    */
   attachments?: Array<MessageAttachment>;
   usage?: PublicUsage | null;
-};
-
-/**
- * FixtureApplyResult
- */
-export type FixtureApplyResult = {
-  /**
-   * Tenants
-   */
-  tenants: {
-    [key: string]: FixtureTenantResult;
-  };
-  /**
-   * Generated At
-   */
-  generated_at: string;
-};
-
-/**
- * FixtureAsset
- */
-export type FixtureAsset = {
-  /**
-   * Key
-   */
-  key: string;
-  /**
-   * Asset Type
-   */
-  asset_type?: "image" | "file";
-  /**
-   * Source Tool
-   */
-  source_tool?:
-    | "image_generation"
-    | "code_interpreter"
-    | "user_upload"
-    | "unknown"
-    | null;
-  /**
-   * Filename
-   */
-  filename: string;
-  /**
-   * Mime Type
-   */
-  mime_type?: string | null;
-  /**
-   * Size Bytes
-   */
-  size_bytes?: number | null;
-  /**
-   * Agent Key
-   */
-  agent_key?: string | null;
-  /**
-   * Conversation Key
-   */
-  conversation_key?: string | null;
-  /**
-   * Message Id
-   */
-  message_id?: number | null;
-  /**
-   * Tool Call Id
-   */
-  tool_call_id?: string | null;
-  /**
-   * Response Id
-   */
-  response_id?: string | null;
-  /**
-   * Container Id
-   */
-  container_id?: string | null;
-  /**
-   * Openai File Id
-   */
-  openai_file_id?: string | null;
-  /**
-   * User Email
-   */
-  user_email?: string | null;
-  /**
-   * Metadata
-   */
-  metadata?: {
-    [key: string]: unknown;
-  };
-};
-
-/**
- * FixtureAssetResult
- */
-export type FixtureAssetResult = {
-  /**
-   * Asset Id
-   */
-  asset_id: string;
-  /**
-   * Storage Object Id
-   */
-  storage_object_id: string;
-};
-
-/**
- * FixtureConversation
- */
-export type FixtureConversation = {
-  /**
-   * Key
-   */
-  key: string;
-  /**
-   * Agent Entrypoint
-   */
-  agent_entrypoint?: string;
-  /**
-   * Status
-   */
-  status?: "active" | "archived";
-  /**
-   * User Email
-   */
-  user_email?: string | null;
-  /**
-   * Messages
-   */
-  messages?: Array<FixtureConversationMessage>;
-};
-
-/**
- * FixtureConversationMessage
- */
-export type FixtureConversationMessage = {
-  /**
-   * Role
-   */
-  role: "user" | "assistant" | "system";
-  /**
-   * Text
-   */
-  text: string;
-};
-
-/**
- * FixtureConversationResult
- */
-export type FixtureConversationResult = {
-  /**
-   * Conversation Id
-   */
-  conversation_id: string;
-  /**
-   * Status
-   */
-  status: string;
-};
-
-/**
- * FixtureTenant
- */
-export type FixtureTenant = {
-  /**
-   * Slug
-   */
-  slug: string;
-  /**
-   * Name
-   */
-  name: string;
-  /**
-   * Plan Code
-   */
-  plan_code?: string | null;
-  /**
-   * Billing Email
-   */
-  billing_email?: string | null;
-  /**
-   * Users
-   */
-  users?: Array<FixtureUser>;
-  /**
-   * Conversations
-   */
-  conversations?: Array<FixtureConversation>;
-  /**
-   * Usage
-   */
-  usage?: Array<FixtureUsageEntry>;
-  /**
-   * Usage Counters
-   */
-  usage_counters?: Array<FixtureUsageCounter>;
-  /**
-   * Assets
-   */
-  assets?: Array<FixtureAsset>;
-};
-
-/**
- * FixtureTenantResult
- */
-export type FixtureTenantResult = {
-  /**
-   * Tenant Id
-   */
-  tenant_id: string;
-  /**
-   * Plan Code
-   */
-  plan_code: string | null;
-  /**
-   * Users
-   */
-  users: {
-    [key: string]: FixtureUserResult;
-  };
-  /**
-   * Conversations
-   */
-  conversations: {
-    [key: string]: FixtureConversationResult;
-  };
-  /**
-   * Assets
-   */
-  assets?: {
-    [key: string]: FixtureAssetResult;
-  };
-};
-
-/**
- * FixtureUsageCounter
- */
-export type FixtureUsageCounter = {
-  /**
-   * Period Start
-   */
-  period_start: string;
-  /**
-   * Granularity
-   */
-  granularity?: "day" | "month";
-  /**
-   * Input Tokens
-   */
-  input_tokens?: number;
-  /**
-   * Output Tokens
-   */
-  output_tokens?: number;
-  /**
-   * Requests
-   */
-  requests?: number;
-  /**
-   * Storage Bytes
-   */
-  storage_bytes?: number;
-  /**
-   * User Email
-   */
-  user_email?: string | null;
-};
-
-/**
- * FixtureUsageEntry
- */
-export type FixtureUsageEntry = {
-  /**
-   * Feature Key
-   */
-  feature_key: string;
-  /**
-   * Quantity
-   */
-  quantity: number;
-  /**
-   * Unit
-   */
-  unit?: string;
-  /**
-   * Period Start
-   */
-  period_start: string;
-  /**
-   * Period End
-   */
-  period_end?: string | null;
-  /**
-   * Idempotency Key
-   */
-  idempotency_key?: string | null;
-};
-
-/**
- * FixtureUser
- */
-export type FixtureUser = {
-  /**
-   * Email
-   */
-  email: string;
-  /**
-   * Password
-   */
-  password: string;
-  /**
-   * Display Name
-   */
-  display_name?: string | null;
-  /**
-   * Role
-   */
-  role?: string;
-  /**
-   * Verify Email
-   */
-  verify_email?: boolean;
-};
-
-/**
- * FixtureUserResult
- */
-export type FixtureUserResult = {
-  /**
-   * User Id
-   */
-  user_id: string;
-  /**
-   * Role
-   */
-  role: string;
 };
 
 /**
@@ -3947,40 +3598,59 @@ export type PasswordResetRequest = {
 };
 
 /**
- * PasswordResetTokenRequest
+ * PaymentMethodResponse
  */
-export type PasswordResetTokenRequest = {
+export type PaymentMethodResponse = {
   /**
-   * Email
+   * Id
    */
-  email: string;
+  id: string;
   /**
-   * Ip Address
+   * Brand
    */
-  ip_address?: string | null;
+  brand?: string | null;
   /**
-   * User Agent
+   * Last4
    */
-  user_agent?: string | null;
+  last4?: string | null;
+  /**
+   * Exp Month
+   */
+  exp_month?: number | null;
+  /**
+   * Exp Year
+   */
+  exp_year?: number | null;
+  /**
+   * Is Default
+   */
+  is_default?: boolean;
 };
 
 /**
- * PasswordResetTokenResponse
+ * PlanChangeResponse
  */
-export type PasswordResetTokenResponse = {
+export type PlanChangeResponse = {
+  subscription: TenantSubscriptionResponse;
   /**
-   * Token
+   * Target Plan Code
    */
-  token: string;
+  target_plan_code: string;
   /**
-   * User Id
+   * Effective At
    */
-  user_id: string;
+  effective_at?: string | null;
   /**
-   * Expires At
+   * Seat Count
    */
-  expires_at: string;
+  seat_count?: number | null;
+  timing?: PlanChangeTiming;
 };
+
+/**
+ * PlanChangeTiming
+ */
+export type PlanChangeTiming = "auto" | "immediate" | "period_end";
 
 /**
  * PlanFeatureResponse
@@ -4038,13 +3708,25 @@ export type PlatformStatusResponse = {
 };
 
 /**
- * PlaywrightFixtureSpec
+ * PortalSessionRequest
  */
-export type PlaywrightFixtureSpec = {
+export type PortalSessionRequest = {
   /**
-   * Tenants
+   * Billing Email
+   *
+   * Optional billing email to associate with the customer.
    */
-  tenants?: Array<FixtureTenant>;
+  billing_email?: string | null;
+};
+
+/**
+ * PortalSessionResponse
+ */
+export type PortalSessionResponse = {
+  /**
+   * Url
+   */
+  url: string;
 };
 
 /**
@@ -4942,6 +4624,32 @@ export type SessionRevokeByIdSuccessResponse = {
    * Session revocation result payload.
    */
   data?: SessionLogoutResponseData | null;
+};
+
+/**
+ * SetupIntentRequest
+ */
+export type SetupIntentRequest = {
+  /**
+   * Billing Email
+   *
+   * Optional billing email to associate with the customer.
+   */
+  billing_email?: string | null;
+};
+
+/**
+ * SetupIntentResponse
+ */
+export type SetupIntentResponse = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Client Secret
+   */
+  client_secret?: string | null;
 };
 
 /**
@@ -5854,6 +5562,18 @@ export type TenantSubscriptionResponse = {
    */
   seat_count?: number | null;
   /**
+   * Pending Plan Code
+   */
+  pending_plan_code?: string | null;
+  /**
+   * Pending Plan Effective At
+   */
+  pending_plan_effective_at?: string | null;
+  /**
+   * Pending Seat Count
+   */
+  pending_seat_count?: number | null;
+  /**
    * Metadata
    */
   metadata?: {
@@ -6451,6 +6171,90 @@ export type TotpVerifyRequest = {
    * Code
    */
   code: string;
+};
+
+/**
+ * UpcomingInvoiceLineResponse
+ */
+export type UpcomingInvoiceLineResponse = {
+  /**
+   * Description
+   */
+  description?: string | null;
+  /**
+   * Amount Cents
+   */
+  amount_cents: number;
+  /**
+   * Currency
+   */
+  currency?: string | null;
+  /**
+   * Quantity
+   */
+  quantity?: number | null;
+  /**
+   * Unit Amount Cents
+   */
+  unit_amount_cents?: number | null;
+  /**
+   * Price Id
+   */
+  price_id?: string | null;
+};
+
+/**
+ * UpcomingInvoicePreviewRequest
+ */
+export type UpcomingInvoicePreviewRequest = {
+  /**
+   * Seat Count
+   *
+   * Optional seat count override for previewing charges.
+   */
+  seat_count?: number | null;
+};
+
+/**
+ * UpcomingInvoicePreviewResponse
+ */
+export type UpcomingInvoicePreviewResponse = {
+  /**
+   * Plan Code
+   */
+  plan_code: string;
+  /**
+   * Plan Name
+   */
+  plan_name: string;
+  /**
+   * Seat Count
+   */
+  seat_count?: number | null;
+  /**
+   * Invoice Id
+   */
+  invoice_id?: string | null;
+  /**
+   * Amount Due Cents
+   */
+  amount_due_cents: number;
+  /**
+   * Currency
+   */
+  currency: string;
+  /**
+   * Period Start
+   */
+  period_start?: string | null;
+  /**
+   * Period End
+   */
+  period_end?: string | null;
+  /**
+   * Lines
+   */
+  lines?: Array<UpcomingInvoiceLineResponse>;
 };
 
 /**
@@ -18567,6 +18371,95 @@ export type StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostResponse
 export type StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostResponse =
   StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostResponses[keyof StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostResponses];
 
+export type ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostData =
+  {
+    body: ChangeSubscriptionPlanRequest;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Tenant Id
+       */
+      tenant_id: string;
+    };
+    query?: never;
+    url: "/api/v1/billing/tenants/{tenant_id}/subscription/plan";
+  };
+
+export type ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostError =
+  ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostErrors[keyof ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostErrors];
+
+export type ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: PlanChangeResponse;
+  };
+
+export type ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostResponse =
+  ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostResponses[keyof ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPostResponses];
+
 export type CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostData =
   {
     body: CancelSubscriptionRequest;
@@ -18655,6 +18548,548 @@ export type CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostR
 
 export type CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostResponse =
   CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostResponses[keyof CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostResponses];
+
+export type CreatePortalSessionApiV1BillingTenantsTenantIdPortalPostData = {
+  body: PortalSessionRequest;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path: {
+    /**
+     * Tenant Id
+     */
+    tenant_id: string;
+  };
+  query?: never;
+  url: "/api/v1/billing/tenants/{tenant_id}/portal";
+};
+
+export type CreatePortalSessionApiV1BillingTenantsTenantIdPortalPostErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type CreatePortalSessionApiV1BillingTenantsTenantIdPortalPostError =
+  CreatePortalSessionApiV1BillingTenantsTenantIdPortalPostErrors[keyof CreatePortalSessionApiV1BillingTenantsTenantIdPortalPostErrors];
+
+export type CreatePortalSessionApiV1BillingTenantsTenantIdPortalPostResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: PortalSessionResponse;
+  };
+
+export type CreatePortalSessionApiV1BillingTenantsTenantIdPortalPostResponse =
+  CreatePortalSessionApiV1BillingTenantsTenantIdPortalPostResponses[keyof CreatePortalSessionApiV1BillingTenantsTenantIdPortalPostResponses];
+
+export type ListPaymentMethodsApiV1BillingTenantsTenantIdPaymentMethodsGetData =
+  {
+    body?: never;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Tenant Id
+       */
+      tenant_id: string;
+    };
+    query?: never;
+    url: "/api/v1/billing/tenants/{tenant_id}/payment-methods";
+  };
+
+export type ListPaymentMethodsApiV1BillingTenantsTenantIdPaymentMethodsGetErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type ListPaymentMethodsApiV1BillingTenantsTenantIdPaymentMethodsGetError =
+  ListPaymentMethodsApiV1BillingTenantsTenantIdPaymentMethodsGetErrors[keyof ListPaymentMethodsApiV1BillingTenantsTenantIdPaymentMethodsGetErrors];
+
+export type ListPaymentMethodsApiV1BillingTenantsTenantIdPaymentMethodsGetResponses =
+  {
+    /**
+     * Response List Payment Methods Api V1 Billing Tenants  Tenant Id  Payment Methods Get
+     *
+     * Successful Response
+     */
+    200: Array<PaymentMethodResponse>;
+  };
+
+export type ListPaymentMethodsApiV1BillingTenantsTenantIdPaymentMethodsGetResponse =
+  ListPaymentMethodsApiV1BillingTenantsTenantIdPaymentMethodsGetResponses[keyof ListPaymentMethodsApiV1BillingTenantsTenantIdPaymentMethodsGetResponses];
+
+export type CreateSetupIntentApiV1BillingTenantsTenantIdPaymentMethodsSetupIntentPostData =
+  {
+    body: SetupIntentRequest;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Tenant Id
+       */
+      tenant_id: string;
+    };
+    query?: never;
+    url: "/api/v1/billing/tenants/{tenant_id}/payment-methods/setup-intent";
+  };
+
+export type CreateSetupIntentApiV1BillingTenantsTenantIdPaymentMethodsSetupIntentPostErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type CreateSetupIntentApiV1BillingTenantsTenantIdPaymentMethodsSetupIntentPostError =
+  CreateSetupIntentApiV1BillingTenantsTenantIdPaymentMethodsSetupIntentPostErrors[keyof CreateSetupIntentApiV1BillingTenantsTenantIdPaymentMethodsSetupIntentPostErrors];
+
+export type CreateSetupIntentApiV1BillingTenantsTenantIdPaymentMethodsSetupIntentPostResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: SetupIntentResponse;
+  };
+
+export type CreateSetupIntentApiV1BillingTenantsTenantIdPaymentMethodsSetupIntentPostResponse =
+  CreateSetupIntentApiV1BillingTenantsTenantIdPaymentMethodsSetupIntentPostResponses[keyof CreateSetupIntentApiV1BillingTenantsTenantIdPaymentMethodsSetupIntentPostResponses];
+
+export type SetDefaultPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDefaultPostData =
+  {
+    body?: never;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Tenant Id
+       */
+      tenant_id: string;
+      /**
+       * Payment Method Id
+       */
+      payment_method_id: string;
+    };
+    query?: never;
+    url: "/api/v1/billing/tenants/{tenant_id}/payment-methods/{payment_method_id}/default";
+  };
+
+export type SetDefaultPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDefaultPostErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type SetDefaultPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDefaultPostError =
+  SetDefaultPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDefaultPostErrors[keyof SetDefaultPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDefaultPostErrors];
+
+export type SetDefaultPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDefaultPostResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: SuccessNoDataResponse;
+  };
+
+export type SetDefaultPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDefaultPostResponse =
+  SetDefaultPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDefaultPostResponses[keyof SetDefaultPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDefaultPostResponses];
+
+export type DetachPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDeleteData =
+  {
+    body?: never;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Tenant Id
+       */
+      tenant_id: string;
+      /**
+       * Payment Method Id
+       */
+      payment_method_id: string;
+    };
+    query?: never;
+    url: "/api/v1/billing/tenants/{tenant_id}/payment-methods/{payment_method_id}";
+  };
+
+export type DetachPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDeleteErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type DetachPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDeleteError =
+  DetachPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDeleteErrors[keyof DetachPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDeleteErrors];
+
+export type DetachPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDeleteResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: SuccessNoDataResponse;
+  };
+
+export type DetachPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDeleteResponse =
+  DetachPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDeleteResponses[keyof DetachPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDeleteResponses];
+
+export type PreviewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePostData =
+  {
+    body: UpcomingInvoicePreviewRequest;
+    headers?: {
+      /**
+       * X-Tenant-Id
+       */
+      "X-Tenant-Id"?: string | null;
+      /**
+       * X-Tenant-Role
+       */
+      "X-Tenant-Role"?: string | null;
+    };
+    path: {
+      /**
+       * Tenant Id
+       */
+      tenant_id: string;
+    };
+    query?: never;
+    url: "/api/v1/billing/tenants/{tenant_id}/upcoming-invoice";
+  };
+
+export type PreviewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePostErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type PreviewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePostError =
+  PreviewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePostErrors[keyof PreviewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePostErrors];
+
+export type PreviewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePostResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: UpcomingInvoicePreviewResponse;
+  };
+
+export type PreviewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePostResponse =
+  PreviewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePostResponses[keyof PreviewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePostResponses];
 
 export type RecordUsageApiV1BillingTenantsTenantIdUsagePostData = {
   body: UsageRecordRequest;
@@ -18939,222 +19374,3 @@ export type BillingEventStreamApiV1BillingStreamGetResponses = {
 
 export type BillingEventStreamApiV1BillingStreamGetResponse =
   BillingEventStreamApiV1BillingStreamGetResponses[keyof BillingEventStreamApiV1BillingStreamGetResponses];
-
-export type ApplyTestFixturesApiV1TestFixturesApplyPostData = {
-  body: PlaywrightFixtureSpec;
-  path?: never;
-  query?: never;
-  url: "/api/v1/test-fixtures/apply";
-};
-
-export type ApplyTestFixturesApiV1TestFixturesApplyPostErrors = {
-  /**
-   * Bad Request
-   */
-  400: ErrorResponse;
-  /**
-   * Unauthorized
-   */
-  401: ErrorResponse;
-  /**
-   * Forbidden
-   */
-  403: ErrorResponse;
-  /**
-   * Not Found
-   */
-  404: ErrorResponse;
-  /**
-   * Conflict
-   */
-  409: ErrorResponse;
-  /**
-   * Request Entity Too Large
-   */
-  413: ErrorResponse;
-  /**
-   * Validation Error
-   */
-  422: ValidationErrorResponse;
-  /**
-   * Too Many Requests
-   */
-  429: ErrorResponse;
-  /**
-   * Internal Server Error
-   */
-  500: ErrorResponse;
-  /**
-   * Bad Gateway
-   */
-  502: ErrorResponse;
-  /**
-   * Service Unavailable
-   */
-  503: ErrorResponse;
-  /**
-   * Error Response
-   */
-  default: ErrorResponse;
-};
-
-export type ApplyTestFixturesApiV1TestFixturesApplyPostError =
-  ApplyTestFixturesApiV1TestFixturesApplyPostErrors[keyof ApplyTestFixturesApiV1TestFixturesApplyPostErrors];
-
-export type ApplyTestFixturesApiV1TestFixturesApplyPostResponses = {
-  /**
-   * Successful Response
-   */
-  201: FixtureApplyResult;
-};
-
-export type ApplyTestFixturesApiV1TestFixturesApplyPostResponse =
-  ApplyTestFixturesApiV1TestFixturesApplyPostResponses[keyof ApplyTestFixturesApiV1TestFixturesApplyPostResponses];
-
-export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostData =
-  {
-    body: EmailVerificationTokenRequest;
-    path?: never;
-    query?: never;
-    url: "/api/v1/test-fixtures/email-verification-token";
-  };
-
-export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors =
-  {
-    /**
-     * Bad Request
-     */
-    400: ErrorResponse;
-    /**
-     * Unauthorized
-     */
-    401: ErrorResponse;
-    /**
-     * Forbidden
-     */
-    403: ErrorResponse;
-    /**
-     * Not Found
-     */
-    404: ErrorResponse;
-    /**
-     * Conflict
-     */
-    409: ErrorResponse;
-    /**
-     * Request Entity Too Large
-     */
-    413: ErrorResponse;
-    /**
-     * Validation Error
-     */
-    422: ValidationErrorResponse;
-    /**
-     * Too Many Requests
-     */
-    429: ErrorResponse;
-    /**
-     * Internal Server Error
-     */
-    500: ErrorResponse;
-    /**
-     * Bad Gateway
-     */
-    502: ErrorResponse;
-    /**
-     * Service Unavailable
-     */
-    503: ErrorResponse;
-    /**
-     * Error Response
-     */
-    default: ErrorResponse;
-  };
-
-export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostError =
-  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors[keyof IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors];
-
-export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses =
-  {
-    /**
-     * Successful Response
-     */
-    201: EmailVerificationTokenResponse;
-  };
-
-export type IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponse =
-  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses[keyof IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses];
-
-export type IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostData =
-  {
-    body: PasswordResetTokenRequest;
-    path?: never;
-    query?: never;
-    url: "/api/v1/test-fixtures/password-reset-token";
-  };
-
-export type IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostErrors =
-  {
-    /**
-     * Bad Request
-     */
-    400: ErrorResponse;
-    /**
-     * Unauthorized
-     */
-    401: ErrorResponse;
-    /**
-     * Forbidden
-     */
-    403: ErrorResponse;
-    /**
-     * Not Found
-     */
-    404: ErrorResponse;
-    /**
-     * Conflict
-     */
-    409: ErrorResponse;
-    /**
-     * Request Entity Too Large
-     */
-    413: ErrorResponse;
-    /**
-     * Validation Error
-     */
-    422: ValidationErrorResponse;
-    /**
-     * Too Many Requests
-     */
-    429: ErrorResponse;
-    /**
-     * Internal Server Error
-     */
-    500: ErrorResponse;
-    /**
-     * Bad Gateway
-     */
-    502: ErrorResponse;
-    /**
-     * Service Unavailable
-     */
-    503: ErrorResponse;
-    /**
-     * Error Response
-     */
-    default: ErrorResponse;
-  };
-
-export type IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostError =
-  IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostErrors[keyof IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostErrors];
-
-export type IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostResponses =
-  {
-    /**
-     * Successful Response
-     */
-    201: PasswordResetTokenResponse;
-  };
-
-export type IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostResponse =
-  IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostResponses[keyof IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostResponses];

@@ -17,11 +17,8 @@ from app.infrastructure.persistence.stripe.models import (
     StripeEventDispatch,
 )
 from app.infrastructure.persistence.stripe.repository import StripeEventRepository
-from app.services.billing.billing_service import (
-    BillingService,
-    ProcessorInvoiceSnapshot,
-    ProcessorSubscriptionSnapshot,
-)
+from app.services.billing.billing_service import BillingService
+from app.services.billing.models import ProcessorInvoiceSnapshot, ProcessorSubscriptionSnapshot
 from app.services.billing.stripe.dispatcher import EventHandler, StripeEventDispatcher
 from tests.utils.sqlalchemy import create_tables
 

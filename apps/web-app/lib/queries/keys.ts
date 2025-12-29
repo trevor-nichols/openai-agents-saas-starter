@@ -28,6 +28,14 @@ export const queryKeys = {
     plans: () => [...queryKeys.billing.all, 'plans'] as const,
     history: (tenantId: string | null, filters?: Record<string, unknown>) =>
       [...queryKeys.billing.all, 'history', tenantId ?? 'unknown', filters] as const,
+    subscription: (tenantId: string | null) =>
+      [...queryKeys.billing.all, 'subscription', tenantId ?? 'unknown'] as const,
+    paymentMethods: (tenantId: string | null) =>
+      [...queryKeys.billing.all, 'payment-methods', tenantId ?? 'unknown'] as const,
+    upcomingInvoiceBase: (tenantId: string | null) =>
+      [...queryKeys.billing.all, 'upcoming-invoice', tenantId ?? 'unknown'] as const,
+    upcomingInvoice: (tenantId: string | null, seatCount?: number | null) =>
+      [...queryKeys.billing.upcomingInvoiceBase(tenantId), { seatCount: seatCount ?? null }] as const,
   },
   tools: {
     all: ['tools'] as const,

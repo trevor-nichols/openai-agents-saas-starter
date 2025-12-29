@@ -42,13 +42,30 @@ api-service/src/app/services/
   billing/
     __init__.py
     billing_service.py
-    billing_events.py
-    payment_gateway.py
+    billing_events/
+      __init__.py
+      history.py
+      normalizer.py
+      payloads.py
+      protocols.py
+      publisher.py
+      service.py
+      types.py
+    payment_gateway/
+      __init__.py
+      models.py
+      protocol.py
     stripe/
       __init__.py
+      client_protocol.py
       dispatcher.py
       event_models.py
+      gateway.py
+      mapping.py
+      plan_mapping.py
       retry_worker.py
+      telemetry.py
+      utils.py
   conversations/
     __init__.py
     agent_service.py

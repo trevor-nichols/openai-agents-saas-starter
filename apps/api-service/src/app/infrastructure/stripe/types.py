@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, TypedDict, cast
+from typing import Any, TypedDict, cast
 
 import stripe
 
@@ -30,6 +30,7 @@ class SubscriptionModifyItemPayload(TypedDict, total=False):
 
     id: str
     quantity: int
+    price: str
 
 
 class SubscriptionModifyParams(TypedDict, total=False):
@@ -38,6 +39,33 @@ class SubscriptionModifyParams(TypedDict, total=False):
     cancel_at_period_end: bool
     items: list[SubscriptionModifyItemPayload]
     expand: list[str]
+    metadata: dict[str, str]
+    proration_behavior: str
+
+
+class SubscriptionScheduleItemPayload(TypedDict, total=False):
+    price: str
+    quantity: int
+
+
+class SubscriptionSchedulePhasePayload(TypedDict, total=False):
+    items: list[SubscriptionScheduleItemPayload]
+    start_date: int
+    end_date: int
+    proration_behavior: str
+    metadata: dict[str, str]
+
+
+class SubscriptionScheduleCreateParams(TypedDict, total=False):
+    from_subscription: str
+    end_behavior: str
+
+
+class SubscriptionScheduleModifyParams(TypedDict, total=False):
+    phases: list[SubscriptionSchedulePhasePayload]
+    end_behavior: str
+    proration_behavior: str
+    metadata: dict[str, str]
 
 
 class UsageRecordPayload(TypedDict):
@@ -48,43 +76,6 @@ class UsageRecordPayload(TypedDict):
     timestamp: int
     idempotency_key: str
     feature_key: str
-
-
-if TYPE_CHECKING:
-
-    class StripeAPIConnectionError(Exception):
-        ...
-
-    class StripeAPIError(Exception):
-        ...
-
-    class StripeRateLimitError(Exception):
-        ...
-
-    class StripeIdempotencyError(Exception):
-        ...
-
-else:
-    _stripe_error_ns = getattr(stripe, "error", None)
-
-    def _resolve_error(name: str) -> type[Exception]:
-        candidate = getattr(_stripe_error_ns, name, None) if _stripe_error_ns else None
-        if isinstance(candidate, type):
-            return cast(type[Exception], candidate)
-        return Exception
-
-    StripeAPIConnectionError = _resolve_error("APIConnectionError")
-    StripeAPIError = _resolve_error("APIError")
-    StripeRateLimitError = _resolve_error("RateLimitError")
-    StripeIdempotencyError = _resolve_error("IdempotencyError")
-
-
-RETRYABLE_ERRORS: tuple[type[Exception], ...] = (
-    StripeAPIConnectionError,
-    StripeAPIError,
-    StripeRateLimitError,
-    StripeIdempotencyError,
-)
 
 
 def call_subscription_delete(subscription_id: str, params: dict[str, Any]) -> Any:
@@ -122,3 +113,37 @@ def call_create_usage_record(payload: UsageRecordPayload) -> Any:
         idempotency_key=payload["idempotency_key"],
         metadata={"feature": payload["feature_key"]},
     )
+
+
+def call_subscription_schedule_create(payload: SubscriptionScheduleCreateParams) -> Any:
+    """Invoke stripe.SubscriptionSchedule.create with typed params."""
+
+    schedule_api = cast(Any, stripe.SubscriptionSchedule)
+    return schedule_api.create(**payload)
+
+
+def call_subscription_schedule_modify(
+    schedule_id: str, params: dict[str, Any]
+) -> Any:
+    """Invoke stripe.SubscriptionSchedule.modify with typed params."""
+
+    schedule_api = cast(Any, stripe.SubscriptionSchedule)
+    return schedule_api.modify(schedule_id, **params)
+
+
+def call_subscription_schedule_release(
+    schedule_id: str,
+) -> Any:
+    """Invoke stripe.SubscriptionSchedule.release."""
+
+    schedule_api = cast(Any, stripe.SubscriptionSchedule)
+    return schedule_api.release(schedule_id)
+
+
+def call_subscription_schedule_retrieve(
+    schedule_id: str,
+) -> Any:
+    """Invoke stripe.SubscriptionSchedule.retrieve."""
+
+    schedule_api = cast(Any, stripe.SubscriptionSchedule)
+    return schedule_api.retrieve(schedule_id)
