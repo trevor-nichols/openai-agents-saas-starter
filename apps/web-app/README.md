@@ -57,17 +57,13 @@ The app runs at `http://localhost:3000`.
 This app uses `@hey-api/openapi-ts` and outputs to `lib/api/client/`.
 
 ```bash
+# Export OpenAPI artifacts (billing + fixtures)
+just openapi-export
+
 # Generate from the repo-level OpenAPI artifact
 pnpm generate
 
 # If you need fixture endpoints for tests
-cd ../packages/starter_console
-starter-console api export-openapi \
-  --output apps/api-service/.artifacts/openapi-fixtures.json \
-  --enable-billing \
-  --enable-test-fixtures
-
-cd ../../apps/web-app
 OPENAPI_INPUT=../api-service/.artifacts/openapi-fixtures.json pnpm generate:fixtures
 ```
 

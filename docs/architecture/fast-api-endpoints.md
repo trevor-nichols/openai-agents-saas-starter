@@ -1,7 +1,8 @@
 # API Service
 
 > Source of truth: the generated OpenAPI schema. Regenerate with
-> `starter-console api export-openapi --output apps/api-service/.artifacts/openapi.json`
+> `just openapi-export` (billing enabled), or run
+> `starter-console api export-openapi --output apps/api-service/.artifacts/openapi.json --enable-billing`
 > and consult that artifact (or `/docs` in a running server) for the current list.
 
 # API Endpoints

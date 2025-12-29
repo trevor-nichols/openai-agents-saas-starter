@@ -173,7 +173,7 @@ If you’re going beyond a demo, use the wizard so env files and audit artifacts
 
 ## Web App Notes
 - **BFF boundary:** Browser code only calls `/api/...` routes in the Next.js app. Never call the FastAPI base URL directly from the browser.
-- **OpenAPI client:** `pnpm generate` refreshes `lib/api/client` from `apps/api-service/.artifacts/openapi.json`. Use `pnpm generate:fixtures` when you need test-fixture endpoints.
+- **OpenAPI client:** Run `just openapi-export` to refresh the OpenAPI artifacts (billing + fixtures). Then `pnpm generate` refreshes `lib/api/client` from `apps/api-service/.artifacts/openapi.json`; use `pnpm generate:fixtures` when you need test-fixture endpoints.
 - **Storybook:** `pnpm storybook` (dev) or `pnpm storybook:build` (static bundle).
 - **Tests:** `pnpm lint`, `pnpm type-check`, `pnpm test` (Vitest), `pnpm test:e2e` (Playwright). Seed Playwright fixtures with `pnpm test:seed`.
 - **Logs:** Frontend dev logs are written to `var/log/current/frontend/all.log` and `var/log/current/frontend/error.log`.

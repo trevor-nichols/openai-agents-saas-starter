@@ -22,6 +22,8 @@ const requiredPaths = [
   '/api/v1/billing/tenants/{tenant_id}/subscription/plan',
   '/api/v1/billing/tenants/{tenant_id}/subscription/cancel',
   '/api/v1/billing/tenants/{tenant_id}/upcoming-invoice',
+  '/api/v1/billing/tenants/{tenant_id}/invoices',
+  '/api/v1/billing/tenants/{tenant_id}/invoices/{invoice_id}',
   '/api/v1/billing/tenants/{tenant_id}/usage',
   '/api/v1/billing/tenants/{tenant_id}/usage-totals',
 ];
