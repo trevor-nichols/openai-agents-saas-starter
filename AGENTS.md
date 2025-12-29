@@ -131,6 +131,7 @@ You are a professional engineer and developer in charge of the OpenAI Agent SaaS
 - Keep FastAPI routers roughly ≤300 lines by default—split files when workflows/dependencies diverge, but it’s acceptable for a single router to exceed that limit when it embeds tightly coupled security or validation helpers; extract those helpers into shared modules only once they are reused elsewhere.
 - Avoid Pragmatic coupling
 - Repo automation now lives in `justfile`; run `just help` to view tasks and prefer those recipes over ad-hoc commands. Use the Just recipes for infra + DB tasks (e.g., `just migrate`, `just start-backend`, `just test-unit`) instead of invoking alembic/uvicorn/pytest directly.
+- Prior to developing complex features or significant refactors, create a `Milestone Tracker` based on the template in `docs/trackers/templates/MILESTONE_TEMPLATE.md`. A `Milestone Tracker` is the spec-and-execution doc for a deliverable slice of the project: it captures the goal, scope/guardrails, phased task breakdown with owners/status, and clear acceptance criteria/DoD. You use it as the single source of truth to implement and verify the work, and as the progress log to keep everyone aligned and prevent drift. Create active Milestone Trackers in `docs/trackers/current_milestones`. Once complete, they are archived in `docs/trackers/complete/{date}`.
 
 ## Pre-commit hooks (local)
 - Install with `just pre-commit-install` (auto-installs `pre-commit` if missing).
