@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 import { BILLING_COPY } from '../shared/constants';
 import { BillingEventsList } from './components/BillingEventsList';
+import { InvoicesList } from './components/InvoicesList';
 import { InvoiceCard } from './components/InvoiceCard';
 import { PlanSnapshotCard } from './components/PlanSnapshotCard';
 import { BillingHealthCard } from './components/BillingHealthCard';
@@ -18,6 +19,8 @@ export function BillingOverview() {
     usageWindowLabel,
     usageTotalsState,
     invoiceSummary,
+    invoices,
+    invoicesState,
     events,
     streamStatus,
   } = useBillingOverviewData();
@@ -42,6 +45,7 @@ export function BillingOverview() {
             <TabsList>
               <TabsTrigger value="usage" className="w-32">Usage</TabsTrigger>
               <TabsTrigger value="events" className="w-32">Events</TabsTrigger>
+              <TabsTrigger value="invoices" className="w-32">Invoices</TabsTrigger>
             </TabsList>
           </div>
 
@@ -65,6 +69,13 @@ export function BillingOverview() {
           </TabsContent>
           <TabsContent value="events" className="space-y-4 outline-none">
             <BillingEventsList events={events} streamStatus={streamStatus} />
+          </TabsContent>
+          <TabsContent value="invoices" className="space-y-4 outline-none">
+            <InvoicesList
+              invoices={invoices.slice(0, 5)}
+              isLoading={invoicesState.isLoading}
+              errorMessage={invoicesState.error?.message}
+            />
           </TabsContent>
         </Tabs>
       </div>

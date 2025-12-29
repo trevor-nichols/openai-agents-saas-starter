@@ -10,9 +10,6 @@ import type {
   AdminResetPasswordApiV1AuthPasswordResetPostData,
   AdminResetPasswordApiV1AuthPasswordResetPostErrors,
   AdminResetPasswordApiV1AuthPasswordResetPostResponses,
-  ApplyTestFixturesApiV1TestFixturesApplyPostData,
-  ApplyTestFixturesApiV1TestFixturesApplyPostErrors,
-  ApplyTestFixturesApiV1TestFixturesApplyPostResponses,
   ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostData,
   ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostErrors,
   ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostResponses,
@@ -157,6 +154,9 @@ import type {
   GetGuardrailApiV1GuardrailsGuardrailKeyGetData,
   GetGuardrailApiV1GuardrailsGuardrailKeyGetErrors,
   GetGuardrailApiV1GuardrailsGuardrailKeyGetResponses,
+  GetInvoiceApiV1BillingTenantsTenantIdInvoicesInvoiceIdGetData,
+  GetInvoiceApiV1BillingTenantsTenantIdInvoicesInvoiceIdGetErrors,
+  GetInvoiceApiV1BillingTenantsTenantIdInvoicesInvoiceIdGetResponses,
   GetPlatformStatusApiV1StatusGetData,
   GetPlatformStatusApiV1StatusGetErrors,
   GetPlatformStatusApiV1StatusGetResponses,
@@ -193,15 +193,9 @@ import type {
   HealthCheckHealthGetData,
   HealthCheckHealthGetErrors,
   HealthCheckHealthGetResponses,
-  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostData,
-  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors,
-  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses,
   IssueInviteApiV1AuthInvitesPostData,
   IssueInviteApiV1AuthInvitesPostErrors,
   IssueInviteApiV1AuthInvitesPostResponses,
-  IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostData,
-  IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostErrors,
-  IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostResponses,
   IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostData,
   IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostErrors,
   IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostResponses,
@@ -244,6 +238,9 @@ import type {
   ListInvitesApiV1AuthInvitesGetData,
   ListInvitesApiV1AuthInvitesGetErrors,
   ListInvitesApiV1AuthInvitesGetResponses,
+  ListInvoicesApiV1BillingTenantsTenantIdInvoicesGetData,
+  ListInvoicesApiV1BillingTenantsTenantIdInvoicesGetErrors,
+  ListInvoicesApiV1BillingTenantsTenantIdInvoicesGetResponses,
   ListMfaMethodsApiV1AuthMfaGetData,
   ListMfaMethodsApiV1AuthMfaGetErrors,
   ListMfaMethodsApiV1AuthMfaGetResponses,
@@ -3844,6 +3841,64 @@ export const startSubscriptionApiV1BillingTenantsTenantIdSubscriptionPost = <
 };
 
 /**
+ * List Invoices
+ *
+ * List persisted invoices for the tenant subscription.
+ */
+export const listInvoicesApiV1BillingTenantsTenantIdInvoicesGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    ListInvoicesApiV1BillingTenantsTenantIdInvoicesGetData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).get<
+    ListInvoicesApiV1BillingTenantsTenantIdInvoicesGetResponses,
+    ListInvoicesApiV1BillingTenantsTenantIdInvoicesGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/billing/tenants/{tenant_id}/invoices",
+    ...options,
+  });
+};
+
+/**
+ * Get Invoice
+ *
+ * Fetch a single invoice by processor invoice identifier.
+ */
+export const getInvoiceApiV1BillingTenantsTenantIdInvoicesInvoiceIdGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    GetInvoiceApiV1BillingTenantsTenantIdInvoicesInvoiceIdGetData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).get<
+    GetInvoiceApiV1BillingTenantsTenantIdInvoicesInvoiceIdGetResponses,
+    GetInvoiceApiV1BillingTenantsTenantIdInvoicesInvoiceIdGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/billing/tenants/{tenant_id}/invoices/{invoice_id}",
+    ...options,
+  });
+};
+
+/**
  * Change Subscription Plan
  *
  * Request a plan change, either immediate or effective at period end.
@@ -4201,79 +4256,5 @@ export const billingEventStreamApiV1BillingStreamGet = <
     ],
     url: "/api/v1/billing/stream",
     ...options,
-  });
-};
-
-/**
- * Apply Test Fixtures
- */
-export const applyTestFixturesApiV1TestFixturesApplyPost = <
-  ThrowOnError extends boolean = false,
->(
-  options: Options<
-    ApplyTestFixturesApiV1TestFixturesApplyPostData,
-    ThrowOnError
-  >,
-) => {
-  return (options.client ?? client).post<
-    ApplyTestFixturesApiV1TestFixturesApplyPostResponses,
-    ApplyTestFixturesApiV1TestFixturesApplyPostErrors,
-    ThrowOnError
-  >({
-    url: "/api/v1/test-fixtures/apply",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
-};
-
-/**
- * Issue Email Verification Token
- */
-export const issueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPost =
-  <ThrowOnError extends boolean = false>(
-    options: Options<
-      IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostData,
-      ThrowOnError
-    >,
-  ) => {
-    return (options.client ?? client).post<
-      IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses,
-      IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors,
-      ThrowOnError
-    >({
-      url: "/api/v1/test-fixtures/email-verification-token",
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
-    });
-  };
-
-/**
- * Issue Password Reset Token
- */
-export const issuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPost = <
-  ThrowOnError extends boolean = false,
->(
-  options: Options<
-    IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostData,
-    ThrowOnError
-  >,
-) => {
-  return (options.client ?? client).post<
-    IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostResponses,
-    IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostErrors,
-    ThrowOnError
-  >({
-    url: "/api/v1/test-fixtures/password-reset-token",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
   });
 };

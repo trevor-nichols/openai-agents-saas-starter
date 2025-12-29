@@ -6,7 +6,13 @@ from typing import Annotated
 
 from pydantic import BaseModel, EmailStr, Field
 
-from app.domain.billing import BillingPlan, PlanFeature, TenantSubscription, UsageTotal
+from app.domain.billing import (
+    BillingPlan,
+    PlanFeature,
+    SubscriptionInvoiceRecord,
+    TenantSubscription,
+    UsageTotal,
+)
 from app.services.billing.billing_events import (
     BillingEventInvoice,
     BillingEventPayload,
@@ -109,6 +115,37 @@ class TenantSubscriptionResponse(BaseModel):
             pending_seat_count=subscription.pending_seat_count,
             metadata=subscription.metadata,
         )
+
+
+class SubscriptionInvoiceResponse(BaseModel):
+    invoice_id: str | None = None
+    status: str
+    amount_cents: int
+    currency: str
+    period_start: datetime
+    period_end: datetime
+    hosted_invoice_url: str | None = None
+    created_at: datetime | None = None
+
+    @classmethod
+    def from_domain(
+        cls, invoice: SubscriptionInvoiceRecord
+    ) -> SubscriptionInvoiceResponse:
+        return cls(
+            invoice_id=invoice.processor_invoice_id,
+            status=invoice.status,
+            amount_cents=invoice.amount_cents,
+            currency=invoice.currency,
+            period_start=invoice.period_start,
+            period_end=invoice.period_end,
+            hosted_invoice_url=invoice.hosted_invoice_url,
+            created_at=invoice.created_at,
+        )
+
+
+class SubscriptionInvoiceListResponse(BaseModel):
+    items: list[SubscriptionInvoiceResponse] = Field(default_factory=list)
+    next_offset: int | None = None
 
 
 class StartSubscriptionRequest(BaseModel):

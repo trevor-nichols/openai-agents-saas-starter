@@ -74,6 +74,7 @@ class SubscriptionInvoiceRecord:
     status: str
     processor_invoice_id: str | None = None
     hosted_invoice_url: str | None = None
+    created_at: datetime | None = None
 
 
 class BillingRepository(Protocol):
@@ -125,6 +126,14 @@ class BillingRepository(Protocol):
     ) -> None: ...
 
     async def upsert_invoice(self, invoice: SubscriptionInvoiceRecord) -> None: ...
+
+    async def get_invoice(
+        self, tenant_id: str, *, invoice_id: str
+    ) -> SubscriptionInvoiceRecord | None: ...
+
+    async def list_invoices(
+        self, tenant_id: str, *, limit: int, offset: int
+    ) -> list[SubscriptionInvoiceRecord]: ...
 
     async def get_usage_totals(
         self,

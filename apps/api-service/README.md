@@ -199,10 +199,19 @@ hatch run test-smoke
 ```
 
 ### OpenAPI export
-Use the console so the schema matches billing + fixtures:
+Use the console so the schema matches billing + fixtures. Preferred:
+
+```bash
+just openapi-export
+```
+
+Manual (if you need to run the commands directly):
 
 ```bash
 cd packages/starter_console
+starter-console api export-openapi \
+  --output apps/api-service/.artifacts/openapi.json \
+  --enable-billing
 starter-console api export-openapi \
   --output apps/api-service/.artifacts/openapi-fixtures.json \
   --enable-billing \

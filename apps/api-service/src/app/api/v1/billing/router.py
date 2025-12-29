@@ -30,6 +30,8 @@ from app.api.v1.billing.schemas import (
     SetupIntentRequest,
     SetupIntentResponse,
     StartSubscriptionRequest,
+    SubscriptionInvoiceListResponse,
+    SubscriptionInvoiceResponse,
     TenantSubscriptionResponse,
     UpcomingInvoicePreviewRequest,
     UpcomingInvoicePreviewResponse,
@@ -114,6 +116,70 @@ async def get_tenant_subscription(
         )
 
     return TenantSubscriptionResponse.from_domain(subscription)
+
+
+@router.get(
+    "/tenants/{tenant_id}/invoices",
+    response_model=SubscriptionInvoiceListResponse,
+)
+async def list_invoices(
+    tenant_id: str,
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    context: TenantContext = Depends(
+        require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.VIEWER)
+    ),
+) -> SubscriptionInvoiceListResponse:
+    """List persisted invoices for the tenant subscription."""
+
+    _assert_same_tenant(context, tenant_id)
+
+    try:
+        invoices = await billing_service.list_invoices(
+            tenant_id,
+            limit=limit,
+            offset=offset,
+        )
+    except BillingError as exc:  # pragma: no cover - translated below
+        _handle_billing_error(exc)
+
+    next_offset = offset + limit if len(invoices) == limit else None
+    return SubscriptionInvoiceListResponse(
+        items=[SubscriptionInvoiceResponse.from_domain(invoice) for invoice in invoices],
+        next_offset=next_offset,
+    )
+
+
+@router.get(
+    "/tenants/{tenant_id}/invoices/{invoice_id}",
+    response_model=SubscriptionInvoiceResponse,
+)
+async def get_invoice(
+    tenant_id: str,
+    invoice_id: str,
+    context: TenantContext = Depends(
+        require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.VIEWER)
+    ),
+) -> SubscriptionInvoiceResponse:
+    """Fetch a single invoice by processor invoice identifier."""
+
+    _assert_same_tenant(context, tenant_id)
+
+    try:
+        invoice = await billing_service.get_invoice(
+            tenant_id,
+            invoice_id=invoice_id,
+        )
+    except BillingError as exc:  # pragma: no cover - translated below
+        _handle_billing_error(exc)
+
+    if invoice is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invoice not found.",
+        )
+
+    return SubscriptionInvoiceResponse.from_domain(invoice)
 
 
 @router.post(

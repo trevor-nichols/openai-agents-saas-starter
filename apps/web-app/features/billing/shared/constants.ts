@@ -10,6 +10,10 @@ export const BILLING_COPY = {
     eventsTitle: 'Live billing events',
     eventsEmptyTitle: 'Awaiting activity',
     eventsEmptyDescription: 'Stripe events, invoices, and usage will show up here.',
+    invoicesTitle: 'Invoice history',
+    invoicesEmptyTitle: 'No invoices yet',
+    invoicesEmptyDescription: 'Invoices will appear once billing runs a cycle.',
+    invoicesCtaLabel: 'View invoice history',
     subscribeLabel: 'Manage plan',
     usageCtaLabel: 'View full usage log',
     eventsCtaLabel: 'View event history',
@@ -65,5 +69,10 @@ export const BILLING_COPY = {
     eyebrow: 'Billing',
     title: 'Event history',
     description: 'Browse the full log of Stripe events, invoices, and usage notifications.',
+  },
+  invoicesPage: {
+    eyebrow: 'Billing',
+    title: 'Invoice ledger',
+    description: 'Review stored invoices and jump to hosted Stripe receipts.',
   },
 } as const;

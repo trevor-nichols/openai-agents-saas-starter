@@ -132,6 +132,11 @@ You are a professional engineer and developer in charge of the OpenAI Agent SaaS
 - Avoid Pragmatic coupling
 - Repo automation now lives in `justfile`; run `just help` to view tasks and prefer those recipes over ad-hoc commands. Use the Just recipes for infra + DB tasks (e.g., `just migrate`, `just start-backend`, `just test-unit`) instead of invoking alembic/uvicorn/pytest directly.
 
+## Pre-commit hooks (local)
+- Install with `just pre-commit-install` (auto-installs `pre-commit` if missing).
+- Hooks keep OpenAPI artifacts + web SDK in sync when API files change.
+- Skip locally with `SKIP=openapi-export,web-sdk-generate git commit` (use sparingly).
+
 # Test Environment Contract
 - `conftest.py` at the repository root forces the entire pytest run onto SQLite + fakeredis and disables billing/auto migrations. **Do not** remove or bypass this file; any new package (console included) must behave correctly when those overrides are in effect.
 - Run backend tests inside the hatch env (`cd apps/api-service && hatch run test …`) or `hatch shell`; invoking `pytest` with the host interpreter can miss dev extras like `fakeredis` even if they’re installed elsewhere.

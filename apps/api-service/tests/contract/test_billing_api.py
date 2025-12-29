@@ -15,7 +15,12 @@ from tests.utils.contract_env import TEST_TENANT_ID
 
 from app.api.dependencies.auth import require_current_user  # noqa: E402
 from app.api.v1.billing import router as billing_router  # noqa: E402
-from app.domain.billing import BillingPlan, TenantSubscription, UsageTotal  # noqa: E402
+from app.domain.billing import (  # noqa: E402
+    BillingPlan,
+    SubscriptionInvoiceRecord,
+    TenantSubscription,
+    UsageTotal,
+)
 from app.services.billing.models import (  # noqa: E402
     PlanChangeResult,
     PlanChangeTiming,
@@ -106,6 +111,66 @@ def test_get_tenant_subscription_returns_payload(
     assert payload["tenant_id"] == TEST_TENANT_ID
     assert payload["plan_code"] == "starter"
     assert payload["status"] == "active"
+
+
+def test_list_invoices_returns_payload(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    now = datetime.now(UTC)
+    invoice = SubscriptionInvoiceRecord(
+        tenant_id=TEST_TENANT_ID,
+        period_start=now,
+        period_end=now + timedelta(days=30),
+        amount_cents=1200,
+        currency="USD",
+        status="paid",
+        processor_invoice_id="in_123",
+        hosted_invoice_url="https://example.com/invoices/in_123",
+        created_at=now,
+    )
+    list_mock = AsyncMock(return_value=[invoice])
+    monkeypatch.setattr(billing_router.billing_service, "list_invoices", list_mock)
+
+    response = client.get(
+        f"/api/v1/billing/tenants/{TEST_TENANT_ID}/invoices",
+        params={"limit": 20, "offset": 0},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["items"][0]["invoice_id"] == "in_123"
+    assert payload["items"][0]["amount_cents"] == 1200
+    assert payload["next_offset"] is None
+
+    list_mock.assert_awaited_once_with(TEST_TENANT_ID, limit=20, offset=0)
+
+
+def test_get_invoice_returns_payload(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    now = datetime.now(UTC)
+    invoice = SubscriptionInvoiceRecord(
+        tenant_id=TEST_TENANT_ID,
+        period_start=now,
+        period_end=now + timedelta(days=30),
+        amount_cents=2400,
+        currency="USD",
+        status="paid",
+        processor_invoice_id="in_456",
+        hosted_invoice_url="https://example.com/invoices/in_456",
+        created_at=now,
+    )
+    get_mock = AsyncMock(return_value=invoice)
+    monkeypatch.setattr(billing_router.billing_service, "get_invoice", get_mock)
+
+    response = client.get(
+        f"/api/v1/billing/tenants/{TEST_TENANT_ID}/invoices/in_456"
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["invoice_id"] == "in_456"
+    assert payload["amount_cents"] == 2400
+
+    get_mock.assert_awaited_once_with(TEST_TENANT_ID, invoice_id="in_456")
 
 
 def test_create_portal_session_returns_url(

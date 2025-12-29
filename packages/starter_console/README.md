@@ -73,10 +73,19 @@ Operator console for the OpenAI Agents SaaS starter stack. It is the single entr
 - Textual debug logs go to `var/log/<date>/starter-console/textual.log` when `TEXTUAL_LOG` is set.
 
 ## OpenAPI export + frontend SDK regen
-Paths are repo-root relative (do not prefix with `../`):
+Preferred from the repo root:
+
+```bash
+just openapi-export
+```
+
+Manual (paths are repo-root relative; do not prefix with `../`):
 
 ```bash
 cd packages/starter_console
+starter-console api export-openapi \
+  --output apps/api-service/.artifacts/openapi.json \
+  --enable-billing
 starter-console api export-openapi \
   --output apps/api-service/.artifacts/openapi-fixtures.json \
   --enable-billing \

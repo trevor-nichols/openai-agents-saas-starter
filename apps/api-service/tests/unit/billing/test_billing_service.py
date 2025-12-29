@@ -503,6 +503,71 @@ async def test_ingest_invoice_snapshot_records_invoice_and_usage(billing_context
 
 
 @pytest.mark.asyncio
+async def test_list_and_get_invoices_return_records(billing_context):
+    service = _service(billing_context)
+
+    await service.start_subscription(
+        tenant_id=billing_context.tenant_id,
+        plan_code="starter",
+        billing_email="owner@example.com",
+        auto_renew=True,
+        trial_days=None,
+    )
+
+    now = datetime.now(UTC)
+    older = now - timedelta(days=30)
+
+    await service.ingest_invoice_snapshot(
+        ProcessorInvoiceSnapshot(
+            tenant_id=billing_context.tenant_id,
+            invoice_id="in_old",
+            status="paid",
+            amount_due_cents=1200,
+            currency="usd",
+            period_start=older,
+            period_end=older,
+            hosted_invoice_url="https://example.com/old",
+            billing_reason="subscription_cycle",
+            collection_method="charge_automatically",
+            description="Older",
+        )
+    )
+    await service.ingest_invoice_snapshot(
+        ProcessorInvoiceSnapshot(
+            tenant_id=billing_context.tenant_id,
+            invoice_id="in_new",
+            status="paid",
+            amount_due_cents=2400,
+            currency="usd",
+            period_start=now,
+            period_end=now,
+            hosted_invoice_url="https://example.com/new",
+            billing_reason="subscription_cycle",
+            collection_method="charge_automatically",
+            description="Newer",
+        )
+    )
+
+    invoices = await service.list_invoices(
+        billing_context.tenant_id,
+        limit=10,
+        offset=0,
+    )
+    assert [invoice.processor_invoice_id for invoice in invoices[:2]] == [
+        "in_new",
+        "in_old",
+    ]
+
+    fetched = await service.get_invoice(
+        billing_context.tenant_id,
+        invoice_id="in_new",
+    )
+    assert fetched is not None
+    assert fetched.amount_cents == 2400
+    assert fetched.hosted_invoice_url == "https://example.com/new"
+
+
+@pytest.mark.asyncio
 async def test_update_subscription_applies_changes(billing_context):
     gateway = FakeGateway()
     service = BillingService(billing_context.repository, gateway)

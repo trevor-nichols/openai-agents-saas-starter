@@ -4,9 +4,16 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from app.domain.billing import BillingPlan, BillingRepository, TenantSubscription, UsageTotal
+from app.domain.billing import (
+    BillingPlan,
+    BillingRepository,
+    SubscriptionInvoiceRecord,
+    TenantSubscription,
+    UsageTotal,
+)
 from app.services.billing.context import BillingContext
 from app.services.billing.customers import BillingCustomerService
+from app.services.billing.invoices import BillingInvoiceService
 from app.services.billing.models import (
     PlanChangeResult,
     PlanChangeTiming,
@@ -49,6 +56,7 @@ class BillingService:
             customers=self._customers,
         )
         self._usage = BillingUsageService(self._context)
+        self._invoices = BillingInvoiceService(self._context)
         self._processor_sync = BillingProcessorSyncService(
             self._context,
             customers=self._customers,
@@ -68,6 +76,30 @@ class BillingService:
 
     async def get_subscription(self, tenant_id: str) -> TenantSubscription | None:
         return await self._subscriptions.get_subscription(tenant_id)
+
+    async def list_invoices(
+        self,
+        tenant_id: str,
+        *,
+        limit: int,
+        offset: int,
+    ) -> list[SubscriptionInvoiceRecord]:
+        return await self._invoices.list_invoices(
+            tenant_id,
+            limit=limit,
+            offset=offset,
+        )
+
+    async def get_invoice(
+        self,
+        tenant_id: str,
+        *,
+        invoice_id: str,
+    ) -> SubscriptionInvoiceRecord | None:
+        return await self._invoices.get_invoice(
+            tenant_id,
+            invoice_id=invoice_id,
+        )
 
     async def get_usage_totals(
         self,
