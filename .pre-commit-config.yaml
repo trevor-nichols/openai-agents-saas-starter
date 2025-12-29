@@ -1,0 +1,17 @@
+default_stages: [commit]
+
+repos:
+  - repo: local
+    hooks:
+      - id: openapi-export
+        name: Export OpenAPI artifacts (billing + fixtures)
+        entry: bash -c 'just openapi-export'
+        language: system
+        pass_filenames: false
+        files: ^apps/api-service/src/app/
+      - id: web-sdk-generate
+        name: Regenerate web OpenAPI client
+        entry: bash -c 'cd apps/web-app && pnpm generate'
+        language: system
+        pass_filenames: false
+        files: ^apps/api-service/src/app/
