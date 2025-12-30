@@ -37,6 +37,7 @@ export interface TeamMemberListFilters {
 export interface TeamMemberListResult {
   members: TeamMemberSummary[];
   total: number;
+  ownerCount: number;
   limit: number;
   offset: number;
 }

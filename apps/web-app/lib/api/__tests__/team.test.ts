@@ -52,6 +52,7 @@ describe('team api', () => {
           success: true,
           members: [member],
           total: 1,
+          ownerCount: 1,
           limit: 50,
           offset: 0,
         }),
@@ -64,6 +65,7 @@ describe('team api', () => {
     expect(result.members).toHaveLength(1);
     expect(result.members[0]?.email).toBe('owner@acme.io');
     expect(result.total).toBe(1);
+    expect(result.ownerCount).toBe(1);
   });
 
   it('issueTeamInvite surfaces API errors', async () => {

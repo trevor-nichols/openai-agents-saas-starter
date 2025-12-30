@@ -43,7 +43,11 @@ class FakeMembershipRepository:
         offset: int,
     ) -> TeamMemberListResult:
         members = [self._member] if self._member else []
-        return TeamMemberListResult(members=members, total=len(members))
+        return TeamMemberListResult(
+            members=members,
+            total=len(members),
+            owner_count=self._owner_count,
+        )
 
     async def get_member(self, *, tenant_id: UUID, user_id: UUID) -> TeamMember | None:
         return self._member

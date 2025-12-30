@@ -39159,13 +39159,18 @@
           "total": {
             "type": "integer",
             "title": "Total"
+          },
+          "owner_count": {
+            "type": "integer",
+            "title": "Owner Count"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
           "members",
-          "total"
+          "total",
+          "owner_count"
         ],
         "title": "TeamMemberListResponse"
       },

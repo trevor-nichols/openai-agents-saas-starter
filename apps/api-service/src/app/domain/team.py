@@ -37,6 +37,7 @@ class TeamMember:
 class TeamMemberListResult:
     members: list[TeamMember]
     total: int
+    owner_count: int
 
 
 class TenantMembershipRepository(Protocol):

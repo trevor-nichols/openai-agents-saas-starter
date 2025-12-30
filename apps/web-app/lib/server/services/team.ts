@@ -172,6 +172,7 @@ export async function listTeamMembers(
   return {
     members: payload.members.map(mapMember),
     total: payload.total,
+    ownerCount: payload.owner_count,
     limit,
     offset,
   };

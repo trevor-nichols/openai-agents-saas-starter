@@ -43,6 +43,7 @@ class TeamMemberListResponse(BaseModel):
 
     members: list[TeamMemberResponse]
     total: int
+    owner_count: int
 
 
 class TeamMemberAddRequest(BaseModel):

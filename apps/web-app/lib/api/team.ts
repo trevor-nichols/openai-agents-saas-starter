@@ -16,6 +16,7 @@ interface ListMembersResponse {
   success: boolean;
   members?: TeamMemberSummary[];
   total?: number;
+  ownerCount?: number;
   limit?: number;
   offset?: number;
   error?: string;
@@ -81,13 +82,19 @@ export async function fetchTeamMembers(
 
   const payload = await parseJson<ListMembersResponse>(response);
 
-  if (!response.ok || payload.success === false || !Array.isArray(payload.members)) {
+  if (
+    !response.ok ||
+    payload.success === false ||
+    !Array.isArray(payload.members) ||
+    typeof payload.ownerCount !== 'number'
+  ) {
     throw createError(response, 'Unable to load team members.', extractErrorMessage(payload));
   }
 
   return {
     members: payload.members,
     total: payload.total ?? payload.members.length,
+    ownerCount: payload.ownerCount,
     limit: payload.limit ?? filters.limit ?? payload.members.length,
     offset: payload.offset ?? filters.offset ?? 0,
   };

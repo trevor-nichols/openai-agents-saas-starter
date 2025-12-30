@@ -64,7 +64,7 @@ export function MembersPanel() {
   );
 
   const members = useMemo(() => data?.members ?? [], [data?.members]);
-  const ownerCount = members.filter((member) => member.role === 'owner').length;
+  const ownerCount = data?.ownerCount;
 
   const filteredMembers = useMemo(() => {
     if (!searchTerm) return members;

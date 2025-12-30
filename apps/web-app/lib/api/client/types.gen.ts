@@ -6123,6 +6123,10 @@ export type TeamMemberListResponse = {
    * Total
    */
   total: number;
+  /**
+   * Owner Count
+   */
+  owner_count: number;
 };
 
 /**

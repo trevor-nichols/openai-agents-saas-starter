@@ -106,7 +106,7 @@ def test_list_members_returns_members(
         joined_at=datetime.now(UTC),
     )
     mock_membership_service.list_members = AsyncMock(
-        return_value=TeamMemberListResult(members=[member], total=1)
+        return_value=TeamMemberListResult(members=[member], total=1, owner_count=1)
     )
 
     response = client.get(
@@ -117,6 +117,7 @@ def test_list_members_returns_members(
     assert response.status_code == 200, response.text
     body = response.json()
     assert body["total"] == 1
+    assert body["owner_count"] == 1
     assert body["members"][0]["email"] == member.email
     mock_membership_service.list_members.assert_awaited_once()
 

@@ -35,6 +35,14 @@ class PostgresTenantMembershipRepository(TenantMembershipRepository):
                 .select_from(TenantUserMembership)
                 .where(TenantUserMembership.tenant_id == tenant_id)
             )
+            owner_count = await session.scalar(
+                select(func.count())
+                .select_from(TenantUserMembership)
+                .where(
+                    TenantUserMembership.tenant_id == tenant_id,
+                    TenantUserMembership.role == TenantRole.OWNER,
+                )
+            )
             stmt = (
                 select(TenantUserMembership, UserAccount, UserProfile)
                 .join(UserAccount, TenantUserMembership.user_id == UserAccount.id)
@@ -47,7 +55,11 @@ class PostgresTenantMembershipRepository(TenantMembershipRepository):
             result = await session.execute(stmt)
             members = [self._to_member(*row) for row in result.all()]
 
-        return TeamMemberListResult(members=members, total=int(total or 0))
+        return TeamMemberListResult(
+            members=members,
+            total=int(total or 0),
+            owner_count=int(owner_count or 0),
+        )
 
     async def get_member(
         self,

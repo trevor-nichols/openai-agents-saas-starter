@@ -45,6 +45,7 @@ describe('/api/v1/tenants/members route', () => {
         },
       ],
       total: 1,
+      ownerCount: 1,
       limit: 50,
       offset: 0,
     });
@@ -71,6 +72,7 @@ describe('/api/v1/tenants/members route', () => {
         },
       ],
       total: 1,
+      ownerCount: 1,
       limit: 50,
       offset: 0,
     });

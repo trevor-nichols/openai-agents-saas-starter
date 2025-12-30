@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
         success: true,
         members: payload.members,
         total: payload.total,
+        ownerCount: payload.ownerCount,
         limit: payload.limit,
         offset: payload.offset,
       },

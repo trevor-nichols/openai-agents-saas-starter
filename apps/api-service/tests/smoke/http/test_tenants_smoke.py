@@ -48,6 +48,7 @@ async def test_tenant_members_and_invites(
     members_body = members.json()
     assert isinstance(members_body.get("members"), list)
     assert (members_body.get("total") or 0) >= 1
+    assert (members_body.get("owner_count") or 0) >= 1
 
     invite_email = f"smoke-team-{uuid4().hex[:8]}@example.com"
     issue = await http_client.post(

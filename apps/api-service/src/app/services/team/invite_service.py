@@ -70,7 +70,7 @@ class TeamInviteService:
         user_repository: UserRepository,
         membership_repository: TenantMembershipRepository,
         tenant_repository: TenantAccountRepository,
-        notifier,
+        notifier: TeamInviteNotifier | None,
     ) -> None:
         self._invite_repository = invite_repository
         self._acceptance_repository = acceptance_repository

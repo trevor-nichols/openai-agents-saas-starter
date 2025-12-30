@@ -12,12 +12,14 @@ describe('team settings utils', () => {
   it('enforces owner-only edits for owner roles', () => {
     expect(canEditMemberRole('owner', 'owner', 2)).toBe(true);
     expect(canEditMemberRole('owner', 'owner', 1)).toBe(false);
+    expect(canEditMemberRole('owner', 'owner')).toBe(false);
     expect(canEditMemberRole('admin', 'owner', 2)).toBe(false);
   });
 
   it('prevents last-owner removal', () => {
     expect(canRemoveMember('owner', 'owner', 1)).toBe(false);
     expect(canRemoveMember('owner', 'owner', 2)).toBe(true);
+    expect(canRemoveMember('owner', 'owner')).toBe(false);
     expect(canRemoveMember('admin', 'owner', 2)).toBe(false);
   });
 });

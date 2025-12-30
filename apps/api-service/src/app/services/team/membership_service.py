@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
 from uuid import UUID
 
 from app.core.settings import Settings, get_settings
@@ -152,14 +151,6 @@ class TenantMembershipService:
             )
 
 
-def _normalize_role(role: TenantRole | str) -> TenantRole:
-    return normalize_team_role(role)
-
-
-def normalize_roles(roles: Iterable[TenantRole | str]) -> list[str]:
-    return [_normalize_role(role).value for role in roles]
-
-
 def build_tenant_membership_service(
     *,
     settings: Settings | None = None,
@@ -192,5 +183,4 @@ __all__ = [
     "TenantMembershipService",
     "build_tenant_membership_service",
     "get_tenant_membership_service",
-    "normalize_roles",
 ]

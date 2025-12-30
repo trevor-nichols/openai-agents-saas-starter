@@ -46,7 +46,11 @@ async def list_members(
         offset=offset,
     )
     members = [TeamMemberResponse.from_domain(member) for member in listing.members]
-    return TeamMemberListResponse(members=members, total=listing.total)
+    return TeamMemberListResponse(
+        members=members,
+        total=listing.total,
+        owner_count=listing.owner_count,
+    )
 
 
 @router.post(

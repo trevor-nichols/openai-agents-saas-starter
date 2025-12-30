@@ -246,7 +246,7 @@ async def test_upsert_user_profile_creates_and_updates(
     tenant_id,
 ) -> None:
     user = await _create_user_with_role(
-        repository, tenant_id, "profile@example.com", "admin", display_name=None
+        repository, tenant_id, "profile@example.com", TenantRole.ADMIN, display_name=None
     )
     await repository.upsert_user_profile(
         user.id,

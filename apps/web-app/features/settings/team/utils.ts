@@ -49,8 +49,10 @@ export function canEditMemberRole(
 ): boolean {
   if (!actorRole) return false;
 
-  if (targetRole === 'owner' && typeof ownerCount === 'number' && ownerCount <= 1) {
-    return false;
+  if (targetRole === 'owner') {
+    if (typeof ownerCount !== 'number' || ownerCount <= 1) {
+      return false;
+    }
   }
   if (actorRole === 'owner') return true;
   if (actorRole === 'admin') return targetRole !== 'owner';
@@ -60,12 +62,14 @@ export function canEditMemberRole(
 export function canRemoveMember(
   actorRole: TeamRole | null,
   targetRole: TeamRole,
-  ownerCount: number,
+  ownerCount?: number,
 ): boolean {
   if (!actorRole) return false;
   if (actorRole === 'owner') {
-    if (targetRole === 'owner' && ownerCount <= 1) {
-      return false;
+    if (targetRole === 'owner') {
+      if (typeof ownerCount !== 'number' || ownerCount <= 1) {
+        return false;
+      }
     }
     return true;
   }
