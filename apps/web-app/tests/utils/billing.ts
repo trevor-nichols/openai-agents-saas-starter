@@ -20,20 +20,12 @@ export async function recordUsageEvent(page: Page, input: UsageEventInput): Prom
     idempotency_key: `pw-usage-${randomUUID()}`,
   };
 
-  const response = await page.evaluate(async ({ tenantId, body }) => {
-    const endpoint = `/api/billing/tenants/${tenantId}/usage`;
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
-    const text = await res.text();
-    return { ok: res.ok, status: res.status, text };
-  }, { tenantId: input.tenantId, body: payload });
+  const response = await page.request.post(`/api/v1/billing/tenants/${input.tenantId}/usage`, {
+    data: payload,
+  });
 
-  if (!response.ok) {
-    throw new Error(`Usage API ${response.status}: ${response.text || 'Unknown error'}`);
+  if (!response.ok()) {
+    const text = await response.text();
+    throw new Error(`Usage API ${response.status()}: ${text || 'Unknown error'}`);
   }
 }

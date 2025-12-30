@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { getApiBaseUrl } from './testEnv';
+import { getApiBaseUrl } from '../harness/env';
 
 export interface SignupAccount {
   fullName: string;

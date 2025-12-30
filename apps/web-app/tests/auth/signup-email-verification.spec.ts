@@ -1,7 +1,6 @@
-import { test, expect } from '@playwright/test';
-
-import { buildSignupAccount, issueEmailVerificationToken } from './utils/signup';
-import { isPublicSignupEnabled } from './utils/testEnv';
+import { test, expect } from '../fixtures/base';
+import { isPublicSignupEnabled } from '../harness/env';
+import { buildSignupAccount, issueEmailVerificationToken } from '../utils/signup';
 
 const PUBLIC_SIGNUP_ENABLED = isPublicSignupEnabled();
 
@@ -30,7 +29,7 @@ test.describe('Self-serve signup + email verification', () => {
 
     await test.step('verify dashboard loads for the newly created tenant', async () => {
       await expect(page).toHaveURL(/\/dashboard$/);
-      await expect(page.getByRole('heading', { name: /Tenant overview/i })).toBeVisible();
+      await expect(page.getByRole('heading', { name: /Command center/i })).toBeVisible();
     });
 
     await test.step('issue and redeem email verification token', async () => {
@@ -50,7 +49,7 @@ test.describe('Self-serve signup + email verification', () => {
       await page.getByLabel('Password').fill(account.password);
       await page.getByRole('button', { name: 'Sign In' }).click();
       await expect(page).toHaveURL(/\/dashboard$/);
-      await expect(page.getByRole('heading', { name: /Tenant overview/i })).toBeVisible();
+      await expect(page.getByRole('heading', { name: /Command center/i })).toBeVisible();
     });
   });
 });

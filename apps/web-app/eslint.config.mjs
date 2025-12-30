@@ -29,6 +29,7 @@ const eslintConfig = defineConfig([
   globalIgnores([
     "lib/api/client/**/*",
     ".next/**/*",
+    ".next-mock/**/*",
     "node_modules/**/*",
     "next-env.d.ts",
     "pnpm-lock.yaml",

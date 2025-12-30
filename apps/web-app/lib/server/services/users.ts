@@ -18,6 +18,8 @@ import type {
   UserProfileUpdateRequest,
 } from '@/lib/api/client/types.gen';
 
+import { getSessionMetaFromCookies } from '@/lib/auth/cookies';
+import { USE_API_MOCK } from '@/lib/config';
 import { getServerApiClient } from '../apiClient';
 import { UserProfileApiError } from './users.errors';
 
@@ -83,6 +85,18 @@ function requireData<T>(payload: { data?: T | null }, fallbackMessage: string): 
 }
 
 export async function getCurrentUserProfile(): Promise<CurrentUserProfileResponseData> {
+  if (USE_API_MOCK) {
+    const meta = await getSessionMetaFromCookies();
+    return {
+      user_id: meta?.userId ?? '99999999-8888-7777-6666-555555555555',
+      tenant_id: meta?.tenantId ?? '11111111-2222-3333-4444-555555555555',
+      email: process.env.PLAYWRIGHT_TENANT_ADMIN_EMAIL ?? 'mock-admin@example.com',
+      display_name: 'Mock Admin',
+      role: 'admin',
+      email_verified: true,
+    };
+  }
+
   const { client, auth } = await getServerApiClient();
   const result = await getCurrentUserProfileApiV1UsersMeGet({
     client,

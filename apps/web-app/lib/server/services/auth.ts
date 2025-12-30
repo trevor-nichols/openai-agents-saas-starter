@@ -14,6 +14,8 @@ import type {
 } from '@/lib/api/client/types.gen';
 import type { UserSessionTokens } from '@/lib/types/auth';
 
+import { getSessionMetaFromCookies } from '@/lib/auth/cookies';
+import { USE_API_MOCK } from '@/lib/config';
 import { createApiClient, getServerApiClient } from '../apiClient';
 import { MfaRequiredError } from './auth.errors';
 
@@ -73,6 +75,18 @@ export async function refreshSessionTokens(
  * Fetch profile metadata for the currently authenticated user.
  */
 export async function getCurrentUserProfile<TProfile extends CurrentUserProfile = CurrentUserProfile>(): Promise<TProfile> {
+  if (USE_API_MOCK) {
+    const meta = await getSessionMetaFromCookies();
+    const profile: CurrentUserProfile = {
+      user_id: meta?.userId ?? '99999999-8888-7777-6666-555555555555',
+      token_payload: {
+        scopes: meta?.scopes ?? ['conversations:read', 'conversations:write'],
+        tenant_id: meta?.tenantId ?? '11111111-2222-3333-4444-555555555555',
+      },
+    };
+    return profile as unknown as TProfile;
+  }
+
   const { client, auth } = await getServerApiClient();
   const response = await getCurrentUserInfoApiV1AuthMeGet({
     client,

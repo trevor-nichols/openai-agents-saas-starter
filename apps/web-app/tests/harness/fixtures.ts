@@ -1,46 +1,55 @@
 import fs from 'node:fs/promises';
+import path from 'node:path';
 
-import { getFixturesPath } from './testEnv';
+import { z } from 'zod';
 
-interface FixtureUserResult {
-  user_id: string;
-  role: string;
-}
+const FixtureUserSchema = z.object({
+  user_id: z.string().min(1),
+  role: z.string().min(1),
+});
 
-interface FixtureConversationResult {
-  conversation_id: string;
-  status: string;
-}
+const FixtureConversationSchema = z.object({
+  conversation_id: z.string().min(1),
+  status: z.string().min(1),
+});
 
-export interface FixtureTenantResult {
-  tenant_id: string;
-  plan_code: string | null;
-  users: Record<string, FixtureUserResult>;
-  conversations: Record<string, FixtureConversationResult>;
-}
+const FixtureAssetSchema = z.object({
+  asset_id: z.string().min(1),
+  storage_object_id: z.string().min(1),
+});
 
-export interface FixtureFile {
-  tenants: Record<string, FixtureTenantResult>;
-  generated_at: string;
-}
+const FixtureTenantSchema = z.object({
+  tenant_id: z.string().min(1),
+  plan_code: z.string().nullable(),
+  users: z.record(z.string(), FixtureUserSchema),
+  conversations: z.record(z.string(), FixtureConversationSchema),
+  assets: z.record(z.string(), FixtureAssetSchema).default({}),
+});
+
+const FixtureFileSchema = z.object({
+  tenants: z.record(z.string(), FixtureTenantSchema),
+  generated_at: z.string().min(1),
+});
+
+export type FixtureFile = z.infer<typeof FixtureFileSchema>;
+export type FixtureTenantResult = z.infer<typeof FixtureTenantSchema>;
 
 let cachedFixtures: Promise<FixtureFile> | null = null;
+
+export function getFixturesPath(): string {
+  return path.resolve(__dirname, '..', '.fixtures.json');
+}
 
 async function readFixtureFile(): Promise<FixtureFile> {
   const fixturePath = getFixturesPath();
   try {
     const payload = await fs.readFile(fixturePath, 'utf8');
-    const parsed = JSON.parse(payload) as FixtureFile;
-    if (!parsed?.tenants) {
-      throw new Error('Fixture file missing tenant data. Re-run `pnpm test:seed`.');
-    }
-    return parsed;
+    const parsed = JSON.parse(payload) as unknown;
+    const validated = FixtureFileSchema.parse(parsed);
+    return validated;
   } catch (error) {
-    const hint =
-      error instanceof Error
-        ? `${error.message}. Did you run \`pnpm test:seed\` with USE_TEST_FIXTURES=true?`
-        : 'Unable to read fixtures file.';
-    throw new Error(hint);
+    const message = error instanceof Error ? error.message : 'Unable to read fixtures file.';
+    throw new Error(`${message}. Did you run \`pnpm test:seed\` with USE_TEST_FIXTURES=true?`);
   }
 }
 
@@ -49,6 +58,10 @@ export async function getFixtures(): Promise<FixtureFile> {
     cachedFixtures = readFixtureFile();
   }
   return cachedFixtures;
+}
+
+export function resetFixturesCache(): void {
+  cachedFixtures = null;
 }
 
 export async function requireTenantFixture(slug: string): Promise<FixtureTenantResult> {
@@ -62,9 +75,6 @@ export async function requireTenantFixture(slug: string): Promise<FixtureTenantR
 
 export async function getTenantId(slug: string): Promise<string> {
   const tenant = await requireTenantFixture(slug);
-  if (!tenant.tenant_id) {
-    throw new Error(`Tenant '${slug}' missing tenant_id in fixtures.`);
-  }
   return tenant.tenant_id;
 }
 
