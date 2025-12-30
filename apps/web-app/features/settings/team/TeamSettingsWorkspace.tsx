@@ -2,11 +2,16 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SectionHeader } from '@/components/ui/foundation';
+import type { TeamInvitePolicy } from '@/types/team';
 
 import { TEAM_SETTINGS_COPY } from './constants';
 import { MembersPanel, InvitesPanel } from './components';
 
-export function TeamSettingsWorkspace() {
+interface TeamSettingsWorkspaceProps {
+  invitePolicy: TeamInvitePolicy | null;
+}
+
+export function TeamSettingsWorkspace({ invitePolicy }: TeamSettingsWorkspaceProps) {
   return (
     <section className="space-y-8">
       <SectionHeader
@@ -26,7 +31,7 @@ export function TeamSettingsWorkspace() {
         </TabsContent>
 
         <TabsContent value="invites">
-          <InvitesPanel />
+          <InvitesPanel invitePolicy={invitePolicy} />
         </TabsContent>
       </Tabs>
     </section>

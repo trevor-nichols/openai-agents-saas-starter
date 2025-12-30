@@ -20,6 +20,7 @@ from app.domain.team import (
     TeamMember,
     TeamMemberListResult,
 )
+from app.domain.team_policy import TEAM_INVITE_POLICY
 from app.domain.tenant_roles import TenantRole
 from app.domain.users import UserStatus
 from app.api.v1.tenants import routes_invites, routes_members
@@ -120,6 +121,21 @@ def test_list_members_returns_members(
     assert body["owner_count"] == 1
     assert body["members"][0]["email"] == member.email
     mock_membership_service.list_members.assert_awaited_once()
+
+
+def test_invite_policy_endpoint_returns_limits(client: TestClient) -> None:
+    tenant_id = str(uuid4())
+    token = _mint_token(tenant_id=tenant_id, roles=["viewer"], scopes=["billing:read"])
+
+    response = client.get(
+        "/api/v1/tenants/invites/policy",
+        headers=_headers(token=token, tenant_id=tenant_id, tenant_role="viewer"),
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["default_expires_hours"] == TEAM_INVITE_POLICY.default_expires_hours
+    assert body["max_expires_hours"] == TEAM_INVITE_POLICY.max_expires_hours
 
 
 def test_add_member_conflict(client: TestClient, mock_membership_service: AsyncMock) -> None:

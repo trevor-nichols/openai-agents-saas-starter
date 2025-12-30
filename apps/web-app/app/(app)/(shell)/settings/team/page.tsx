@@ -5,6 +5,7 @@ import { Suspense } from 'react';
 import { TeamSettingsWorkspace } from '@/features/settings';
 import { getSessionMetaFromCookies } from '@/lib/auth/cookies';
 import { isTenantAdmin } from '@/lib/auth/roles';
+import { getTeamInvitePolicy } from '@/lib/server/services/team';
 
 export const metadata = {
   title: 'Team Settings | Acme',
@@ -26,5 +27,12 @@ async function TeamSettingsContent() {
     redirect('/dashboard');
   }
 
-  return <TeamSettingsWorkspace />;
+  let invitePolicy = null;
+  try {
+    invitePolicy = await getTeamInvitePolicy();
+  } catch (error) {
+    console.error('[settings] Failed to load team invite policy', error);
+  }
+
+  return <TeamSettingsWorkspace invitePolicy={invitePolicy} />;
 }

@@ -6039,6 +6039,20 @@ export type TeamInviteListResponse = {
 };
 
 /**
+ * TeamInvitePolicyResponse
+ */
+export type TeamInvitePolicyResponse = {
+  /**
+   * Default Expires Hours
+   */
+  default_expires_hours: number;
+  /**
+   * Max Expires Hours
+   */
+  max_expires_hours: number;
+};
+
+/**
  * TeamInviteResponse
  */
 export type TeamInviteResponse = {
@@ -18292,6 +18306,87 @@ export type RemoveMemberApiV1TenantsMembersUserIdDeleteResponses = {
 
 export type RemoveMemberApiV1TenantsMembersUserIdDeleteResponse =
   RemoveMemberApiV1TenantsMembersUserIdDeleteResponses[keyof RemoveMemberApiV1TenantsMembersUserIdDeleteResponses];
+
+export type GetInvitePolicyApiV1TenantsInvitesPolicyGetData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+  };
+  path?: never;
+  query?: never;
+  url: "/api/v1/tenants/invites/policy";
+};
+
+export type GetInvitePolicyApiV1TenantsInvitesPolicyGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type GetInvitePolicyApiV1TenantsInvitesPolicyGetError =
+  GetInvitePolicyApiV1TenantsInvitesPolicyGetErrors[keyof GetInvitePolicyApiV1TenantsInvitesPolicyGetErrors];
+
+export type GetInvitePolicyApiV1TenantsInvitesPolicyGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: TeamInvitePolicyResponse;
+};
+
+export type GetInvitePolicyApiV1TenantsInvitesPolicyGetResponse =
+  GetInvitePolicyApiV1TenantsInvitesPolicyGetResponses[keyof GetInvitePolicyApiV1TenantsInvitesPolicyGetResponses];
 
 export type ListInvitesApiV1TenantsInvitesGetData = {
   body?: never;

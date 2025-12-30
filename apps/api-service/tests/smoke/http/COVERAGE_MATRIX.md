@@ -25,7 +25,7 @@ Keep it in sync with `apps/api-service/src/app/api/v1/router.py` and the smoke s
 | `/api/v1/openai` (files) | `test_openai_files_smoke.py` | Proxy download returns bytes | `SMOKE_ENABLE_OPENAI_FILES=1` + `SMOKE_OPENAI_FILE_ID` seeded. |
 | `/api/v1/contact` | `test_contact_smoke.py` | Contact submission returns 202 + response payload | `SMOKE_ENABLE_CONTACT=1`. |
 | `/api/v1/status` | `test_status_smoke.py` | Snapshot contains `overview` + `incidents`; RSS returns XML | Subscriptions gated separately by `SMOKE_ENABLE_STATUS_SUBSCRIPTIONS`; Workstream E5 (subscriptions pending). |
-| `/api/v1/tenants` | `test_tenants_smoke.py` | Settings GET/PUT roundtrip; members list; invites issue/list/revoke | Requires owner token. |
+| `/api/v1/tenants` | `test_tenants_smoke.py` | Settings GET/PUT roundtrip; invite policy fetch; members list; invites issue/list/revoke | Requires owner token. |
 | `/api/v1/users` | `test_users_smoke.py` | Profile read/update + consents + notification prefs | Requires authenticated user with tenant context. |
 | `/api/v1/usage` | `test_usage_smoke.py` | List returns array (may be empty) | Requires tenant context. |
 | `/api/v1/billing` | `test_billing_smoke.py` | Plans list + subscription lifecycle (start/update/cancel) + portal session + setup intent + payment methods list + upcoming invoice preview + optional plan change + usage record + usage totals list + events list + stream handshake | `SMOKE_ENABLE_BILLING=1`; stream requires `SMOKE_ENABLE_BILLING_STREAM=1`. |

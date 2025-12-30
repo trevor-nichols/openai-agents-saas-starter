@@ -81,6 +81,11 @@ export interface TeamInviteListResult {
   offset: number;
 }
 
+export interface TeamInvitePolicy {
+  defaultExpiresHours: number;
+  maxExpiresHours: number;
+}
+
 export interface IssueTeamInviteInput {
   invitedEmail: string;
   role: TeamRole;

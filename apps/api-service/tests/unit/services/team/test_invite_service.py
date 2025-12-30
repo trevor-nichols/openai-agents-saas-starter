@@ -21,6 +21,7 @@ from app.domain.team import (
     TenantMembershipRepository,
 )
 from app.domain.tenant_accounts import TenantAccountRepository
+from app.domain.team_policy import TEAM_INVITE_POLICY
 from app.domain.tenant_roles import TenantRole
 from app.domain.users import (
     TenantMembershipDTO,
@@ -49,6 +50,7 @@ from app.domain.team_errors import (
     TeamInviteExpiredError,
     TeamInviteNotFoundError,
     TeamInviteRevokedError,
+    TeamInviteValidationError,
     TeamMemberAlreadyExistsError,
 )
 from app.services.team.invite_service import TeamInviteService
@@ -247,6 +249,33 @@ async def test_issue_invite_blocks_existing_member(
             role=TenantRole.MEMBER,
             created_by_user_id=None,
             actor_role=TenantRole.ADMIN,
+        )
+
+
+@pytest.mark.asyncio
+async def test_issue_invite_rejects_expiry_over_policy_limit() -> None:
+    tenant_id = uuid4()
+    invite_repo = FakeInviteRepository()
+    membership_repo = FakeMembershipRepository(exists=False)
+    user_repo = FakeUserRepository(None)
+
+    service = TeamInviteService(
+        invite_repository=cast(TeamInviteRepository, invite_repo),
+        acceptance_repository=cast(TeamInviteAcceptanceRepository, FakeAcceptanceRepository()),
+        user_repository=cast(UserRepository, user_repo),
+        membership_repository=cast(TenantMembershipRepository, membership_repo),
+        tenant_repository=cast(TenantAccountRepository, FakeTenantRepository()),
+        notifier=None,
+    )
+
+    with pytest.raises(TeamInviteValidationError):
+        await service.issue_invite(
+            tenant_id=tenant_id,
+            invited_email="invitee@example.com",
+            role=TenantRole.MEMBER,
+            created_by_user_id=None,
+            actor_role=TenantRole.ADMIN,
+            expires_in_hours=TEAM_INVITE_POLICY.max_expires_hours + 1,
         )
 
 

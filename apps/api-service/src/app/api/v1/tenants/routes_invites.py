@@ -15,6 +15,7 @@ from app.api.models.team import (
     TeamInviteIssueRequest,
     TeamInviteIssueResponse,
     TeamInviteListResponse,
+    TeamInvitePolicyResponse,
     TeamInviteResponse,
 )
 from app.api.v1.auth.utils import extract_client_ip, extract_user_agent, to_user_session_response
@@ -31,14 +32,33 @@ from app.domain.team_errors import (
     TeamInviteValidationError,
     TeamMemberAlreadyExistsError,
 )
+from app.domain.team_policy import TEAM_INVITE_POLICY
 from app.services.auth_service import UserAuthenticationError, auth_service
 from app.services.team.invite_service import TeamInviteService, get_team_invite_service
 
 router = APIRouter()
 
+_ADMIN_ROLES: tuple[TenantRole, ...] = (TenantRole.ADMIN, TenantRole.OWNER)
+_VIEWER_ROLES: tuple[TenantRole, ...] = (
+    TenantRole.VIEWER,
+    TenantRole.MEMBER,
+    TenantRole.ADMIN,
+    TenantRole.OWNER,
+)
+
 
 def _invite_service() -> TeamInviteService:
     return get_team_invite_service()
+
+
+@router.get("/invites/policy", response_model=TeamInvitePolicyResponse)
+async def get_invite_policy(
+    _: TenantContext = Depends(require_tenant_role(*_VIEWER_ROLES)),
+) -> TeamInvitePolicyResponse:
+    return TeamInvitePolicyResponse(
+        default_expires_hours=TEAM_INVITE_POLICY.default_expires_hours,
+        max_expires_hours=TEAM_INVITE_POLICY.max_expires_hours,
+    )
 
 
 @router.get("/invites", response_model=TeamInviteListResponse)
@@ -47,7 +67,7 @@ async def list_invites(
     invited_email: str | None = Query(default=None, alias="email"),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
-    context: TenantContext = Depends(require_tenant_role(TenantRole.ADMIN, TenantRole.OWNER)),
+    context: TenantContext = Depends(require_tenant_role(*_ADMIN_ROLES)),
     service: TeamInviteService = Depends(_invite_service),
 ) -> TeamInviteListResponse:
     try:
@@ -71,7 +91,7 @@ async def list_invites(
 )
 async def issue_invite(
     payload: TeamInviteIssueRequest,
-    context: TenantContext = Depends(require_tenant_role(TenantRole.ADMIN, TenantRole.OWNER)),
+    context: TenantContext = Depends(require_tenant_role(*_ADMIN_ROLES)),
     service: TeamInviteService = Depends(_invite_service),
 ) -> TeamInviteIssueResponse:
     user_id_value = context.user.get("user_id") if isinstance(context.user, dict) else None
@@ -110,7 +130,7 @@ async def issue_invite(
 @router.post("/invites/{invite_id}/revoke", response_model=TeamInviteResponse)
 async def revoke_invite(
     invite_id: UUID,
-    context: TenantContext = Depends(require_tenant_role(TenantRole.ADMIN, TenantRole.OWNER)),
+    context: TenantContext = Depends(require_tenant_role(*_ADMIN_ROLES)),
     service: TeamInviteService = Depends(_invite_service),
 ) -> TeamInviteResponse:
     user_id_value = context.user.get("user_id") if isinstance(context.user, dict) else None

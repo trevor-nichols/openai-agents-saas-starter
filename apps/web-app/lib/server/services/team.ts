@@ -4,6 +4,7 @@ import {
   addMemberApiV1TenantsMembersPost,
   acceptInviteApiV1TenantsInvitesAcceptPost,
   acceptInviteExistingUserApiV1TenantsInvitesAcceptCurrentPost,
+  getInvitePolicyApiV1TenantsInvitesPolicyGet,
   issueInviteApiV1TenantsInvitesPost,
   listInvitesApiV1TenantsInvitesGet,
   listMembersApiV1TenantsMembersGet,
@@ -18,6 +19,7 @@ import type {
   TeamInviteIssueRequest,
   TeamInviteIssueResponse,
   TeamInviteListResponse,
+  TeamInvitePolicyResponse,
   TeamInviteResponse,
   TeamMemberAddRequest,
   TeamMemberListResponse,
@@ -31,6 +33,7 @@ import type {
   TeamInviteIssueResult,
   TeamInviteListFilters,
   TeamInviteListResult,
+  TeamInvitePolicy,
   TeamInviteSummary,
   IssueTeamInviteInput,
   TeamMemberListFilters,
@@ -286,6 +289,26 @@ export async function listTeamInvites(
     total: payload.total,
     limit,
     offset,
+  };
+}
+
+export async function getTeamInvitePolicy(): Promise<TeamInvitePolicy> {
+  const { client, auth } = await getServerApiClient();
+  const result = await getInvitePolicyApiV1TenantsInvitesPolicyGet({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: false,
+  });
+
+  const payload = unwrapSdkResult(
+    result as SdkFieldsResult<TeamInvitePolicyResponse>,
+    'Unable to load invite policy.',
+  );
+
+  return {
+    defaultExpiresHours: payload.default_expires_hours,
+    maxExpiresHours: payload.max_expires_hours,
   };
 }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { z } from 'zod';
 
 import {
@@ -29,18 +29,25 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAuthForm } from '@/hooks/useAuthForm';
-import { TEAM_ROLE_ORDER, type IssueTeamInviteInput, type TeamInviteIssueResult, type TeamRole } from '@/types/team';
+import {
+  TEAM_ROLE_ORDER,
+  type IssueTeamInviteInput,
+  type TeamInviteIssueResult,
+  type TeamInvitePolicy,
+  type TeamRole,
+} from '@/types/team';
 import { normalizeOptionalString } from '../utils';
 
-const inviteSchema = z.object({
-  invitedEmail: z.string().email('Enter a valid email.'),
-  role: z.enum(TEAM_ROLE_ORDER as [TeamRole, ...TeamRole[]], {
-    message: 'Select a role.',
-  }),
-  expiresInHours: z
-    .preprocess(normalizeOptionalString, z.coerce.number().int().min(1).max(720).optional())
-    .optional(),
-});
+const createInviteSchema = (maxHours: number) =>
+  z.object({
+    invitedEmail: z.string().email('Enter a valid email.'),
+    role: z.enum(TEAM_ROLE_ORDER as [TeamRole, ...TeamRole[]], {
+      message: 'Select a role.',
+    }),
+    expiresInHours: z
+      .preprocess(normalizeOptionalString, z.coerce.number().int().min(1).max(maxHours).optional())
+      .optional(),
+  });
 
 interface InviteMemberDialogProps {
   open: boolean;
@@ -49,6 +56,7 @@ interface InviteMemberDialogProps {
   onIssued?: (result: TeamInviteIssueResult) => void;
   isSubmitting?: boolean;
   roleOptions: Array<{ value: TeamRole; label: string; helper?: string }>;
+  invitePolicy: TeamInvitePolicy | null;
 }
 
 export function InviteMemberDialog({
@@ -58,7 +66,11 @@ export function InviteMemberDialog({
   onIssued,
   isSubmitting,
   roleOptions,
+  invitePolicy,
 }: InviteMemberDialogProps) {
+  const maxExpiresHours = invitePolicy?.maxExpiresHours ?? 1;
+  const defaultExpiresLabel = invitePolicy ? String(invitePolicy.defaultExpiresHours) : '—';
+  const inviteSchema = useMemo(() => createInviteSchema(maxExpiresHours), [maxExpiresHours]);
   const { form, onSubmit: handleSubmit } = useAuthForm({
     schema: inviteSchema,
     initialValues: {
@@ -156,7 +168,13 @@ export function InviteMemberDialog({
                 <FormItem>
                   <FormLabel>Expires in (hours)</FormLabel>
                   <FormControl>
-                    <Input {...field} type="number" min={1} max={720} placeholder="72" />
+                    <Input
+                      {...field}
+                      type="number"
+                      min={1}
+                      max={maxExpiresHours}
+                      placeholder={defaultExpiresLabel}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -167,7 +185,7 @@ export function InviteMemberDialog({
               <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting || !invitePolicy}>
                 {isSubmitting ? 'Issuing…' : 'Issue invite'}
               </Button>
             </DialogFooter>

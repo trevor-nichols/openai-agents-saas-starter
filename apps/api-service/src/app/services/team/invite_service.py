@@ -29,6 +29,7 @@ from app.domain.team_errors import (
     TeamInviteValidationError,
     TeamMemberAlreadyExistsError,
 )
+from app.domain.team_policy import TEAM_INVITE_POLICY
 from app.domain.tenant_accounts import TenantAccountRepository
 from app.domain.tenant_roles import TenantRole
 from app.domain.users import UserRepository
@@ -51,8 +52,6 @@ from .invite_notifier import (
     TeamInviteNotifier,
 )
 from .roles import ensure_owner_role_change_allowed, normalize_team_role
-
-_DEFAULT_INVITE_EXPIRES_HOURS = 72
 
 
 @dataclass(slots=True)
@@ -87,13 +86,20 @@ class TeamInviteService:
         role: TenantRole,
         created_by_user_id: UUID | None,
         actor_role: TenantRole,
-        expires_in_hours: int | None = _DEFAULT_INVITE_EXPIRES_HOURS,
+        expires_in_hours: int | None = TEAM_INVITE_POLICY.default_expires_hours,
     ) -> TeamInviteIssueResult:
         normalized_role = normalize_team_role(role)
         ensure_owner_role_change_allowed(
             actor_role=actor_role,
             target_role=normalized_role,
         )
+        if expires_in_hours is not None and not (
+            1 <= expires_in_hours <= TEAM_INVITE_POLICY.max_expires_hours
+        ):
+            raise TeamInviteValidationError(
+                "Invite expiry must be between 1 and "
+                f"{TEAM_INVITE_POLICY.max_expires_hours} hours."
+            )
         normalized_email = _normalize_email(invited_email)
 
         existing_user = await self._user_repository.get_user_by_email(normalized_email)

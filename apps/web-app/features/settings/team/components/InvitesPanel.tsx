@@ -16,7 +16,13 @@ import {
   useRevokeTeamInviteMutation,
   useTeamInvitesQuery,
 } from '@/lib/queries/team';
-import type { TeamInviteIssueResult, TeamInviteStatusFilter, TeamInviteSummary, TeamRole } from '@/types/team';
+import type {
+  TeamInviteIssueResult,
+  TeamInvitePolicy,
+  TeamInviteStatusFilter,
+  TeamInviteSummary,
+  TeamRole,
+} from '@/types/team';
 
 import { TEAM_ROLE_HELPERS, TEAM_ROLE_LABELS, TEAM_SETTINGS_COPY } from '../constants';
 import { formatDateTime, formatStatus, getAssignableRoles, resolveRoleLabel } from '../utils';
@@ -31,7 +37,7 @@ const STATUS_OPTIONS: Array<{ value: TeamInviteStatusFilter | 'all'; label: stri
   { value: 'expired', label: 'Expired' },
 ];
 
-export function InvitesPanel() {
+export function InvitesPanel({ invitePolicy }: { invitePolicy: TeamInvitePolicy | null }) {
   const [statusFilter, setStatusFilter] = useState<TeamInviteStatusFilter | 'all'>('active');
   const [searchInput, setSearchInput] = useState('');
   const [emailFilter, setEmailFilter] = useState('');
@@ -63,6 +69,7 @@ export function InvitesPanel() {
   const { data, isLoading, error, refetch } = useTeamInvitesQuery(filters);
   const revokeMutation = useRevokeTeamInviteMutation();
   const issueMutation = useIssueTeamInviteMutation();
+  const policyReady = Boolean(invitePolicy);
 
   const handleApplySearch = () => {
     setEmailFilter(searchInput.trim());
@@ -169,10 +176,19 @@ export function InvitesPanel() {
           </Button>
         </div>
 
-        <Button onClick={() => setDialogOpen(true)} disabled={assignableRoles.length === 0}>
+        <Button
+          onClick={() => setDialogOpen(true)}
+          disabled={assignableRoles.length === 0 || !policyReady}
+        >
           Issue invite
         </Button>
       </div>
+
+      {!policyReady ? (
+        <p className="text-sm text-destructive">
+          Invite policy is unavailable. Refresh the page to try again.
+        </p>
+      ) : null}
 
       <DataTable
         columns={columns}
@@ -194,6 +210,7 @@ export function InvitesPanel() {
         onOpenChange={setDialogOpen}
         isSubmitting={issueMutation.isPending}
         roleOptions={roleOptions}
+        invitePolicy={invitePolicy}
         onSubmit={async (payload) => {
           const result = await issueMutation.mutateAsync(payload);
           toast.success({

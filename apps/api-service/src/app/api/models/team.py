@@ -8,6 +8,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.domain.team import TeamInvite, TeamMember
+from app.domain.team_policy import TEAM_INVITE_POLICY
 from app.domain.tenant_roles import TenantRole
 
 
@@ -64,7 +65,11 @@ class TeamInviteIssueRequest(BaseModel):
 
     invited_email: EmailStr
     role: TenantRole
-    expires_in_hours: int | None = Field(default=72, ge=1, le=24 * 14)
+    expires_in_hours: int | None = Field(
+        default=TEAM_INVITE_POLICY.default_expires_hours,
+        ge=1,
+        le=TEAM_INVITE_POLICY.max_expires_hours,
+    )
 
 
 class TeamInviteResponse(BaseModel):
@@ -120,7 +125,7 @@ class TeamInviteAcceptRequest(BaseModel):
 
     token: str = Field(min_length=1)
     password: str = Field(min_length=14)
-    display_name: str | None = None
+    display_name: str | None = Field(default=None, max_length=128)
 
 
 class TeamInviteAcceptExistingRequest(BaseModel):
@@ -129,12 +134,20 @@ class TeamInviteAcceptExistingRequest(BaseModel):
     token: str = Field(min_length=1)
 
 
+class TeamInvitePolicyResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    default_expires_hours: int
+    max_expires_hours: int
+
+
 __all__ = [
     "TeamInviteAcceptExistingRequest",
     "TeamInviteAcceptRequest",
     "TeamInviteIssueRequest",
     "TeamInviteIssueResponse",
     "TeamInviteListResponse",
+    "TeamInvitePolicyResponse",
     "TeamInviteResponse",
     "TeamMemberAddRequest",
     "TeamMemberListResponse",

@@ -7,10 +7,12 @@ from typing import Any, cast
 
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.engine import CursorResult
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.settings import Settings, get_settings
 from app.domain.team import TeamMember, TeamMemberListResult, TenantMembershipRepository
+from app.domain.team_errors import TeamMemberAlreadyExistsError
 from app.domain.tenant_roles import TenantRole
 from app.domain.users import UserStatus
 from app.infrastructure.db import get_async_sessionmaker
@@ -97,7 +99,13 @@ class PostgresTenantMembershipRepository(TenantMembershipRepository):
                 role=role,
             )
             session.add(membership)
-            await session.commit()
+            try:
+                await session.commit()
+            except IntegrityError as exc:
+                await session.rollback()
+                raise TeamMemberAlreadyExistsError(
+                    "User is already a member of this tenant."
+                ) from exc
 
         member = await self.get_member(tenant_id=tenant_id, user_id=user_id)
         if member is None:

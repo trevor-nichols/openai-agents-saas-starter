@@ -43,6 +43,14 @@ async def test_tenant_members_and_invites(
 ) -> None:
     headers = auth_headers(smoke_state, tenant_role="owner")
 
+    policy = await http_client.get("/api/v1/tenants/invites/policy", headers=headers)
+    assert policy.status_code == 200, policy.text
+    policy_body = policy.json()
+    assert policy_body.get("default_expires_hours", 0) > 0
+    assert policy_body.get("max_expires_hours", 0) >= policy_body.get(
+        "default_expires_hours", 0
+    )
+
     members = await http_client.get("/api/v1/tenants/members", headers=headers)
     assert members.status_code == 200, members.text
     members_body = members.json()

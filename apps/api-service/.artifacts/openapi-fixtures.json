@@ -21406,6 +21406,186 @@
         }
       }
     },
+    "/api/v1/tenants/invites/policy": {
+      "get": {
+        "tags": [
+          "tenants"
+        ],
+        "summary": "Get Invite Policy",
+        "operationId": "get_invite_policy_api_v1_tenants_invites_policy_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Tenant-Role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamInvitePolicyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request Entity Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/tenants/invites": {
       "get": {
         "tags": [
@@ -38803,7 +38983,8 @@
           "display_name": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 128
               },
               {
                 "type": "null"
@@ -38998,6 +39179,25 @@
           "total"
         ],
         "title": "TeamInviteListResponse"
+      },
+      "TeamInvitePolicyResponse": {
+        "properties": {
+          "default_expires_hours": {
+            "type": "integer",
+            "title": "Default Expires Hours"
+          },
+          "max_expires_hours": {
+            "type": "integer",
+            "title": "Max Expires Hours"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "default_expires_hours",
+          "max_expires_hours"
+        ],
+        "title": "TeamInvitePolicyResponse"
       },
       "TeamInviteResponse": {
         "properties": {

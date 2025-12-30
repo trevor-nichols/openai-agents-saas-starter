@@ -166,6 +166,9 @@ import type {
   GetGuardrailApiV1GuardrailsGuardrailKeyGetData,
   GetGuardrailApiV1GuardrailsGuardrailKeyGetErrors,
   GetGuardrailApiV1GuardrailsGuardrailKeyGetResponses,
+  GetInvitePolicyApiV1TenantsInvitesPolicyGetData,
+  GetInvitePolicyApiV1TenantsInvitesPolicyGetErrors,
+  GetInvitePolicyApiV1TenantsInvitesPolicyGetResponses,
   GetInvoiceApiV1BillingTenantsTenantIdInvoicesInvoiceIdGetData,
   GetInvoiceApiV1BillingTenantsTenantIdInvoicesInvoiceIdGetErrors,
   GetInvoiceApiV1BillingTenantsTenantIdInvoicesInvoiceIdGetResponses,
@@ -3556,6 +3559,33 @@ export const removeMemberApiV1TenantsMembersUserIdDelete = <
       },
     ],
     url: "/api/v1/tenants/members/{user_id}",
+    ...options,
+  });
+};
+
+/**
+ * Get Invite Policy
+ */
+export const getInvitePolicyApiV1TenantsInvitesPolicyGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<
+    GetInvitePolicyApiV1TenantsInvitesPolicyGetData,
+    ThrowOnError
+  >,
+) => {
+  return (options?.client ?? client).get<
+    GetInvitePolicyApiV1TenantsInvitesPolicyGetResponses,
+    GetInvitePolicyApiV1TenantsInvitesPolicyGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/tenants/invites/policy",
     ...options,
   });
 };
