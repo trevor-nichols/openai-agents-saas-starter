@@ -11,12 +11,18 @@ interface UsePlatformStatusResult {
   refetch: () => void;
 }
 
-export function usePlatformStatusQuery(): UsePlatformStatusResult {
+interface UsePlatformStatusQueryOptions {
+  enabled?: boolean;
+}
+
+export function usePlatformStatusQuery(options: UsePlatformStatusQueryOptions = {}): UsePlatformStatusResult {
+  const enabled = options.enabled ?? typeof window !== 'undefined';
   const query = useQuery({
     queryKey: queryKeys.status.snapshot(),
     queryFn: fetchPlatformStatusSnapshot,
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
+    enabled,
   });
 
   return {

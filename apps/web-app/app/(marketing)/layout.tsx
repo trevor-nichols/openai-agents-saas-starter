@@ -1,11 +1,7 @@
-import { Suspense } from 'react';
 import type { ReactNode } from 'react';
 
 import { MarketingFooter } from './_components/marketing-footer';
 import { MarketingHeader } from './_components/marketing-header';
-
-import { fetchPlatformStatusSnapshot } from '@/lib/server/services/status';
-import type { PlatformStatusResponse } from '@/lib/api/client/types.gen';
 
 interface MarketingLayoutProps {
   children: ReactNode;
@@ -24,24 +20,7 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
         </div>
       </main>
 
-      <Suspense fallback={<MarketingFooter status={null} />}>
-        <MarketingFooterWithStatus />
-      </Suspense>
+      <MarketingFooter />
     </div>
   );
-}
-
-async function MarketingFooterWithStatus() {
-  const status = await fetchMarketingStatus();
-  return <MarketingFooter status={status} />;
-}
-
-async function fetchMarketingStatus(): Promise<PlatformStatusResponse | null> {
-  try {
-    const payload = await fetchPlatformStatusSnapshot();
-    return payload;
-  } catch (error) {
-    console.debug('[marketing-layout] Failed to load platform status', error);
-    return null;
-  }
 }
