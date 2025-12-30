@@ -44,6 +44,8 @@ from tests.utils.sqlalchemy import create_tables
 class FakeGateway(PaymentGateway):
     """Stub gateway used for service tests."""
 
+    processor_name = "stripe"
+
     def __init__(self) -> None:
         self.subscription_counter = 0
         self.last_quantity: int | None = None

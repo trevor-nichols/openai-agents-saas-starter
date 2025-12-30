@@ -26,9 +26,9 @@ from app.services.billing.payment_gateway import (
     PaymentMethodSummary,
     PortalSessionResult,
     SetupIntentResult,
+    get_payment_gateway,
 )
 from app.services.billing.processor_sync import BillingProcessorSyncService
-from app.services.billing.stripe.gateway import get_stripe_gateway
 from app.services.billing.subscriptions import BillingSubscriptionService
 from app.services.billing.usage import BillingUsageService
 
@@ -41,15 +41,17 @@ class BillingService:
         repository: BillingRepository | None = None,
         gateway: PaymentGateway | None = None,
         *,
-        processor_name: str = "stripe",
+        processor_name: str | None = None,
     ) -> None:
+        resolved_gateway = gateway or get_payment_gateway()
+        resolved_processor = processor_name or resolved_gateway.processor_name
         self._context = BillingContext(
             repository=repository,
-            gateway=gateway or get_stripe_gateway(),
+            gateway=resolved_gateway,
         )
         self._customers = BillingCustomerService(
             self._context,
-            processor_name=processor_name,
+            processor_name=resolved_processor,
         )
         self._subscriptions = BillingSubscriptionService(
             self._context,

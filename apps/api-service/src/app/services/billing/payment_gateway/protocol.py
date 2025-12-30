@@ -20,6 +20,8 @@ from .models import (
 class PaymentGateway(Protocol):
     """Interface for subscription lifecycle interactions with a payment provider."""
 
+    processor_name: str
+
     async def create_customer(
         self,
         *,
