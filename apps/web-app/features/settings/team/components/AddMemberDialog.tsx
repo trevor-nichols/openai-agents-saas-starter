@@ -29,17 +29,19 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAuthForm } from '@/hooks/useAuthForm';
-import type { TeamRole } from '@/types/team';
+import { TEAM_ROLE_ORDER, type TeamRole } from '@/types/team';
 
 const addMemberSchema = z.object({
   email: z.string().email('Enter a valid email.'),
-  role: z.string().min(1, 'Select a role.'),
+  role: z.enum(TEAM_ROLE_ORDER as [TeamRole, ...TeamRole[]], {
+    message: 'Select a role.',
+  }),
 });
 
 interface AddMemberDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (payload: { email: string; role: TeamRole | string }) => Promise<void>;
+  onSubmit: (payload: { email: string; role: TeamRole }) => Promise<void>;
   isSubmitting?: boolean;
   roleOptions: Array<{ value: TeamRole; label: string; helper?: string }>;
 }

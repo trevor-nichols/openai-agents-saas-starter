@@ -84,7 +84,7 @@ class TeamInviteService:
         *,
         tenant_id: UUID,
         invited_email: str,
-        role: str,
+        role: TenantRole,
         created_by_user_id: UUID | None,
         actor_role: TenantRole,
         expires_in_hours: int | None = _DEFAULT_INVITE_EXPIRES_HOURS,
@@ -121,7 +121,7 @@ class TeamInviteService:
                 token_hash=hashed,
                 token_hint=_token_hint(token),
                 invited_email=normalized_email,
-                role=normalized_role.value,
+                role=normalized_role,
                 created_by_user_id=created_by_user_id,
                 expires_at=expires_at,
             )
@@ -292,7 +292,7 @@ class TeamInviteService:
                 email=invite.invited_email,
                 token=token,
                 tenant_name=tenant_name,
-                role=invite.role,
+                role=invite.role.value,
                 expires_at=invite.expires_at,
             )
         except ResendEmailError as exc:

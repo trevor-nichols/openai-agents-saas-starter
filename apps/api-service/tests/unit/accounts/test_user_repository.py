@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.ext.compiler import compiles
 
 from app.core.security import PASSWORD_HASH_VERSION
+from app.domain.tenant_roles import TenantRole
 from app.domain.users import (
     UserCreatePayload,
     UserEmailConflictError,
@@ -111,7 +112,7 @@ async def _create_user(repo: PostgresUserRepository, tenant_id, email: str) -> U
         password_hash="hashed",
         password_pepper_version=PASSWORD_HASH_VERSION,
         tenant_id=tenant_id,
-        role="admin",
+        role=TenantRole.ADMIN,
         display_name="Owner",
         status=UserStatus.ACTIVE,
     )
@@ -122,7 +123,7 @@ async def _create_user_with_role(
     repo: PostgresUserRepository,
     tenant_id,
     email: str,
-    role: str,
+    role: TenantRole,
     *,
     display_name: str | None = None,
 ) -> UserRecord:
@@ -297,10 +298,10 @@ async def test_list_sole_owner_tenant_ids(
         extra_tenant_id = extra_tenant.id
 
     user = await _create_user_with_role(
-        repository, tenant_id, "owner@example.com", "owner", display_name=None
+        repository, tenant_id, "owner@example.com", TenantRole.OWNER, display_name=None
     )
     await _create_user_with_role(
-        repository, tenant_id, "coowner@example.com", "owner", display_name=None
+        repository, tenant_id, "coowner@example.com", TenantRole.OWNER, display_name=None
     )
 
     async with session_factory() as session:
@@ -309,7 +310,7 @@ async def test_list_sole_owner_tenant_ids(
                 id=uuid4(),
                 user_id=user.id,
                 tenant_id=extra_tenant_id,
-                role="owner",
+                role=TenantRole.OWNER,
             )
         )
         await session.commit()

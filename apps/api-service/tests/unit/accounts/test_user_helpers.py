@@ -12,6 +12,7 @@ from fakeredis.aioredis import FakeRedis
 
 from app.core.security import get_password_hash
 from app.core.settings import Settings
+from app.domain.tenant_roles import TenantRole
 from app.domain.users import (
     PasswordHistoryEntry,
     TenantMembershipDTO,
@@ -112,7 +113,9 @@ class _LockoutRepo:
 
 def _user_record(user_id: UUID | None = None) -> UserRecord:
     uid = user_id or uuid4()
-    membership = TenantMembershipDTO(tenant_id=uuid4(), role="admin", created_at=datetime.now(UTC))
+    membership = TenantMembershipDTO(
+        tenant_id=uuid4(), role=TenantRole.ADMIN, created_at=datetime.now(UTC)
+    )
     return UserRecord(
         id=uid,
         email="u@example.com",
@@ -129,6 +132,7 @@ def _user_record(user_id: UUID | None = None) -> UserRecord:
         locale=None,
         memberships=[membership],
         email_verified_at=None,
+        platform_role=None,
     )
 
 
@@ -201,23 +205,25 @@ async def test_lockout_manager_locks_after_threshold() -> None:
 
 def test_membership_resolution_multi_tenant_requires_context() -> None:
     memberships = [
-        TenantMembershipDTO(tenant_id=uuid4(), role="admin", created_at=datetime.now(UTC)),
-        TenantMembershipDTO(tenant_id=uuid4(), role="member", created_at=datetime.now(UTC)),
+        TenantMembershipDTO(tenant_id=uuid4(), role=TenantRole.ADMIN, created_at=datetime.now(UTC)),
+        TenantMembershipDTO(tenant_id=uuid4(), role=TenantRole.MEMBER, created_at=datetime.now(UTC)),
     ]
     with pytest.raises(TenantContextRequiredError):
         resolve_membership(memberships, None)
 
 
 def test_membership_resolution_unknown_tenant_raises() -> None:
-    membership = TenantMembershipDTO(tenant_id=uuid4(), role="admin", created_at=datetime.now(UTC))
+    membership = TenantMembershipDTO(
+        tenant_id=uuid4(), role=TenantRole.ADMIN, created_at=datetime.now(UTC)
+    )
     with pytest.raises(MembershipNotFoundError):
         resolve_membership([membership], uuid4())
 
 
 def test_scopes_for_role_variants() -> None:
-    assert "billing:manage" in scopes_for_role("admin")
-    assert "conversations:write" in scopes_for_role("member")
-    assert scopes_for_role("viewer") == ["conversations:read", "tools:read"]
+    assert "billing:manage" in scopes_for_role(TenantRole.ADMIN)
+    assert "conversations:write" in scopes_for_role(TenantRole.MEMBER)
+    assert scopes_for_role(TenantRole.VIEWER) == ["conversations:read", "tools:read"]
 
 
 @pytest.mark.asyncio

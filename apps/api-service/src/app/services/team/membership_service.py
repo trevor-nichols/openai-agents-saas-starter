@@ -8,7 +8,7 @@ from uuid import UUID
 from app.core.settings import Settings, get_settings
 from app.domain.team import TeamMember, TeamMemberListResult, TenantMembershipRepository
 from app.domain.team_errors import TeamMemberAlreadyExistsError, TeamMemberNotFoundError
-from app.domain.tenant_roles import TenantRole, normalize_tenant_role
+from app.domain.tenant_roles import TenantRole
 from app.domain.users import UserRepository
 from app.infrastructure.persistence.auth.membership_repository import (
     get_tenant_membership_repository,
@@ -46,7 +46,7 @@ class TenantMembershipService:
         *,
         tenant_id: UUID,
         user_id: UUID,
-        role: str,
+        role: TenantRole,
         actor_role: TenantRole,
     ) -> TeamMember:
         normalized_role = normalize_team_role(role)
@@ -66,7 +66,7 @@ class TenantMembershipService:
         return await self._membership_repository.add_member(
             tenant_id=tenant_id,
             user_id=user_id,
-            role=normalized_role.value,
+            role=normalized_role,
         )
 
     async def add_member_by_email(
@@ -74,7 +74,7 @@ class TenantMembershipService:
         *,
         tenant_id: UUID,
         email: str,
-        role: str,
+        role: TenantRole,
         actor_role: TenantRole,
     ) -> TeamMember:
         user = await self._user_repository.get_user_by_email(email)
@@ -92,7 +92,7 @@ class TenantMembershipService:
         *,
         tenant_id: UUID,
         user_id: UUID,
-        role: str,
+        role: TenantRole,
         actor_role: TenantRole,
     ) -> TeamMember:
         normalized_role = normalize_team_role(role)
@@ -101,18 +101,17 @@ class TenantMembershipService:
         )
         if current is None:
             raise TeamMemberNotFoundError("Member not found.")
-        current_role = normalize_tenant_role(current.role)
         ensure_owner_role_change_allowed(
             actor_role=actor_role,
-            current_role=current_role,
+            current_role=current.role,
             target_role=normalized_role,
         )
-        if current.role.lower() == "owner" and normalized_role is not TenantRole.OWNER:
+        if current.role is TenantRole.OWNER and normalized_role is not TenantRole.OWNER:
             await self._ensure_not_last_owner(tenant_id)
         updated = await self._membership_repository.update_role(
             tenant_id=tenant_id,
             user_id=user_id,
-            role=normalized_role.value,
+            role=normalized_role,
         )
         if updated is None:
             raise TeamMemberNotFoundError("Member not found.")
@@ -130,12 +129,11 @@ class TenantMembershipService:
         )
         if current is None:
             raise TeamMemberNotFoundError("Member not found.")
-        current_role = normalize_tenant_role(current.role)
         ensure_owner_role_change_allowed(
             actor_role=actor_role,
-            current_role=current_role,
+            current_role=current.role,
         )
-        if current.role.lower() == "owner":
+        if current.role is TenantRole.OWNER:
             await self._ensure_not_last_owner(tenant_id)
         removed = await self._membership_repository.remove_member(
             tenant_id=tenant_id,
@@ -146,7 +144,7 @@ class TenantMembershipService:
 
     async def _ensure_not_last_owner(self, tenant_id: UUID) -> None:
         count = await self._membership_repository.count_members_by_role(
-            tenant_id=tenant_id, role="owner"
+            tenant_id=tenant_id, role=TenantRole.OWNER
         )
         if count <= 1:
             raise LastOwnerRemovalError(
@@ -154,11 +152,11 @@ class TenantMembershipService:
             )
 
 
-def _normalize_role(role: str) -> TenantRole:
+def _normalize_role(role: TenantRole | str) -> TenantRole:
     return normalize_team_role(role)
 
 
-def normalize_roles(roles: Iterable[str]) -> list[str]:
+def normalize_roles(roles: Iterable[TenantRole | str]) -> list[str]:
     return [_normalize_role(role).value for role in roles]
 
 

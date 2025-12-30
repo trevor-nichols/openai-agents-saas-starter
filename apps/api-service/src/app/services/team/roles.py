@@ -6,7 +6,9 @@ from app.domain.team_errors import InvalidTeamRoleError, OwnerRoleAssignmentErro
 from app.domain.tenant_roles import TenantRole, normalize_tenant_role
 
 
-def normalize_team_role(value: str) -> TenantRole:
+def normalize_team_role(value: TenantRole | str) -> TenantRole:
+    if isinstance(value, TenantRole):
+        return value
     normalized = normalize_tenant_role(value)
     if normalized is None:
         raise InvalidTeamRoleError("Unsupported team role.")

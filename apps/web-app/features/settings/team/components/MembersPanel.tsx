@@ -77,7 +77,7 @@ export function MembersPanel() {
   }, [members, searchTerm]);
 
   const handleRoleChange = useCallback(
-    async (member: TeamMemberSummary, nextRole: string) => {
+    async (member: TeamMemberSummary, nextRole: TeamRole) => {
       if (member.role === nextRole) return;
       try {
         await updateRoleMutation.mutateAsync({
@@ -136,7 +136,7 @@ export function MembersPanel() {
           return (
             <Select
               value={row.original.role}
-              onValueChange={(value) => handleRoleChange(row.original, value)}
+              onValueChange={(value) => handleRoleChange(row.original, value as TeamRole)}
             >
               <SelectTrigger className="h-8 w-40">
                 <SelectValue placeholder="Select role" />

@@ -7,12 +7,13 @@ import { Button } from '@/components/ui/button';
 import { GlassPanel, InlineTag, KeyValueList, SectionHeader } from '@/components/ui/foundation';
 import { EmptyState } from '@/components/ui/states';
 import type { AccountTenantSummary } from '@/types/account';
+import type { TeamRole } from '@/types/team';
 import { formatDateTime } from '../utils/dates';
 
 interface TenantSnapshotCardProps {
   tenant: AccountTenantSummary | null;
   tenantError: Error | null;
-  userRole: string | null;
+  userRole: TeamRole | null;
   onRetry: () => void;
 }
 

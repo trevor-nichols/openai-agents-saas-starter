@@ -21,6 +21,7 @@ os.environ.setdefault("SECURITY_TOKEN_REDIS_URL", os.environ["REDIS_URL"])
 from app.bootstrap import get_container
 from app.core.security import get_token_signer
 from app.core.settings import get_settings
+from app.domain.tenant_roles import TenantRole
 from app.domain.users import UserProfileSummary
 from main import app
 
@@ -74,7 +75,7 @@ def test_users_me_returns_profile(client: TestClient, fake_user_service) -> None
         avatar_url="https://example.com/avatar.png",
         timezone="UTC",
         locale="en-US",
-        role="owner",
+        role=TenantRole.OWNER,
         email_verified=True,
     )
     fake_user_service.get_user_profile_summary.return_value = profile

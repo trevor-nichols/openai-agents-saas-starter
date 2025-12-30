@@ -149,12 +149,12 @@ class FakeInviteRepository:
 class FakeMembershipRepository:
     def __init__(self, *, exists: bool = False) -> None:
         self.exists = exists
-        self.added: list[tuple[UUID, UUID, str]] = []
+        self.added: list[tuple[UUID, UUID, TenantRole]] = []
 
     async def membership_exists(self, *, tenant_id: UUID, user_id: UUID) -> bool:
         return self.exists
 
-    async def add_member(self, *, tenant_id: UUID, user_id: UUID, role: str) -> None:
+    async def add_member(self, *, tenant_id: UUID, user_id: UUID, role: TenantRole) -> None:
         self.added.append((tenant_id, user_id, role))
 
 
@@ -244,7 +244,7 @@ async def test_issue_invite_blocks_existing_member(
         await service.issue_invite(
             tenant_id=tenant_id,
             invited_email=user.email,
-            role="member",
+            role=TenantRole.MEMBER,
             created_by_user_id=None,
             actor_role=TenantRole.ADMIN,
         )
@@ -436,7 +436,7 @@ async def test_revoke_invite_blocks_non_active(
         token_hash="hash",
         token_hint="hint",
         invited_email="invitee@example.com",
-        role="member",
+        role=TenantRole.MEMBER,
         status=TeamInviteStatus.ACCEPTED,
         created_by_user_id=None,
         accepted_by_user_id=uuid4(),
@@ -470,7 +470,7 @@ async def test_revoke_invite_blocks_already_revoked(
         token_hash="hash",
         token_hint="hint",
         invited_email="invitee@example.com",
-        role="member",
+        role=TenantRole.MEMBER,
         status=TeamInviteStatus.REVOKED,
         created_by_user_id=None,
         accepted_by_user_id=None,
@@ -516,7 +516,7 @@ async def test_issue_invite_owner_requires_owner(
         await service.issue_invite(
             tenant_id=tenant_id,
             invited_email="owner@example.com",
-            role="owner",
+            role=TenantRole.OWNER,
             created_by_user_id=None,
             actor_role=TenantRole.ADMIN,
         )
@@ -532,7 +532,7 @@ async def test_revoke_invite_blocks_tenant_mismatch(
         token_hash="hash",
         token_hint="hint",
         invited_email="invitee@example.com",
-        role="member",
+        role=TenantRole.MEMBER,
         status=TeamInviteStatus.ACTIVE,
         created_by_user_id=None,
         accepted_by_user_id=None,
@@ -574,11 +574,12 @@ def build_user(email: str) -> UserRecord:
         memberships=[
             TenantMembershipDTO(
                 tenant_id=uuid4(),
-                role="member",
+                role=TenantRole.MEMBER,
                 created_at=datetime.now(UTC),
             )
         ],
         email_verified_at=datetime.now(UTC),
+        platform_role=None,
     )
 
 
@@ -644,7 +645,7 @@ async def seed_invite(
                     token_hash=digest,
                     token_hint=token[:8],
                     invited_email=invited_email,
-                    role="member",
+                    role=TenantRole.MEMBER,
                     status=TeamInviteStatus.ACTIVE,
                     created_by_user_id=None,
                     accepted_by_user_id=None,

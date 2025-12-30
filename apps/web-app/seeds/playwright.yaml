@@ -43,4 +43,5 @@ tenants:
       - email: platform-ops@example.com
         password: OpsAccount123!
         display_name: Platform Ops
-        role: platform_operator
+        role: admin
+        platform_role: platform_operator

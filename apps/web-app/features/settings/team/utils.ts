@@ -19,8 +19,8 @@ export function formatStatus(value: string): string {
   return value.replace(/_/g, ' ').replace(/\b\w/g, (match) => match.toUpperCase());
 }
 
-export function resolveRoleLabel(role: string): string {
-  return TEAM_ROLE_LABELS[role as TeamRole] ?? formatStatus(role);
+export function resolveRoleLabel(role: TeamRole): string {
+  return TEAM_ROLE_LABELS[role] ?? formatStatus(role);
 }
 
 export function normalizeOptionalString(value: unknown): unknown {
@@ -31,51 +31,46 @@ export function normalizeOptionalString(value: unknown): unknown {
   return trimmed.length === 0 ? undefined : trimmed;
 }
 
-export function getAssignableRoles(actorRole: string | null): TeamRole[] {
+export function getAssignableRoles(actorRole: TeamRole | null): TeamRole[] {
   if (!actorRole) return [];
-  const normalized = actorRole.toLowerCase();
-  if (normalized === 'owner') {
+  if (actorRole === 'owner') {
     return [...TEAM_ROLE_ORDER];
   }
-  if (normalized === 'admin') {
+  if (actorRole === 'admin') {
     return TEAM_ROLE_ORDER.filter((role) => role !== 'owner');
   }
   return [];
 }
 
 export function canEditMemberRole(
-  actorRole: string | null,
-  targetRole: string,
+  actorRole: TeamRole | null,
+  targetRole: TeamRole,
   ownerCount?: number,
 ): boolean {
   if (!actorRole) return false;
-  const normalizedActor = actorRole.toLowerCase();
-  const normalizedTarget = targetRole.toLowerCase();
 
-  if (normalizedTarget === 'owner' && typeof ownerCount === 'number' && ownerCount <= 1) {
+  if (targetRole === 'owner' && typeof ownerCount === 'number' && ownerCount <= 1) {
     return false;
   }
-  if (normalizedActor === 'owner') return true;
-  if (normalizedActor === 'admin') return normalizedTarget !== 'owner';
+  if (actorRole === 'owner') return true;
+  if (actorRole === 'admin') return targetRole !== 'owner';
   return false;
 }
 
 export function canRemoveMember(
-  actorRole: string | null,
-  targetRole: string,
+  actorRole: TeamRole | null,
+  targetRole: TeamRole,
   ownerCount: number,
 ): boolean {
   if (!actorRole) return false;
-  const normalizedActor = actorRole.toLowerCase();
-  const normalizedTarget = targetRole.toLowerCase();
-  if (normalizedActor === 'owner') {
-    if (normalizedTarget === 'owner' && ownerCount <= 1) {
+  if (actorRole === 'owner') {
+    if (targetRole === 'owner' && ownerCount <= 1) {
       return false;
     }
     return true;
   }
-  if (normalizedActor === 'admin') {
-    return normalizedTarget !== 'owner';
+  if (actorRole === 'admin') {
+    return targetRole !== 'owner';
   }
   return false;
 }

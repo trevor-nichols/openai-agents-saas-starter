@@ -20,6 +20,7 @@ from app.domain.team import (
     TeamMember,
     TeamMemberListResult,
 )
+from app.domain.tenant_roles import TenantRole
 from app.domain.users import UserStatus
 from app.api.v1.tenants import routes_invites, routes_members
 from app.domain.team_errors import OwnerRoleAssignmentError, TeamMemberAlreadyExistsError
@@ -99,7 +100,7 @@ def test_list_members_returns_members(
         tenant_id=UUID(tenant_id),
         email="owner@example.com",
         display_name="Owner",
-        role="owner",
+        role=TenantRole.OWNER,
         status=UserStatus.ACTIVE,
         email_verified=True,
         joined_at=datetime.now(UTC),
@@ -169,7 +170,7 @@ def test_issue_invite_returns_token(
         token_hash="hash",
         token_hint="hint",
         invited_email="invitee@example.com",
-        role="member",
+        role=TenantRole.MEMBER,
         status=TeamInviteStatus.ACTIVE,
         created_by_user_id=None,
         accepted_by_user_id=None,

@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.settings import Settings, get_settings
 from app.domain.team import TeamMember, TeamMemberListResult, TenantMembershipRepository
+from app.domain.tenant_roles import TenantRole
 from app.domain.users import UserStatus
 from app.infrastructure.db import get_async_sessionmaker
 from app.infrastructure.persistence.auth.models.membership import TenantUserMembership
@@ -74,7 +75,7 @@ class PostgresTenantMembershipRepository(TenantMembershipRepository):
         *,
         tenant_id: uuid.UUID,
         user_id: uuid.UUID,
-        role: str,
+        role: TenantRole,
     ) -> TeamMember:
         async with self._session_factory() as session:
             membership = TenantUserMembership(
@@ -96,7 +97,7 @@ class PostgresTenantMembershipRepository(TenantMembershipRepository):
         *,
         tenant_id: uuid.UUID,
         user_id: uuid.UUID,
-        role: str,
+        role: TenantRole,
     ) -> TeamMember | None:
         async with self._session_factory() as session:
             result = await session.execute(
@@ -136,14 +137,14 @@ class PostgresTenantMembershipRepository(TenantMembershipRepository):
             )
             return bool(value)
 
-    async def count_members_by_role(self, *, tenant_id: uuid.UUID, role: str) -> int:
+    async def count_members_by_role(self, *, tenant_id: uuid.UUID, role: TenantRole) -> int:
         async with self._session_factory() as session:
             value = await session.scalar(
                 select(func.count())
                 .select_from(TenantUserMembership)
                 .where(
                     TenantUserMembership.tenant_id == tenant_id,
-                    func.lower(TenantUserMembership.role) == role.lower(),
+                    TenantUserMembership.role == role,
                 )
             )
             return int(value or 0)

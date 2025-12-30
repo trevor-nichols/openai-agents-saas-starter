@@ -18,6 +18,7 @@ from sqlalchemy.ext.compiler import compiles
 
 from app.core.settings import Settings
 from app.core.security import PASSWORD_HASH_VERSION, pwd_context
+from app.domain.tenant_roles import TenantRole
 from app.domain.users import PasswordReuseError, UserCreate, UserCreatePayload, UserStatus
 from app.infrastructure.persistence.auth.models import (
     PasswordHistory,
@@ -146,7 +147,7 @@ async def _register_user(service: UserService, tenant_id, email: str, password: 
         email=email,
         password=password,
         tenant_id=tenant_id,
-        role="admin",
+        role=TenantRole.ADMIN,
         display_name="Owner",
     )
     await service.register_user(create_payload)
@@ -157,7 +158,7 @@ async def _register_user_with_role(
     tenant_id,
     email: str,
     password: str,
-    role: str,
+    role: TenantRole,
 ) -> None:
     create_payload = UserCreate(
         email=email,
@@ -310,7 +311,7 @@ async def test_disable_account_blocks_last_owner(
     tenant_id,
 ) -> None:
     await _register_user_with_role(
-        user_service, tenant_id, "owner@example.com", STRONG_PASSWORD, role="owner"
+        user_service, tenant_id, "owner@example.com", STRONG_PASSWORD, role=TenantRole.OWNER
     )
     user = await user_service._repository.get_user_by_email("owner@example.com")
     assert user is not None
@@ -328,10 +329,10 @@ async def test_disable_account_marks_user_disabled(
     tenant_id,
 ) -> None:
     await _register_user_with_role(
-        user_service, tenant_id, "owner1@example.com", STRONG_PASSWORD, role="owner"
+        user_service, tenant_id, "owner1@example.com", STRONG_PASSWORD, role=TenantRole.OWNER
     )
     await _register_user_with_role(
-        user_service, tenant_id, "owner2@example.com", STRONG_PASSWORD, role="owner"
+        user_service, tenant_id, "owner2@example.com", STRONG_PASSWORD, role=TenantRole.OWNER
     )
     user = await user_service._repository.get_user_by_email("owner1@example.com")
     assert user is not None

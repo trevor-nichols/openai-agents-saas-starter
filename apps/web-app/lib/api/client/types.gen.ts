@@ -2069,11 +2069,9 @@ export type CurrentUserProfileResponseData = {
    */
   locale?: string | null;
   /**
-   * Role
-   *
    * Tenant role associated with the session.
    */
-  role: string;
+  role: TenantRole;
   /**
    * Email Verified
    *
@@ -2738,10 +2736,8 @@ export type FixtureUser = {
    * Display Name
    */
   display_name?: string | null;
-  /**
-   * Role
-   */
-  role?: string;
+  role?: TenantRole;
+  platform_role?: PlatformRole | null;
   /**
    * Verify Email
    */
@@ -2756,10 +2752,7 @@ export type FixtureUserResult = {
    * User Id
    */
   user_id: string;
-  /**
-   * Role
-   */
-  role: string;
+  role: TenantRole;
 };
 
 /**
@@ -4088,6 +4081,11 @@ export type PlanFeatureResponse = {
    */
   is_metered?: boolean;
 };
+
+/**
+ * PlatformRole
+ */
+export type PlatformRole = "platform_operator";
 
 /**
  * PlatformStatusResponse
@@ -5958,10 +5956,7 @@ export type TeamInviteIssueRequest = {
    * Invited Email
    */
   invited_email: string;
-  /**
-   * Role
-   */
-  role: string;
+  role: TenantRole;
   /**
    * Expires In Hours
    */
@@ -5988,10 +5983,7 @@ export type TeamInviteIssueResponse = {
    * Invited Email
    */
   invited_email: string;
-  /**
-   * Role
-   */
-  role: string;
+  role: TenantRole;
   /**
    * Status
    */
@@ -6066,10 +6058,7 @@ export type TeamInviteResponse = {
    * Invited Email
    */
   invited_email: string;
-  /**
-   * Role
-   */
-  role: string;
+  role: TenantRole;
   /**
    * Status
    */
@@ -6119,10 +6108,7 @@ export type TeamMemberAddRequest = {
    * Email
    */
   email: string;
-  /**
-   * Role
-   */
-  role: string;
+  role: TenantRole;
 };
 
 /**
@@ -6159,10 +6145,7 @@ export type TeamMemberResponse = {
    * Display Name
    */
   display_name: string | null;
-  /**
-   * Role
-   */
-  role: string;
+  role: TenantRole;
   /**
    * Status
    */
@@ -6181,11 +6164,13 @@ export type TeamMemberResponse = {
  * TeamMemberRoleUpdateRequest
  */
 export type TeamMemberRoleUpdateRequest = {
-  /**
-   * Role
-   */
-  role: string;
+  role: TenantRole;
 };
+
+/**
+ * TenantRole
+ */
+export type TenantRole = "owner" | "admin" | "member" | "viewer";
 
 /**
  * TenantSettingsResponse

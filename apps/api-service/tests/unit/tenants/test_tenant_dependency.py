@@ -24,6 +24,19 @@ async def test_context_uses_token_claims() -> None:
 
 
 @pytest.mark.asyncio
+async def test_roles_claim_preferred_over_scopes() -> None:
+    user: dict[str, object] = {
+        "payload": {
+            "tenant_id": "tenant-123",
+            "roles": ["viewer"],
+            "scope": "billing:manage",
+        }
+    }
+    context = await get_tenant_context(current_user=user)
+    assert context.role == TenantRole.VIEWER
+
+
+@pytest.mark.asyncio
 async def test_billing_read_scope_maps_to_viewer() -> None:
     user: dict[str, object] = {
         "payload": {

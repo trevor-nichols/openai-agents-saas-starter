@@ -3,9 +3,10 @@ import type {
   TeamInviteResponse,
   TeamInviteStatus,
   TeamMemberResponse,
+  TenantRole,
 } from '@/lib/api/client/types.gen';
 
-export type TeamRole = 'viewer' | 'member' | 'admin' | 'owner';
+export type TeamRole = TenantRole;
 
 export const TEAM_ROLE_ORDER: readonly TeamRole[] = [
   'viewer',
@@ -22,7 +23,7 @@ export interface TeamMemberSummary {
   tenantId: string;
   email: string;
   displayName: string | null;
-  role: TeamRole | string;
+  role: TeamRole;
   status: TeamMemberStatus;
   emailVerified: boolean;
   joinedAt: string;
@@ -42,11 +43,11 @@ export interface TeamMemberListResult {
 
 export interface AddTeamMemberInput {
   email: string;
-  role: TeamRole | string;
+  role: TeamRole;
 }
 
 export interface UpdateTeamMemberRoleInput {
-  role: TeamRole | string;
+  role: TeamRole;
 }
 
 export interface TeamInviteSummary {
@@ -54,7 +55,7 @@ export interface TeamInviteSummary {
   tenantId: string;
   tokenHint: string;
   invitedEmail: string;
-  role: TeamRole | string;
+  role: TeamRole;
   status: TeamInviteStatus;
   createdByUserId: string | null;
   acceptedByUserId: string | null;
@@ -81,7 +82,7 @@ export interface TeamInviteListResult {
 
 export interface IssueTeamInviteInput {
   invitedEmail: string;
-  role: TeamRole | string;
+  role: TeamRole;
   expiresInHours?: number | null;
 }
 

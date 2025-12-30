@@ -31,8 +31,8 @@ class FakeMembershipRepository:
         self._member = member
         self._exists = exists
         self._owner_count = owner_count
-        self.add_calls: list[tuple[UUID, UUID, str]] = []
-        self.update_calls: list[tuple[UUID, UUID, str]] = []
+        self.add_calls: list[tuple[UUID, UUID, TenantRole]] = []
+        self.update_calls: list[tuple[UUID, UUID, TenantRole]] = []
         self.remove_calls: list[tuple[UUID, UUID]] = []
 
     async def list_members(
@@ -48,13 +48,17 @@ class FakeMembershipRepository:
     async def get_member(self, *, tenant_id: UUID, user_id: UUID) -> TeamMember | None:
         return self._member
 
-    async def add_member(self, *, tenant_id: UUID, user_id: UUID, role: str) -> TeamMember:
+    async def add_member(
+        self, *, tenant_id: UUID, user_id: UUID, role: TenantRole
+    ) -> TeamMember:
         self.add_calls.append((tenant_id, user_id, role))
         if self._member is None:
             self._member = make_member(user_id=user_id, tenant_id=tenant_id, role=role)
         return self._member
 
-    async def update_role(self, *, tenant_id: UUID, user_id: UUID, role: str) -> TeamMember | None:
+    async def update_role(
+        self, *, tenant_id: UUID, user_id: UUID, role: TenantRole
+    ) -> TeamMember | None:
         self.update_calls.append((tenant_id, user_id, role))
         if self._member is None:
             return None
@@ -68,7 +72,7 @@ class FakeMembershipRepository:
     async def membership_exists(self, *, tenant_id: UUID, user_id: UUID) -> bool:
         return self._exists
 
-    async def count_members_by_role(self, *, tenant_id: UUID, role: str) -> int:
+    async def count_members_by_role(self, *, tenant_id: UUID, role: TenantRole) -> int:
         return self._owner_count
 
 
@@ -116,6 +120,7 @@ def user_record(member: TeamMember) -> UserRecord:
             )
         ],
         email_verified_at=datetime.now(UTC),
+        platform_role=None,
     )
 
 
@@ -131,7 +136,7 @@ async def test_add_member_rejects_existing_member(user_record: UserRecord) -> No
         await service.add_member(
             tenant_id=uuid4(),
             user_id=user_record.id,
-            role="member",
+            role=TenantRole.MEMBER,
             actor_role=TenantRole.ADMIN,
         )
 
@@ -148,14 +153,14 @@ async def test_add_member_missing_user() -> None:
         await service.add_member(
             tenant_id=uuid4(),
             user_id=uuid4(),
-            role="member",
+            role=TenantRole.MEMBER,
             actor_role=TenantRole.ADMIN,
         )
 
 
 @pytest.mark.asyncio
 async def test_update_role_blocks_last_owner(member: TeamMember, user_record: UserRecord) -> None:
-    member.role = "owner"
+    member.role = TenantRole.OWNER
     membership_repo = FakeMembershipRepository(member=member, owner_count=1)
     service = TenantMembershipService(
         cast(TenantMembershipRepository, membership_repo),
@@ -166,14 +171,14 @@ async def test_update_role_blocks_last_owner(member: TeamMember, user_record: Us
         await service.update_role(
             tenant_id=member.tenant_id,
             user_id=member.user_id,
-            role="member",
+            role=TenantRole.MEMBER,
             actor_role=TenantRole.OWNER,
         )
 
 
 @pytest.mark.asyncio
 async def test_remove_member_blocks_last_owner(member: TeamMember, user_record: UserRecord) -> None:
-    member.role = "owner"
+    member.role = TenantRole.OWNER
     membership_repo = FakeMembershipRepository(member=member, owner_count=1)
     service = TenantMembershipService(
         cast(TenantMembershipRepository, membership_repo),
@@ -200,14 +205,14 @@ async def test_admin_cannot_assign_owner_role(user_record: UserRecord) -> None:
         await service.add_member(
             tenant_id=uuid4(),
             user_id=user_record.id,
-            role="owner",
+            role=TenantRole.OWNER,
             actor_role=TenantRole.ADMIN,
         )
 
 
 @pytest.mark.asyncio
 async def test_admin_cannot_demote_owner(member: TeamMember, user_record: UserRecord) -> None:
-    member.role = "owner"
+    member.role = TenantRole.OWNER
     membership_repo = FakeMembershipRepository(member=member, owner_count=2)
     service = TenantMembershipService(
         cast(TenantMembershipRepository, membership_repo),
@@ -218,14 +223,14 @@ async def test_admin_cannot_demote_owner(member: TeamMember, user_record: UserRe
         await service.update_role(
             tenant_id=member.tenant_id,
             user_id=member.user_id,
-            role="admin",
+            role=TenantRole.ADMIN,
             actor_role=TenantRole.ADMIN,
         )
 
 
 @pytest.mark.asyncio
 async def test_admin_cannot_remove_owner(member: TeamMember, user_record: UserRecord) -> None:
-    member.role = "owner"
+    member.role = TenantRole.OWNER
     membership_repo = FakeMembershipRepository(member=member, owner_count=2)
     service = TenantMembershipService(
         cast(TenantMembershipRepository, membership_repo),
@@ -244,7 +249,7 @@ def make_member(
     *,
     user_id: UUID | None = None,
     tenant_id: UUID | None = None,
-    role: str = "member",
+    role: TenantRole = TenantRole.MEMBER,
 ) -> TeamMember:
     return TeamMember(
         user_id=user_id or uuid4(),

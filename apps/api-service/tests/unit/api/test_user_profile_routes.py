@@ -9,6 +9,7 @@ import pytest
 
 from app.api.dependencies.auth import require_current_user
 from app.api.v1.users import routes_profile
+from app.domain.tenant_roles import TenantRole
 from app.domain.users import (
     UserEmailChangeResult,
     UserProfilePatch,
@@ -115,7 +116,7 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
         avatar_url=None,
         timezone="UTC",
         locale="en-US",
-        role="admin",
+        role=TenantRole.ADMIN,
         email_verified=False,
     )
     record = UserRecord(
@@ -134,6 +135,7 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
         locale=profile.locale,
         memberships=[],
         email_verified_at=None,
+        platform_role=None,
     )
     stub_user_service = _StubUserService(profile, record)
     stub_auth_service = _StubAuthService(revoked=2)

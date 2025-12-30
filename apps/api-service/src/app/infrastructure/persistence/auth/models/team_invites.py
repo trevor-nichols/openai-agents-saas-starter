@@ -11,6 +11,7 @@ from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.domain.team import TeamInviteStatus
+from app.domain.tenant_roles import TenantRole
 from app.infrastructure.persistence.models.base import UTC_NOW, Base, uuid_pk
 from app.infrastructure.persistence.types import CITEXTCompat
 
@@ -32,7 +33,14 @@ class TenantMemberInvite(Base):
     token_hash: Mapped[str] = mapped_column(String(128), nullable=False)
     token_hint: Mapped[str] = mapped_column(String(16), nullable=False)
     invited_email: Mapped[str] = mapped_column(CITEXTCompat(), nullable=False)
-    role: Mapped[str] = mapped_column(String(32), nullable=False)
+    role: Mapped[TenantRole] = mapped_column(
+        SAEnum(
+            TenantRole,
+            name="tenant_role",
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+        ),
+        nullable=False,
+    )
     status: Mapped[TeamInviteStatus] = mapped_column(
         SAEnum(
             TeamInviteStatus,

@@ -169,6 +169,7 @@ Human identity.
 | `password_hash`           | Text                | NO   | —           |                                         |
 | `password_pepper_version` | String(32)          | NO   | `"v2"`      |                                         |
 | `status`                  | Enum(`user_status`) | NO   | `pending`   | values: pending/active/disabled/locked  |
+| `platform_role`           | Enum(`platform_role`) | YES | —         | values: platform_operator               |
 | `email_verified_at`       | DateTime(tz)        | YES  | —           |                                         |
 | `created_at`              | DateTime(tz)        | NO   | `UTC_NOW`   |                                         |
 | `updated_at`              | DateTime(tz)        | NO   | `UTC_NOW`   | `onupdate=UTC_NOW`                      |
@@ -215,7 +216,7 @@ User ↔ tenant association with role.
 | `id`         | UUID         | NO   | `uuid_pk()` |                           |
 | `user_id`    | UUID         | NO   | —           | FK → `users.id`           |
 | `tenant_id`  | UUID         | NO   | —           | FK → `tenant_accounts.id` |
-| `role`       | String(32)   | NO   | —           |                           |
+| `role`       | Enum(`tenant_role`) | NO | —        | values: owner/admin/member/viewer |
 | `created_at` | DateTime(tz) | NO   | `UTC_NOW`   |                           |
 
 **Constraints**

@@ -8,6 +8,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.domain.team import TeamInvite, TeamMember
+from app.domain.tenant_roles import TenantRole
 
 
 class TeamMemberResponse(BaseModel):
@@ -17,7 +18,7 @@ class TeamMemberResponse(BaseModel):
     tenant_id: UUID
     email: EmailStr
     display_name: str | None
-    role: str
+    role: TenantRole
     status: str
     email_verified: bool
     joined_at: datetime
@@ -48,20 +49,20 @@ class TeamMemberAddRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     email: EmailStr
-    role: str = Field(min_length=1)
+    role: TenantRole
 
 
 class TeamMemberRoleUpdateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    role: str = Field(min_length=1)
+    role: TenantRole
 
 
 class TeamInviteIssueRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     invited_email: EmailStr
-    role: str = Field(min_length=1)
+    role: TenantRole
     expires_in_hours: int | None = Field(default=72, ge=1, le=24 * 14)
 
 
@@ -72,7 +73,7 @@ class TeamInviteResponse(BaseModel):
     tenant_id: UUID
     token_hint: str
     invited_email: EmailStr
-    role: str
+    role: TenantRole
     status: str
     created_by_user_id: UUID | None = None
     accepted_by_user_id: UUID | None = None

@@ -25,7 +25,8 @@ async def apply_test_fixtures(client: httpx.AsyncClient, cfg: SmokeConfig) -> Di
                 "email": cfg.operator_email,
                 "password": cfg.admin_password,
                 "display_name": "Smoke Operator",
-                "role": "platform_operator",
+                "role": "admin",
+                "platform_role": "platform_operator",
                 "verify_email": True,
             },
             {

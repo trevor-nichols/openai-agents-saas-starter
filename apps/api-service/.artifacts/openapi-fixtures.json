@@ -31916,8 +31916,7 @@
             "description": "Optional locale for the user."
           },
           "role": {
-            "type": "string",
-            "title": "Role",
+            "$ref": "#/components/schemas/TenantRole",
             "description": "Tenant role associated with the session."
           },
           "email_verified": {
@@ -33182,10 +33181,18 @@
             "title": "Display Name"
           },
           "role": {
-            "type": "string",
-            "minLength": 3,
-            "title": "Role",
+            "$ref": "#/components/schemas/TenantRole",
             "default": "admin"
+          },
+          "platform_role": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlatformRole"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "verify_email": {
             "type": "boolean",
@@ -33207,8 +33214,7 @@
             "title": "User Id"
           },
           "role": {
-            "type": "string",
-            "title": "Role"
+            "$ref": "#/components/schemas/TenantRole"
           }
         },
         "type": "object",
@@ -35656,6 +35662,13 @@
           "display_name"
         ],
         "title": "PlanFeatureResponse"
+      },
+      "PlatformRole": {
+        "type": "string",
+        "enum": [
+          "platform_operator"
+        ],
+        "title": "PlatformRole"
       },
       "PlatformStatusResponse": {
         "properties": {
@@ -38815,9 +38828,7 @@
             "title": "Invited Email"
           },
           "role": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Role"
+            "$ref": "#/components/schemas/TenantRole"
           },
           "expires_in_hours": {
             "anyOf": [
@@ -38864,8 +38875,7 @@
             "title": "Invited Email"
           },
           "role": {
-            "type": "string",
-            "title": "Role"
+            "$ref": "#/components/schemas/TenantRole"
           },
           "status": {
             "type": "string",
@@ -39011,8 +39021,7 @@
             "title": "Invited Email"
           },
           "role": {
-            "type": "string",
-            "title": "Role"
+            "$ref": "#/components/schemas/TenantRole"
           },
           "status": {
             "type": "string",
@@ -39127,9 +39136,7 @@
             "title": "Email"
           },
           "role": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Role"
+            "$ref": "#/components/schemas/TenantRole"
           }
         },
         "additionalProperties": false,
@@ -39191,8 +39198,7 @@
             "title": "Display Name"
           },
           "role": {
-            "type": "string",
-            "title": "Role"
+            "$ref": "#/components/schemas/TenantRole"
           },
           "status": {
             "type": "string",
@@ -39225,9 +39231,7 @@
       "TeamMemberRoleUpdateRequest": {
         "properties": {
           "role": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Role"
+            "$ref": "#/components/schemas/TenantRole"
           }
         },
         "additionalProperties": false,
@@ -39236,6 +39240,16 @@
           "role"
         ],
         "title": "TeamMemberRoleUpdateRequest"
+      },
+      "TenantRole": {
+        "type": "string",
+        "enum": [
+          "owner",
+          "admin",
+          "member",
+          "viewer"
+        ],
+        "title": "TenantRole"
       },
       "TenantSettingsResponse": {
         "properties": {

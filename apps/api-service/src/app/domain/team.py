@@ -8,6 +8,7 @@ from enum import Enum
 from typing import Protocol
 from uuid import UUID
 
+from app.domain.tenant_roles import TenantRole
 from app.domain.users import UserStatus
 
 
@@ -26,7 +27,7 @@ class TeamMember:
     tenant_id: UUID
     email: str
     display_name: str | None
-    role: str
+    role: TenantRole
     status: UserStatus
     email_verified: bool
     joined_at: datetime
@@ -54,7 +55,7 @@ class TenantMembershipRepository(Protocol):
         *,
         tenant_id: UUID,
         user_id: UUID,
-        role: str,
+        role: TenantRole,
     ) -> TeamMember: ...
 
     async def update_role(
@@ -62,14 +63,16 @@ class TenantMembershipRepository(Protocol):
         *,
         tenant_id: UUID,
         user_id: UUID,
-        role: str,
+        role: TenantRole,
     ) -> TeamMember | None: ...
 
     async def remove_member(self, *, tenant_id: UUID, user_id: UUID) -> bool: ...
 
     async def membership_exists(self, *, tenant_id: UUID, user_id: UUID) -> bool: ...
 
-    async def count_members_by_role(self, *, tenant_id: UUID, role: str) -> int: ...
+    async def count_members_by_role(
+        self, *, tenant_id: UUID, role: TenantRole
+    ) -> int: ...
 
 
 @dataclass(slots=True)
@@ -79,7 +82,7 @@ class TeamInvite:
     token_hash: str
     token_hint: str
     invited_email: str
-    role: str
+    role: TenantRole
     status: TeamInviteStatus
     created_by_user_id: UUID | None
     accepted_by_user_id: UUID | None
@@ -97,7 +100,7 @@ class TeamInviteCreate:
     token_hash: str
     token_hint: str
     invited_email: str
-    role: str
+    role: TenantRole
     created_by_user_id: UUID | None
     expires_at: datetime | None
 

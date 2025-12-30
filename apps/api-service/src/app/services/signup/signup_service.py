@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.core.password_policy import PasswordPolicyError, validate_password_strength
 from app.core.security import PASSWORD_HASH_VERSION, get_password_hash
 from app.core.settings import Settings, get_settings
+from app.domain.tenant_roles import TenantRole
 from app.infrastructure.db import get_async_sessionmaker
 from app.infrastructure.persistence.auth.models.membership import TenantUserMembership
 from app.infrastructure.persistence.auth.models.user import (
@@ -330,7 +331,7 @@ class SignupService:
                             id=uuid.uuid4(),
                             user_id=user_id,
                             tenant_id=tenant_id,
-                            role="owner",
+                            role=TenantRole.OWNER,
                         )
                     )
 

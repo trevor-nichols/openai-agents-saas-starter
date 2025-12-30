@@ -8,6 +8,8 @@ from uuid import UUID
 
 from app.core.security import PASSWORD_HASH_VERSION, get_password_hash, verify_password
 from app.core.settings import Settings
+from app.domain.platform_roles import PlatformRole
+from app.domain.tenant_roles import TenantRole
 from app.domain.users import (
     AuthenticatedUser,
     TenantMembershipDTO,
@@ -28,7 +30,7 @@ from .lockout import LockoutManager
 from .login_events import ActivityRecorder, LoginEventRecorder
 from .membership import resolve_membership
 from .passwords import PasswordPolicyManager
-from .scopes import scopes_for_role
+from .scopes import scopes_for_access
 from .throttling import LoginThrottle, NullLoginThrottle
 
 logger = logging.getLogger("api-service.services.user")
@@ -49,7 +51,7 @@ class UserService:
             [Sequence[TenantMembershipDTO], UUID | None], TenantMembershipDTO
         ]
         | None = None,
-        scope_resolver: Callable[[str], list[str]] | None = None,
+        scope_resolver: Callable[[TenantRole, PlatformRole | None], list[str]] | None = None,
     ) -> None:
         if repository is None:
             raise RuntimeError("UserRepository is required for UserService.")
@@ -57,7 +59,7 @@ class UserService:
         self._settings = settings
         self._ip_throttler = ip_throttler or NullLoginThrottle()
         self._membership_resolver = membership_resolver or resolve_membership
-        self._scope_resolver = scope_resolver or scopes_for_role
+        self._scope_resolver = scope_resolver or scopes_for_access
         self._login_events = login_events or LoginEventRecorder(
             repository, activity_recorder=activity_recorder
         )
@@ -212,7 +214,7 @@ class UserService:
             tenant_id=membership.tenant_id,
             email=user.email,
             role=membership.role,
-            scopes=self._scope_resolver(membership.role),
+            scopes=self._scope_resolver(membership.role, user.platform_role),
             email_verified=user.email_verified_at is not None,
         )
 
@@ -236,7 +238,7 @@ class UserService:
             tenant_id=membership.tenant_id,
             email=user.email,
             role=membership.role,
-            scopes=self._scope_resolver(membership.role),
+            scopes=self._scope_resolver(membership.role, user.platform_role),
             email_verified=user.email_verified_at is not None,
         )
 

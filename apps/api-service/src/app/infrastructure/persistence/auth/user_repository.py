@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
 
 from app.core.settings import Settings, get_settings
+from app.domain.tenant_roles import TenantRole
 from app.domain.users import (
     PasswordHistoryEntry,
     TenantMembershipDTO,
@@ -123,6 +124,7 @@ class PostgresUserRepository(UserRepository):
                     password_hash=payload.password_hash,
                     password_pepper_version=payload.password_pepper_version,
                     status=DBUserStatus(payload.status.value),
+                    platform_role=payload.platform_role,
                 )
                 session.add(user)
                 await session.flush()
@@ -405,6 +407,7 @@ class PostgresUserRepository(UserRepository):
             locale=locale,
             memberships=memberships,
             email_verified_at=user.email_verified_at,
+            platform_role=getattr(user, "platform_role", None),
         )
 
     async def mark_email_verified(self, user_id: uuid.UUID, *, timestamp: datetime) -> None:
@@ -419,18 +422,18 @@ class PostgresUserRepository(UserRepository):
             await session.commit()
 
     async def list_sole_owner_tenant_ids(self, user_id: uuid.UUID) -> list[uuid.UUID]:
-        owner_role = "owner"
+        owner_role = TenantRole.OWNER
         async with self._session_factory() as session:
             sole_owner_tenants = (
                 select(TenantUserMembership.tenant_id)
-                .where(func.lower(TenantUserMembership.role) == owner_role)
+                .where(TenantUserMembership.role == owner_role)
                 .group_by(TenantUserMembership.tenant_id)
                 .having(func.count(TenantUserMembership.user_id) == 1)
                 .subquery()
             )
             stmt = select(TenantUserMembership.tenant_id).where(
                 TenantUserMembership.user_id == user_id,
-                func.lower(TenantUserMembership.role) == owner_role,
+                TenantUserMembership.role == owner_role,
                 TenantUserMembership.tenant_id.in_(select(sole_owner_tenants.c.tenant_id)),
             )
             result = await session.execute(stmt)

@@ -16,7 +16,9 @@ from app.bootstrap.container import ApplicationContainer, get_container
 from app.core.security import PASSWORD_HASH_VERSION, get_password_hash
 from app.core.settings import get_settings
 from app.domain.assets import AssetSourceTool, AssetType
+from app.domain.platform_roles import PlatformRole
 from app.domain.storage import StorageProviderLiteral
+from app.domain.tenant_roles import TenantRole
 from app.infrastructure.persistence.assets.models import AgentAsset
 from app.infrastructure.persistence.auth.models.membership import TenantUserMembership
 from app.infrastructure.persistence.auth.models.user import (
@@ -111,7 +113,8 @@ class FixtureUser(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
     display_name: str | None = None
-    role: str = Field(default="admin", min_length=3)
+    role: TenantRole = Field(default=TenantRole.ADMIN)
+    platform_role: PlatformRole | None = None
     verify_email: bool = True
 
 
@@ -133,7 +136,7 @@ class PlaywrightFixtureSpec(BaseModel):
 
 class FixtureUserResult(BaseModel):
     user_id: str
-    role: str
+    role: TenantRole
 
 
 class FixtureConversationResult(BaseModel):
@@ -305,12 +308,14 @@ class TestFixtureService:
                 password_pepper_version=PASSWORD_HASH_VERSION,
                 status=UserStatus.ACTIVE,
                 email_verified_at=now if user_spec.verify_email else None,
+                platform_role=user_spec.platform_role,
             )
             session.add(user)
         else:
             user.password_hash = hashed_password
             user.password_pepper_version = PASSWORD_HASH_VERSION
             user.status = UserStatus.ACTIVE
+            user.platform_role = user_spec.platform_role
             if user_spec.verify_email:
                 user.email_verified_at = now
             else:

@@ -104,14 +104,13 @@ def require_tenant_role(*allowed: TenantRole):
 
 
 def _role_from_claims(payload: dict[str, Any]) -> TenantRole:
-    role: TenantRole | None = None
-
     roles_claim = payload.get("roles")
-    role = max_tenant_role(role, _role_from_roles(roles_claim))
+    role = _role_from_roles(roles_claim)
+    if role is not None:
+        return role
 
     scope_claim = payload.get("scope")
-    role = max_tenant_role(role, _role_from_scopes(scope_claim))
-
+    role = _role_from_scopes(scope_claim)
     return role or TenantRole.VIEWER
 
 

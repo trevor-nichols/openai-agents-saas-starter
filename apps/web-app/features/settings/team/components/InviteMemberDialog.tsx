@@ -29,12 +29,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAuthForm } from '@/hooks/useAuthForm';
-import type { IssueTeamInviteInput, TeamInviteIssueResult, TeamRole } from '@/types/team';
+import { TEAM_ROLE_ORDER, type IssueTeamInviteInput, type TeamInviteIssueResult, type TeamRole } from '@/types/team';
 import { normalizeOptionalString } from '../utils';
 
 const inviteSchema = z.object({
   invitedEmail: z.string().email('Enter a valid email.'),
-  role: z.string().min(1, 'Select a role.'),
+  role: z.enum(TEAM_ROLE_ORDER as [TeamRole, ...TeamRole[]], {
+    message: 'Select a role.',
+  }),
   expiresInHours: z
     .preprocess(normalizeOptionalString, z.coerce.number().int().min(1).max(720).optional())
     .optional(),

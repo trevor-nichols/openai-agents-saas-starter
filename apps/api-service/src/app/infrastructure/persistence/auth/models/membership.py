@@ -6,10 +6,12 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Index, UniqueConstraint
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.domain.tenant_roles import TenantRole
 from app.infrastructure.persistence.models.base import UTC_NOW, Base, uuid_pk
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
@@ -34,7 +36,14 @@ class TenantUserMembership(Base):
     tenant_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("tenant_accounts.id", ondelete="CASCADE"), nullable=False
     )
-    role: Mapped[str] = mapped_column(String(32), nullable=False)
+    role: Mapped[TenantRole] = mapped_column(
+        SAEnum(
+            TenantRole,
+            name="tenant_role",
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+        ),
+        nullable=False,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=UTC_NOW
     )
