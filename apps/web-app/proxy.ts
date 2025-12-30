@@ -10,6 +10,7 @@ const PUBLIC_EXACT_PATHS = new Set([
   '/docs',
   '/login',
   '/register',
+  '/accept-invite',
   '/request-access',
   '/contact',
   '/about',

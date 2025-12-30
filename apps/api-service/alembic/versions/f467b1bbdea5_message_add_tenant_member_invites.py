@@ -19,6 +19,7 @@ def upgrade() -> None:
         "revoked",
         "expired",
         name="tenant_member_invite_status",
+        create_type=False,
     )
     invite_status_enum.create(op.get_bind(), checkfirst=True)
 

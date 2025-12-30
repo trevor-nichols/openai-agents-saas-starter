@@ -109,6 +109,10 @@ class PostgresTeamInviteAcceptanceRepository(TeamInviteAcceptanceRepository):
                             )
                         )
 
+                        # Ensure the user and membership rows exist before linking
+                        # the invite to the new user to satisfy FK constraints.
+                        await session.flush()
+
                         _mark_invite_accepted(invite, user_id=user_id, now=now)
 
                         result = TeamInviteAcceptResult(
