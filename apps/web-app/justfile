@@ -17,3 +17,5 @@ typecheck:
 test:
     cd {{project_dir}} && pnpm test
 
+build:
+    cd {{project_dir}} && pnpm build
