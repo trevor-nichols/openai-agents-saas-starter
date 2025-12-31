@@ -161,7 +161,8 @@ jobs:
             echo "TRIVY_PASSWORD=${{ secrets.GITHUB_TOKEN }}" >> "$GITHUB_ENV"
           elif [ "${USE_ECR}" = "true" ]; then
             echo "TRIVY_USERNAME=AWS" >> "$GITHUB_ENV"
-            echo "TRIVY_PASSWORD=$(aws ecr get-login-password --region "${ECR_REGION}")" >> "$GITHUB_ENV"
+            token="$(aws ecr get-login-password --region "$ECR_REGION")"
+            printf 'TRIVY_PASSWORD=%s\n' "$token" >> "$GITHUB_ENV"
           else
             if [ -n "${{ secrets.REGISTRY_USERNAME }}" ] && [ -n "${{ secrets.REGISTRY_PASSWORD }}" ]; then
               echo "TRIVY_USERNAME=${{ secrets.REGISTRY_USERNAME }}" >> "$GITHUB_ENV"
