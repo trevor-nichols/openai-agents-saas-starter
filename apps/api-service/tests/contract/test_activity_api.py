@@ -5,6 +5,7 @@ import json
 import os
 from dataclasses import asdict
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
@@ -173,8 +174,12 @@ async def test_activity_stream_returns_events(tenant_id: str, monkeypatch) -> No
         },
     }
 
+    request = SimpleNamespace(method="GET", url=SimpleNamespace(path="/api/v1/activity/stream"))
     response = await activity_router_module.stream_activity_events(
-        current_user=current_user, tenant_id_header=None, tenant_role_header=None
+        request=request,
+        current_user=current_user,
+        tenant_id_header=None,
+        tenant_role_header=None,
     )
 
     chunks: list[bytes] = []

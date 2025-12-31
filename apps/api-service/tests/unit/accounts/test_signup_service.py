@@ -6,13 +6,15 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, cast
 from unittest.mock import AsyncMock
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
+from sqlalchemy import func, select
 
 from app.bootstrap import get_container
 from app.core.settings import Settings
 from app.domain.billing import BillingPlan
+from app.infrastructure.persistence.tenants.models import TenantAccount as ORMTenantAccount
 from app.services.auth_service import UserSessionTokens
 from app.services.billing.billing_service import BillingService
 from app.services.billing.errors import PlanNotFoundError
@@ -27,6 +29,8 @@ from app.services.signup.signup_service import (
     PublicSignupDisabledError,
     SignupService,
 )
+
+_TEST_TENANT_ID = UUID("11111111-2222-3333-4444-555555555555")
 
 
 class StubBillingService:
@@ -132,12 +136,48 @@ class StubInviteService:
         return self.context
 
 
+@dataclass
+class StubTenantAccount:
+    id: UUID
+    slug: str
+
+
+class StubTenantAccountService:
+    def __init__(
+        self,
+        *,
+        slug: str,
+        tenant_id: UUID,
+        error: Exception | None = None,
+    ) -> None:
+        self.slug = slug
+        self.tenant_id = tenant_id
+        self.calls: list[dict[str, Any]] = []
+        self._error = error
+
+    async def create_account(self, **kwargs: Any) -> StubTenantAccount:
+        self.calls.append(kwargs)
+        if self._error:
+            raise self._error
+        return StubTenantAccount(id=self.tenant_id, slug=self.slug)
+
+    def with_repository(self, _repository: Any) -> "StubTenantAccountService":
+        return self
+
+
 @pytest.fixture(autouse=True)
 def mock_email_verification():
     service = AsyncMock()
     service.send_verification_email = AsyncMock(return_value=True)
     cast(Any, get_container()).email_verification_service = service
     return service
+
+
+@pytest.fixture
+def session_factory():
+    container = get_container()
+    assert container.session_factory is not None
+    return container.session_factory
 
 
 def _token_payload(user_id: str, tenant_id: str) -> UserSessionTokens:
@@ -169,24 +209,37 @@ def _patch_internals(
     monkeypatch: pytest.MonkeyPatch,
     *,
     slug: str = "acme",
-    provision_result: tuple[str, str] = ("tenant-1", "user-1"),
+    tenant_id: UUID = _TEST_TENANT_ID,
+    user_id: str = "user-1",
     provision_exc: Exception | None = None,
+    email_exc: Exception | None = None,
+    account_exc: Exception | None = None,
 ) -> None:
-    async def fake_slug(self, _slug: str) -> str:
-        return slug
+    async def fake_email(self, _email: str, **_: Any) -> None:
+        if email_exc:
+            raise email_exc
 
-    async def fake_provision(self, **_: Any) -> tuple[str, str]:
+    async def fake_provision(self, **_: Any) -> str:
         if provision_exc:
             raise provision_exc
-        return provision_result
+        return user_id
 
-    monkeypatch.setattr(SignupService, "_ensure_unique_slug", fake_slug, raising=False)
+    service._tenant_account_service = cast(
+        Any,
+        StubTenantAccountService(
+            slug=slug,
+            tenant_id=tenant_id,
+            error=account_exc,
+        ),
+    )
+    monkeypatch.setattr(SignupService, "_ensure_email_available", fake_email, raising=False)
     monkeypatch.setattr(SignupService, "_provision_tenant_owner", fake_provision, raising=False)
 
 
 @pytest.mark.asyncio
 async def test_register_uses_plan_trial_when_override_disallowed(
     monkeypatch: pytest.MonkeyPatch,
+    session_factory,
 ) -> None:
     plan = BillingPlan(
         code="starter",
@@ -207,6 +260,7 @@ async def test_register_uses_plan_trial_when_override_disallowed(
             enable_billing=True,
             signup_access_policy="public",
         ),
+        session_factory=session_factory,
     )
     _patch_internals(service, monkeypatch)
 
@@ -230,6 +284,7 @@ async def test_register_uses_plan_trial_when_override_disallowed(
 @pytest.mark.asyncio
 async def test_register_allows_shorter_trial_when_flag_enabled(
     monkeypatch: pytest.MonkeyPatch,
+    session_factory,
 ) -> None:
     plan = BillingPlan(
         code="starter",
@@ -251,6 +306,7 @@ async def test_register_allows_shorter_trial_when_flag_enabled(
             allow_signup_trial_override=True,
             signup_access_policy="public",
         ),
+        session_factory=session_factory,
     )
     _patch_internals(service, monkeypatch)
 
@@ -272,6 +328,7 @@ async def test_register_allows_shorter_trial_when_flag_enabled(
 @pytest.mark.asyncio
 async def test_register_clamps_override_to_plan_cap(
     monkeypatch: pytest.MonkeyPatch,
+    session_factory,
 ) -> None:
     plan = BillingPlan(
         code="starter",
@@ -293,6 +350,7 @@ async def test_register_clamps_override_to_plan_cap(
             allow_signup_trial_override=True,
             signup_access_policy="public",
         ),
+        session_factory=session_factory,
     )
     _patch_internals(service, monkeypatch)
 
@@ -312,7 +370,10 @@ async def test_register_clamps_override_to_plan_cap(
 
 
 @pytest.mark.asyncio
-async def test_register_propagates_duplicate_email(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_register_propagates_duplicate_email(
+    monkeypatch: pytest.MonkeyPatch,
+    session_factory,
+) -> None:
     billing_stub = StubBillingService()
     auth_stub = StubAuthService(tokens=_token_payload("user-2", "tenant-2"))
     cast(Any, get_container()).auth_service = auth_stub
@@ -323,6 +384,7 @@ async def test_register_propagates_duplicate_email(monkeypatch: pytest.MonkeyPat
             enable_billing=False,
             signup_access_policy="public",
         ),
+        session_factory=session_factory,
     )
     _patch_internals(
         service,
@@ -345,7 +407,55 @@ async def test_register_propagates_duplicate_email(monkeypatch: pytest.MonkeyPat
 
 
 @pytest.mark.asyncio
-async def test_register_surfaces_billing_plan_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_register_rolls_back_tenant_on_owner_failure(
+    monkeypatch: pytest.MonkeyPatch,
+    session_factory,
+) -> None:
+    billing_stub = StubBillingService()
+    auth_stub = StubAuthService(tokens=_token_payload("user-rollback", "tenant-rollback"))
+    cast(Any, get_container()).auth_service = auth_stub
+
+    service = SignupService(
+        billing=cast(BillingService, billing_stub),
+        settings_factory=lambda: _build_settings(
+            enable_billing=False,
+            signup_access_policy="public",
+        ),
+        session_factory=session_factory,
+    )
+
+    async def fail_provision(self, **_: Any) -> str:
+        raise EmailAlreadyRegisteredError("duplicate")
+
+    monkeypatch.setattr(SignupService, "_provision_tenant_owner", fail_provision, raising=False)
+
+    async with session_factory() as session:
+        before = await session.scalar(select(func.count()).select_from(ORMTenantAccount))
+
+    with pytest.raises(EmailAlreadyRegisteredError):
+        await service.register(
+            email="rollback@example.com",
+            password="IroncladValley$462",
+            tenant_name="Rollback",
+            display_name=None,
+            plan_code=None,
+            trial_days=None,
+            ip_address=None,
+            user_agent=None,
+            invite_token=None,
+        )
+
+    async with session_factory() as session:
+        after = await session.scalar(select(func.count()).select_from(ORMTenantAccount))
+
+    assert after == before
+
+
+@pytest.mark.asyncio
+async def test_register_surfaces_billing_plan_errors(
+    monkeypatch: pytest.MonkeyPatch,
+    session_factory,
+) -> None:
     billing_stub = StubBillingService(error=PlanNotFoundError("unknown plan"))
     auth_stub = StubAuthService(tokens=_token_payload("user-3", "tenant-3"))
     cast(Any, get_container()).auth_service = auth_stub
@@ -356,6 +466,7 @@ async def test_register_surfaces_billing_plan_errors(monkeypatch: pytest.MonkeyP
             enable_billing=True,
             signup_access_policy="public",
         ),
+        session_factory=session_factory,
     )
     _patch_internals(service, monkeypatch)
 
@@ -376,6 +487,7 @@ async def test_register_surfaces_billing_plan_errors(monkeypatch: pytest.MonkeyP
 @pytest.mark.asyncio
 async def test_register_requires_invite_under_invite_only_policy(
     monkeypatch: pytest.MonkeyPatch,
+    session_factory,
 ) -> None:
     monkeypatch.delenv("SIGNUP_ACCESS_POLICY", raising=False)
     monkeypatch.delenv("ALLOW_PUBLIC_SIGNUP", raising=False)
@@ -388,6 +500,7 @@ async def test_register_requires_invite_under_invite_only_policy(
         billing=cast(BillingService, billing_stub),
         settings_factory=lambda: _build_settings(signup_access_policy="invite_only"),
         invite_service=cast(InviteService, invite_stub),
+        session_factory=session_factory,
     )
     _patch_internals(service, monkeypatch)
 
@@ -408,6 +521,7 @@ async def test_register_requires_invite_under_invite_only_policy(
 @pytest.mark.asyncio
 async def test_register_consumes_invite_when_token_present(
     monkeypatch: pytest.MonkeyPatch,
+    session_factory,
 ) -> None:
     monkeypatch.delenv("SIGNUP_ACCESS_POLICY", raising=False)
     monkeypatch.delenv("ALLOW_PUBLIC_SIGNUP", raising=False)
@@ -420,6 +534,7 @@ async def test_register_consumes_invite_when_token_present(
         billing=cast(BillingService, billing_stub),
         settings_factory=lambda: _build_settings(signup_access_policy="invite_only"),
         invite_service=cast(InviteService, invite_stub),
+        session_factory=session_factory,
     )
     _patch_internals(service, monkeypatch)
 
@@ -437,13 +552,14 @@ async def test_register_consumes_invite_when_token_present(
 
     assert invite_stub.calls and invite_stub.calls[0]["token"] == "token-123"
     assert invite_stub.context.finalized_with
-    assert invite_stub.context.finalized_with[0]["tenant_id"] == "tenant-1"
+    assert invite_stub.context.finalized_with[0]["tenant_id"] == str(_TEST_TENANT_ID)
     assert not invite_stub.context.releases
 
 
 @pytest.mark.asyncio
 async def test_register_invalid_invite_maps_to_public_signup_error(
     monkeypatch: pytest.MonkeyPatch,
+    session_factory,
 ) -> None:
     monkeypatch.delenv("SIGNUP_ACCESS_POLICY", raising=False)
     monkeypatch.delenv("ALLOW_PUBLIC_SIGNUP", raising=False)
@@ -456,6 +572,7 @@ async def test_register_invalid_invite_maps_to_public_signup_error(
         billing=cast(BillingService, billing_stub),
         settings_factory=lambda: _build_settings(signup_access_policy="invite_only"),
         invite_service=cast(InviteService, invite_stub),
+        session_factory=session_factory,
     )
     _patch_internals(service, monkeypatch)
 
@@ -476,6 +593,7 @@ async def test_register_invalid_invite_maps_to_public_signup_error(
 @pytest.mark.asyncio
 async def test_register_email_mismatch_maps_to_public_signup_error(
     monkeypatch: pytest.MonkeyPatch,
+    session_factory,
 ) -> None:
     monkeypatch.delenv("SIGNUP_ACCESS_POLICY", raising=False)
     monkeypatch.delenv("ALLOW_PUBLIC_SIGNUP", raising=False)
@@ -488,6 +606,7 @@ async def test_register_email_mismatch_maps_to_public_signup_error(
         billing=cast(BillingService, billing_stub),
         settings_factory=lambda: _build_settings(signup_access_policy="invite_only"),
         invite_service=cast(InviteService, invite_stub),
+        session_factory=session_factory,
     )
     _patch_internals(service, monkeypatch)
 
@@ -508,6 +627,7 @@ async def test_register_email_mismatch_maps_to_public_signup_error(
 @pytest.mark.asyncio
 async def test_register_releases_invite_on_failure(
     monkeypatch: pytest.MonkeyPatch,
+    session_factory,
 ) -> None:
     monkeypatch.delenv("SIGNUP_ACCESS_POLICY", raising=False)
     monkeypatch.delenv("ALLOW_PUBLIC_SIGNUP", raising=False)
@@ -520,6 +640,7 @@ async def test_register_releases_invite_on_failure(
         billing=cast(BillingService, billing_stub),
         settings_factory=lambda: _build_settings(signup_access_policy="invite_only"),
         invite_service=cast(InviteService, invite_stub),
+        session_factory=session_factory,
     )
     _patch_internals(
         service,

@@ -31,6 +31,21 @@ This document codifies how the Next.js frontend talks to the FastAPI backend. Ev
    - Set sensible `staleTime` per domain (streams: 0, lists: minutes).  
    - Non-React consumers should reuse the fetch helpers.
 
+## OpenAPI + SDK Regeneration (Required)
+
+Any backend API/schema change must refresh OpenAPI artifacts and the generated web SDK **before** touching frontend code. Run from repo root:
+
+1. Export the superset schema (billing + test fixtures):
+   ```
+   cd packages/starter_console && starter-console api export-openapi --output apps/api-service/.artifacts/openapi-fixtures.json --enable-billing --enable-test-fixtures
+   ```
+2. Regenerate the frontend SDK from the exported fixtures:
+   ```
+   cd apps/web-app && OPENAPI_INPUT=../api-service/.artifacts/openapi-fixtures.json pnpm generate:fixtures
+   ```
+
+Do not hand-edit `apps/web-app/lib/api/client/*`. Generated files must come from the commands above.
+
 ## Building a New Data Flow
 
 1. **Add/extend a server service**  

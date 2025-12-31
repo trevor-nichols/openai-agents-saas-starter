@@ -34,6 +34,10 @@ class TenantSettingsService:
     def set_repository(self, repository: TenantSettingsRepository) -> None:
         self._repository = repository
 
+    @property
+    def repository(self) -> TenantSettingsRepository:
+        return self._require_repository()
+
     def _require_repository(self) -> TenantSettingsRepository:
         if self._repository is None:
             raise RuntimeError("Tenant settings repository has not been configured.")

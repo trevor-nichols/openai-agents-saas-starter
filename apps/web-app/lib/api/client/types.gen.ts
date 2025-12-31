@@ -6186,6 +6186,165 @@ export type TeamMemberRoleUpdateRequest = {
 };
 
 /**
+ * TenantAccountCreateRequest
+ */
+export type TenantAccountCreateRequest = {
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Slug
+   */
+  slug?: string | null;
+};
+
+/**
+ * TenantAccountLifecycleRequest
+ */
+export type TenantAccountLifecycleRequest = {
+  /**
+   * Reason
+   */
+  reason: string;
+};
+
+/**
+ * TenantAccountListResponse
+ */
+export type TenantAccountListResponse = {
+  /**
+   * Accounts
+   */
+  accounts: Array<TenantAccountOperatorResponse>;
+  /**
+   * Total
+   */
+  total: number;
+};
+
+/**
+ * TenantAccountOperatorResponse
+ */
+export type TenantAccountOperatorResponse = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Slug
+   */
+  slug: string;
+  /**
+   * Name
+   */
+  name: string;
+  status: TenantAccountStatus;
+  /**
+   * Created At
+   */
+  created_at: string;
+  /**
+   * Updated At
+   */
+  updated_at: string;
+  /**
+   * Status Updated At
+   */
+  status_updated_at?: string | null;
+  /**
+   * Suspended At
+   */
+  suspended_at?: string | null;
+  /**
+   * Deprovisioned At
+   */
+  deprovisioned_at?: string | null;
+  /**
+   * Status Reason
+   */
+  status_reason?: string | null;
+  /**
+   * Status Updated By
+   */
+  status_updated_by?: string | null;
+};
+
+/**
+ * TenantAccountResponse
+ */
+export type TenantAccountResponse = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Slug
+   */
+  slug: string;
+  /**
+   * Name
+   */
+  name: string;
+  status: TenantAccountStatus;
+  /**
+   * Created At
+   */
+  created_at: string;
+  /**
+   * Updated At
+   */
+  updated_at: string;
+  /**
+   * Status Updated At
+   */
+  status_updated_at?: string | null;
+  /**
+   * Suspended At
+   */
+  suspended_at?: string | null;
+  /**
+   * Deprovisioned At
+   */
+  deprovisioned_at?: string | null;
+};
+
+/**
+ * TenantAccountSelfUpdateRequest
+ */
+export type TenantAccountSelfUpdateRequest = {
+  /**
+   * Name
+   */
+  name: string;
+};
+
+/**
+ * TenantAccountStatus
+ *
+ * Lifecycle states for tenant accounts.
+ */
+export type TenantAccountStatus =
+  | "active"
+  | "suspended"
+  | "deprovisioning"
+  | "deprovisioned";
+
+/**
+ * TenantAccountUpdateRequest
+ */
+export type TenantAccountUpdateRequest = {
+  /**
+   * Name
+   */
+  name?: string | null;
+  /**
+   * Slug
+   */
+  slug?: string | null;
+};
+
+/**
  * TenantRole
  */
 export type TenantRole = "owner" | "admin" | "member" | "viewer";
@@ -9942,14 +10101,6 @@ export type IssueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIs
     body: BrowserServiceAccountIssueRequest;
     headers?: {
       /**
-       * X-Operator-Override
-       */
-      "X-Operator-Override"?: string | null;
-      /**
-       * X-Operator-Reason
-       */
-      "X-Operator-Reason"?: string | null;
-      /**
        * X-Tenant-Id
        */
       "X-Tenant-Id"?: string | null;
@@ -10033,14 +10184,6 @@ export type ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetData = {
   body?: never;
   headers?: {
     /**
-     * X-Operator-Override
-     */
-    "X-Operator-Override"?: string | null;
-    /**
-     * X-Operator-Reason
-     */
-    "X-Operator-Reason"?: string | null;
-    /**
      * X-Tenant-Id
      */
     "X-Tenant-Id"?: string | null;
@@ -10070,13 +10213,13 @@ export type ListServiceAccountTokensApiV1AuthServiceAccountsTokensGetData = {
     /**
      * Tenant Id
      *
-     * Tenant UUID to filter (operator override only).
+     * Tenant UUID to filter (operator only).
      */
     tenant_id?: string | null;
     /**
      * Include Global
      *
-     * Include tenantless tokens (operator override only).
+     * Include tenantless tokens (operator only).
      */
     include_global?: boolean;
     /**
@@ -10164,14 +10307,6 @@ export type RevokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePost
   {
     body: ServiceAccountTokenRevokeRequest;
     headers?: {
-      /**
-       * X-Operator-Override
-       */
-      "X-Operator-Override"?: string | null;
-      /**
-       * X-Operator-Reason
-       */
-      "X-Operator-Reason"?: string | null;
       /**
        * X-Tenant-Id
        */
@@ -11391,6 +11526,14 @@ export type ChatWithAgentApiV1ChatPostData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path?: never;
   query?: never;
@@ -11472,6 +11615,14 @@ export type StreamChatWithAgentApiV1ChatStreamPostData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path?: never;
   query?: never;
@@ -11719,6 +11870,14 @@ export type ListAssetsApiV1AssetsGetData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path?: never;
   query?: {
@@ -11846,6 +12005,14 @@ export type DeleteAssetApiV1AssetsAssetIdDeleteData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path: {
     /**
@@ -11932,6 +12099,14 @@ export type GetAssetApiV1AssetsAssetIdGetData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path: {
     /**
@@ -12018,6 +12193,14 @@ export type GetAssetDownloadUrlApiV1AssetsAssetIdDownloadUrlGetData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path: {
     /**
@@ -12104,6 +12287,14 @@ export type GetAssetThumbnailUrlsApiV1AssetsThumbnailUrlsPostData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path?: never;
   query?: never;
@@ -12475,6 +12666,14 @@ export type ListWorkflowsApiV1WorkflowsGetData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path?: never;
   query?: {
@@ -12575,6 +12774,14 @@ export type RunWorkflowApiV1WorkflowsWorkflowKeyRunPostData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path: {
     /**
@@ -12661,6 +12868,14 @@ export type ListWorkflowRunsApiV1WorkflowsRunsGetData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path?: never;
   query?: {
@@ -12785,6 +13000,14 @@ export type DeleteWorkflowRunApiV1WorkflowsRunsRunIdDeleteData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path: {
     /**
@@ -12884,6 +13107,14 @@ export type GetWorkflowRunApiV1WorkflowsRunsRunIdGetData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path: {
     /**
@@ -12970,6 +13201,14 @@ export type CancelWorkflowRunApiV1WorkflowsRunsRunIdCancelPostData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path: {
     /**
@@ -13056,6 +13295,14 @@ export type RunWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPostData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path: {
     /**
@@ -13142,6 +13389,14 @@ export type GetWorkflowDescriptorApiV1WorkflowsWorkflowKeyGetData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path: {
     /**
@@ -13229,6 +13484,14 @@ export type GetWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGetData
        * X-Tenant-Role
        */
       "X-Tenant-Role"?: string | null;
+      /**
+       * X-Operator-Override
+       */
+      "X-Operator-Override"?: string | null;
+      /**
+       * X-Operator-Reason
+       */
+      "X-Operator-Reason"?: string | null;
     };
     path: {
       /**
@@ -13329,6 +13592,14 @@ export type StreamWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayStreamGetD
        * X-Tenant-Role
        */
       "X-Tenant-Role"?: string | null;
+      /**
+       * X-Operator-Override
+       */
+      "X-Operator-Override"?: string | null;
+      /**
+       * X-Operator-Reason
+       */
+      "X-Operator-Reason"?: string | null;
     };
     path: {
       /**
@@ -15091,6 +15362,14 @@ export type ListContainersApiV1ContainersGetData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path?: never;
   query?: {
@@ -15181,6 +15460,14 @@ export type CreateContainerApiV1ContainersPostData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path?: never;
   query?: never;
@@ -15262,6 +15549,14 @@ export type DeleteContainerApiV1ContainersContainerIdDeleteData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path: {
     /**
@@ -15348,6 +15643,14 @@ export type GetContainerByIdApiV1ContainersContainerIdGetData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path: {
     /**
@@ -15435,6 +15738,14 @@ export type UnbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDeleteData
        * X-Tenant-Role
        */
       "X-Tenant-Role"?: string | null;
+      /**
+       * X-Operator-Override
+       */
+      "X-Operator-Override"?: string | null;
+      /**
+       * X-Operator-Reason
+       */
+      "X-Operator-Reason"?: string | null;
     };
     path: {
       /**
@@ -15523,6 +15834,14 @@ export type BindAgentContainerApiV1ContainersAgentsAgentKeyContainerPostData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path: {
     /**
@@ -15611,6 +15930,14 @@ export type ListVectorStoresApiV1VectorStoresGetData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path?: never;
   query?: {
@@ -15701,6 +16028,14 @@ export type CreateVectorStoreApiV1VectorStoresPostData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path?: never;
   query?: never;
@@ -15782,6 +16117,14 @@ export type DeleteVectorStoreApiV1VectorStoresVectorStoreIdDeleteData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path: {
     /**
@@ -15868,6 +16211,14 @@ export type GetVectorStoreApiV1VectorStoresVectorStoreIdGetData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path: {
     /**
@@ -15954,6 +16305,14 @@ export type ListFilesApiV1VectorStoresVectorStoreIdFilesGetData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path: {
     /**
@@ -16053,6 +16412,14 @@ export type AttachFileApiV1VectorStoresVectorStoreIdFilesPostData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path: {
     /**
@@ -16140,6 +16507,14 @@ export type UploadAndAttachFileApiV1VectorStoresVectorStoreIdFilesUploadPostData
        * X-Tenant-Role
        */
       "X-Tenant-Role"?: string | null;
+      /**
+       * X-Operator-Override
+       */
+      "X-Operator-Override"?: string | null;
+      /**
+       * X-Operator-Reason
+       */
+      "X-Operator-Reason"?: string | null;
     };
     path: {
       /**
@@ -16228,6 +16603,14 @@ export type DeleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDeleteData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path: {
     /**
@@ -16319,6 +16702,14 @@ export type GetFileApiV1VectorStoresVectorStoreIdFilesFileIdGetData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path: {
     /**
@@ -16409,6 +16800,14 @@ export type SearchVectorStoreApiV1VectorStoresVectorStoreIdSearchPostData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path: {
     /**
@@ -16497,6 +16896,14 @@ export type UnbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgen
        * X-Tenant-Role
        */
       "X-Tenant-Role"?: string | null;
+      /**
+       * X-Operator-Override
+       */
+      "X-Operator-Override"?: string | null;
+      /**
+       * X-Operator-Reason
+       */
+      "X-Operator-Reason"?: string | null;
     };
     path: {
       /**
@@ -16590,6 +16997,14 @@ export type BindAgentToVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKey
        * X-Tenant-Role
        */
       "X-Tenant-Role"?: string | null;
+      /**
+       * X-Operator-Override
+       */
+      "X-Operator-Override"?: string | null;
+      /**
+       * X-Operator-Reason
+       */
+      "X-Operator-Reason"?: string | null;
     };
     path: {
       /**
@@ -16682,6 +17097,14 @@ export type CreatePresignedUploadApiV1StorageObjectsUploadUrlPostData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path?: never;
   query?: never;
@@ -16763,6 +17186,14 @@ export type ListObjectsApiV1StorageObjectsGetData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path?: never;
   query?: {
@@ -16857,6 +17288,14 @@ export type GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path: {
     /**
@@ -16943,6 +17382,14 @@ export type DeleteObjectApiV1StorageObjectsObjectIdDeleteData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path: {
     /**
@@ -17029,6 +17476,14 @@ export type CreateAgentInputUploadApiV1UploadsAgentInputPostData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path?: never;
   query?: never;
@@ -17110,6 +17565,14 @@ export type DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path: {
     /**
@@ -17197,6 +17660,14 @@ export type DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFile
        * X-Tenant-Role
        */
       "X-Tenant-Role"?: string | null;
+      /**
+       * X-Operator-Override
+       */
+      "X-Operator-Override"?: string | null;
+      /**
+       * X-Operator-Reason
+       */
+      "X-Operator-Reason"?: string | null;
     };
     path: {
       /**
@@ -17286,6 +17757,548 @@ export type DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFile
 
 export type DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFileIdDownloadGetResponse =
   DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFileIdDownloadGetResponses[keyof DownloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFileIdDownloadGetResponses];
+
+export type ListTenantsApiV1PlatformTenantsGetData = {
+  body?: never;
+  path?: never;
+  query?: {
+    /**
+     * Status
+     */
+    status?: TenantAccountStatus | null;
+    /**
+     * Q
+     */
+    q?: string | null;
+    /**
+     * Limit
+     */
+    limit?: number;
+    /**
+     * Offset
+     */
+    offset?: number;
+  };
+  url: "/api/v1/platform/tenants";
+};
+
+export type ListTenantsApiV1PlatformTenantsGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type ListTenantsApiV1PlatformTenantsGetError =
+  ListTenantsApiV1PlatformTenantsGetErrors[keyof ListTenantsApiV1PlatformTenantsGetErrors];
+
+export type ListTenantsApiV1PlatformTenantsGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: TenantAccountListResponse;
+};
+
+export type ListTenantsApiV1PlatformTenantsGetResponse =
+  ListTenantsApiV1PlatformTenantsGetResponses[keyof ListTenantsApiV1PlatformTenantsGetResponses];
+
+export type CreateTenantApiV1PlatformTenantsPostData = {
+  body: TenantAccountCreateRequest;
+  path?: never;
+  query?: never;
+  url: "/api/v1/platform/tenants";
+};
+
+export type CreateTenantApiV1PlatformTenantsPostErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type CreateTenantApiV1PlatformTenantsPostError =
+  CreateTenantApiV1PlatformTenantsPostErrors[keyof CreateTenantApiV1PlatformTenantsPostErrors];
+
+export type CreateTenantApiV1PlatformTenantsPostResponses = {
+  /**
+   * Successful Response
+   */
+  201: TenantAccountOperatorResponse;
+};
+
+export type CreateTenantApiV1PlatformTenantsPostResponse =
+  CreateTenantApiV1PlatformTenantsPostResponses[keyof CreateTenantApiV1PlatformTenantsPostResponses];
+
+export type GetTenantApiV1PlatformTenantsTenantIdGetData = {
+  body?: never;
+  path: {
+    /**
+     * Tenant Id
+     */
+    tenant_id: string;
+  };
+  query?: never;
+  url: "/api/v1/platform/tenants/{tenant_id}";
+};
+
+export type GetTenantApiV1PlatformTenantsTenantIdGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type GetTenantApiV1PlatformTenantsTenantIdGetError =
+  GetTenantApiV1PlatformTenantsTenantIdGetErrors[keyof GetTenantApiV1PlatformTenantsTenantIdGetErrors];
+
+export type GetTenantApiV1PlatformTenantsTenantIdGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: TenantAccountOperatorResponse;
+};
+
+export type GetTenantApiV1PlatformTenantsTenantIdGetResponse =
+  GetTenantApiV1PlatformTenantsTenantIdGetResponses[keyof GetTenantApiV1PlatformTenantsTenantIdGetResponses];
+
+export type UpdateTenantApiV1PlatformTenantsTenantIdPatchData = {
+  body: TenantAccountUpdateRequest;
+  path: {
+    /**
+     * Tenant Id
+     */
+    tenant_id: string;
+  };
+  query?: never;
+  url: "/api/v1/platform/tenants/{tenant_id}";
+};
+
+export type UpdateTenantApiV1PlatformTenantsTenantIdPatchErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type UpdateTenantApiV1PlatformTenantsTenantIdPatchError =
+  UpdateTenantApiV1PlatformTenantsTenantIdPatchErrors[keyof UpdateTenantApiV1PlatformTenantsTenantIdPatchErrors];
+
+export type UpdateTenantApiV1PlatformTenantsTenantIdPatchResponses = {
+  /**
+   * Successful Response
+   */
+  200: TenantAccountOperatorResponse;
+};
+
+export type UpdateTenantApiV1PlatformTenantsTenantIdPatchResponse =
+  UpdateTenantApiV1PlatformTenantsTenantIdPatchResponses[keyof UpdateTenantApiV1PlatformTenantsTenantIdPatchResponses];
+
+export type SuspendTenantApiV1PlatformTenantsTenantIdSuspendPostData = {
+  body: TenantAccountLifecycleRequest;
+  path: {
+    /**
+     * Tenant Id
+     */
+    tenant_id: string;
+  };
+  query?: never;
+  url: "/api/v1/platform/tenants/{tenant_id}/suspend";
+};
+
+export type SuspendTenantApiV1PlatformTenantsTenantIdSuspendPostErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type SuspendTenantApiV1PlatformTenantsTenantIdSuspendPostError =
+  SuspendTenantApiV1PlatformTenantsTenantIdSuspendPostErrors[keyof SuspendTenantApiV1PlatformTenantsTenantIdSuspendPostErrors];
+
+export type SuspendTenantApiV1PlatformTenantsTenantIdSuspendPostResponses = {
+  /**
+   * Successful Response
+   */
+  200: TenantAccountOperatorResponse;
+};
+
+export type SuspendTenantApiV1PlatformTenantsTenantIdSuspendPostResponse =
+  SuspendTenantApiV1PlatformTenantsTenantIdSuspendPostResponses[keyof SuspendTenantApiV1PlatformTenantsTenantIdSuspendPostResponses];
+
+export type ReactivateTenantApiV1PlatformTenantsTenantIdReactivatePostData = {
+  body: TenantAccountLifecycleRequest;
+  path: {
+    /**
+     * Tenant Id
+     */
+    tenant_id: string;
+  };
+  query?: never;
+  url: "/api/v1/platform/tenants/{tenant_id}/reactivate";
+};
+
+export type ReactivateTenantApiV1PlatformTenantsTenantIdReactivatePostErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type ReactivateTenantApiV1PlatformTenantsTenantIdReactivatePostError =
+  ReactivateTenantApiV1PlatformTenantsTenantIdReactivatePostErrors[keyof ReactivateTenantApiV1PlatformTenantsTenantIdReactivatePostErrors];
+
+export type ReactivateTenantApiV1PlatformTenantsTenantIdReactivatePostResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: TenantAccountOperatorResponse;
+  };
+
+export type ReactivateTenantApiV1PlatformTenantsTenantIdReactivatePostResponse =
+  ReactivateTenantApiV1PlatformTenantsTenantIdReactivatePostResponses[keyof ReactivateTenantApiV1PlatformTenantsTenantIdReactivatePostResponses];
+
+export type DeprovisionTenantApiV1PlatformTenantsTenantIdDeprovisionPostData = {
+  body: TenantAccountLifecycleRequest;
+  path: {
+    /**
+     * Tenant Id
+     */
+    tenant_id: string;
+  };
+  query?: never;
+  url: "/api/v1/platform/tenants/{tenant_id}/deprovision";
+};
+
+export type DeprovisionTenantApiV1PlatformTenantsTenantIdDeprovisionPostErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type DeprovisionTenantApiV1PlatformTenantsTenantIdDeprovisionPostError =
+  DeprovisionTenantApiV1PlatformTenantsTenantIdDeprovisionPostErrors[keyof DeprovisionTenantApiV1PlatformTenantsTenantIdDeprovisionPostErrors];
+
+export type DeprovisionTenantApiV1PlatformTenantsTenantIdDeprovisionPostResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: TenantAccountOperatorResponse;
+  };
+
+export type DeprovisionTenantApiV1PlatformTenantsTenantIdDeprovisionPostResponse =
+  DeprovisionTenantApiV1PlatformTenantsTenantIdDeprovisionPostResponses[keyof DeprovisionTenantApiV1PlatformTenantsTenantIdDeprovisionPostResponses];
 
 export type SubmitContactApiV1ContactPostData = {
   body: ContactSubmissionRequest;
@@ -17964,6 +18977,184 @@ export type ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostResponse
 export type ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostResponse =
   ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostResponses[keyof ResendStatusIncidentApiV1StatusIncidentsIncidentIdResendPostResponses];
 
+export type GetTenantAccountApiV1TenantsAccountGetData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
+  };
+  path?: never;
+  query?: never;
+  url: "/api/v1/tenants/account";
+};
+
+export type GetTenantAccountApiV1TenantsAccountGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type GetTenantAccountApiV1TenantsAccountGetError =
+  GetTenantAccountApiV1TenantsAccountGetErrors[keyof GetTenantAccountApiV1TenantsAccountGetErrors];
+
+export type GetTenantAccountApiV1TenantsAccountGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: TenantAccountResponse;
+};
+
+export type GetTenantAccountApiV1TenantsAccountGetResponse =
+  GetTenantAccountApiV1TenantsAccountGetResponses[keyof GetTenantAccountApiV1TenantsAccountGetResponses];
+
+export type UpdateTenantAccountApiV1TenantsAccountPatchData = {
+  body: TenantAccountSelfUpdateRequest;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
+  };
+  path?: never;
+  query?: never;
+  url: "/api/v1/tenants/account";
+};
+
+export type UpdateTenantAccountApiV1TenantsAccountPatchErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type UpdateTenantAccountApiV1TenantsAccountPatchError =
+  UpdateTenantAccountApiV1TenantsAccountPatchErrors[keyof UpdateTenantAccountApiV1TenantsAccountPatchErrors];
+
+export type UpdateTenantAccountApiV1TenantsAccountPatchResponses = {
+  /**
+   * Successful Response
+   */
+  200: TenantAccountResponse;
+};
+
+export type UpdateTenantAccountApiV1TenantsAccountPatchResponse =
+  UpdateTenantAccountApiV1TenantsAccountPatchResponses[keyof UpdateTenantAccountApiV1TenantsAccountPatchResponses];
+
 export type ListMembersApiV1TenantsMembersGetData = {
   body?: never;
   headers?: {
@@ -17975,6 +19166,14 @@ export type ListMembersApiV1TenantsMembersGetData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path?: never;
   query?: {
@@ -18065,6 +19264,14 @@ export type AddMemberApiV1TenantsMembersPostData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path?: never;
   query?: never;
@@ -18146,6 +19353,14 @@ export type UpdateMemberRoleApiV1TenantsMembersUserIdRolePatchData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path: {
     /**
@@ -18232,6 +19447,14 @@ export type RemoveMemberApiV1TenantsMembersUserIdDeleteData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path: {
     /**
@@ -18318,6 +19541,14 @@ export type GetInvitePolicyApiV1TenantsInvitesPolicyGetData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path?: never;
   query?: never;
@@ -18399,6 +19630,14 @@ export type ListInvitesApiV1TenantsInvitesGetData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path?: never;
   query?: {
@@ -18497,6 +19736,14 @@ export type IssueInviteApiV1TenantsInvitesPostData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path?: never;
   query?: never;
@@ -18578,6 +19825,14 @@ export type RevokeInviteApiV1TenantsInvitesInviteIdRevokePostData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path: {
     /**
@@ -18808,6 +20063,14 @@ export type GetTenantSettingsApiV1TenantsSettingsGetData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path?: never;
   query?: never;
@@ -18889,6 +20152,14 @@ export type UpdateTenantSettingsApiV1TenantsSettingsPutData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path?: never;
   query?: never;
@@ -19111,6 +20382,14 @@ export type ListNotificationPreferencesApiV1UsersNotificationPreferencesGetData 
        * X-Tenant-Role
        */
       "X-Tenant-Role"?: string | null;
+      /**
+       * X-Operator-Override
+       */
+      "X-Operator-Override"?: string | null;
+      /**
+       * X-Operator-Reason
+       */
+      "X-Operator-Reason"?: string | null;
     };
     path?: never;
     query?: never;
@@ -19197,6 +20476,14 @@ export type UpsertNotificationPreferenceApiV1UsersNotificationPreferencesPutData
        * X-Tenant-Role
        */
       "X-Tenant-Role"?: string | null;
+      /**
+       * X-Operator-Override
+       */
+      "X-Operator-Override"?: string | null;
+      /**
+       * X-Operator-Reason
+       */
+      "X-Operator-Reason"?: string | null;
     };
     path?: never;
     query?: never;
@@ -19560,6 +20847,14 @@ export type ListUsageApiV1UsageGetData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path?: never;
   query?: never;
@@ -19713,6 +21008,14 @@ export type GetTenantSubscriptionApiV1BillingTenantsTenantIdSubscriptionGetData 
        * X-Tenant-Role
        */
       "X-Tenant-Role"?: string | null;
+      /**
+       * X-Operator-Override
+       */
+      "X-Operator-Override"?: string | null;
+      /**
+       * X-Operator-Reason
+       */
+      "X-Operator-Reason"?: string | null;
     };
     path: {
       /**
@@ -19802,6 +21105,14 @@ export type UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchData =
        * X-Tenant-Role
        */
       "X-Tenant-Role"?: string | null;
+      /**
+       * X-Operator-Override
+       */
+      "X-Operator-Override"?: string | null;
+      /**
+       * X-Operator-Reason
+       */
+      "X-Operator-Reason"?: string | null;
     };
     path: {
       /**
@@ -19890,6 +21201,14 @@ export type StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path: {
     /**
@@ -19978,6 +21297,14 @@ export type ListInvoicesApiV1BillingTenantsTenantIdInvoicesGetData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path: {
     /**
@@ -20073,6 +21400,14 @@ export type GetInvoiceApiV1BillingTenantsTenantIdInvoicesInvoiceIdGetData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path: {
     /**
@@ -20165,6 +21500,14 @@ export type ChangeSubscriptionPlanApiV1BillingTenantsTenantIdSubscriptionPlanPos
        * X-Tenant-Role
        */
       "X-Tenant-Role"?: string | null;
+      /**
+       * X-Operator-Override
+       */
+      "X-Operator-Override"?: string | null;
+      /**
+       * X-Operator-Reason
+       */
+      "X-Operator-Reason"?: string | null;
     };
     path: {
       /**
@@ -20254,6 +21597,14 @@ export type CancelSubscriptionApiV1BillingTenantsTenantIdSubscriptionCancelPostD
        * X-Tenant-Role
        */
       "X-Tenant-Role"?: string | null;
+      /**
+       * X-Operator-Override
+       */
+      "X-Operator-Override"?: string | null;
+      /**
+       * X-Operator-Reason
+       */
+      "X-Operator-Reason"?: string | null;
     };
     path: {
       /**
@@ -20342,6 +21693,14 @@ export type CreatePortalSessionApiV1BillingTenantsTenantIdPortalPostData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path: {
     /**
@@ -20430,6 +21789,14 @@ export type ListPaymentMethodsApiV1BillingTenantsTenantIdPaymentMethodsGetData =
        * X-Tenant-Role
        */
       "X-Tenant-Role"?: string | null;
+      /**
+       * X-Operator-Override
+       */
+      "X-Operator-Override"?: string | null;
+      /**
+       * X-Operator-Reason
+       */
+      "X-Operator-Reason"?: string | null;
     };
     path: {
       /**
@@ -20521,6 +21888,14 @@ export type CreateSetupIntentApiV1BillingTenantsTenantIdPaymentMethodsSetupInten
        * X-Tenant-Role
        */
       "X-Tenant-Role"?: string | null;
+      /**
+       * X-Operator-Override
+       */
+      "X-Operator-Override"?: string | null;
+      /**
+       * X-Operator-Reason
+       */
+      "X-Operator-Reason"?: string | null;
     };
     path: {
       /**
@@ -20610,6 +21985,14 @@ export type SetDefaultPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaym
        * X-Tenant-Role
        */
       "X-Tenant-Role"?: string | null;
+      /**
+       * X-Operator-Override
+       */
+      "X-Operator-Override"?: string | null;
+      /**
+       * X-Operator-Reason
+       */
+      "X-Operator-Reason"?: string | null;
     };
     path: {
       /**
@@ -20703,6 +22086,14 @@ export type DetachPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentM
        * X-Tenant-Role
        */
       "X-Tenant-Role"?: string | null;
+      /**
+       * X-Operator-Override
+       */
+      "X-Operator-Override"?: string | null;
+      /**
+       * X-Operator-Reason
+       */
+      "X-Operator-Reason"?: string | null;
     };
     path: {
       /**
@@ -20796,6 +22187,14 @@ export type PreviewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePost
        * X-Tenant-Role
        */
       "X-Tenant-Role"?: string | null;
+      /**
+       * X-Operator-Override
+       */
+      "X-Operator-Override"?: string | null;
+      /**
+       * X-Operator-Reason
+       */
+      "X-Operator-Reason"?: string | null;
     };
     path: {
       /**
@@ -20884,6 +22283,14 @@ export type RecordUsageApiV1BillingTenantsTenantIdUsagePostData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path: {
     /**
@@ -20970,6 +22377,14 @@ export type ListUsageTotalsApiV1BillingTenantsTenantIdUsageTotalsGetData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path: {
     /**
@@ -21078,6 +22493,14 @@ export type ListBillingEventsApiV1BillingTenantsTenantIdEventsGetData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path: {
     /**
@@ -21189,6 +22612,14 @@ export type BillingEventStreamApiV1BillingStreamGetData = {
      * X-Tenant-Role
      */
     "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
   };
   path?: never;
   query?: never;

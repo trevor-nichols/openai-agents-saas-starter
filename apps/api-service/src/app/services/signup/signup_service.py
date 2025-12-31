@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import logging
-import re
-import secrets
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -17,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.core.password_policy import PasswordPolicyError, validate_password_strength
 from app.core.security import PASSWORD_HASH_VERSION, get_password_hash
 from app.core.settings import Settings, get_settings
+from app.domain.tenant_accounts import TenantAccountStatus
 from app.domain.tenant_roles import TenantRole
 from app.infrastructure.db import get_async_sessionmaker
 from app.infrastructure.persistence.auth.models.membership import TenantUserMembership
@@ -26,7 +25,9 @@ from app.infrastructure.persistence.auth.models.user import (
     UserProfile,
     UserStatus,
 )
-from app.infrastructure.persistence.tenants.models import TenantAccount
+from app.infrastructure.persistence.tenants.account_repository import (
+    PostgresTenantAccountRepository,
+)
 from app.observability.logging import log_event
 from app.services.activity import activity_service
 from app.services.auth_service import AuthService, UserSessionTokens, get_auth_service
@@ -47,8 +48,11 @@ from app.services.signup.invite_service import (
     InviteTokenRequiredError,
     get_invite_service,
 )
-
-SlugGenerator = Callable[[str], str]
+from app.services.tenant.tenant_account_service import (
+    TenantAccountService,
+    TenantAccountSlugCollisionError,
+    get_tenant_account_service,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -89,19 +93,19 @@ class SignupService:
         *,
         billing: BillingService | None = None,
         settings_factory: Callable[[], Settings] | None = None,
-        slug_generator: SlugGenerator | None = None,
         session_factory: async_sessionmaker[AsyncSession] | None = None,
         auth: AuthService | None = None,
         email_verification_service: EmailVerificationService | None = None,
         invite_service: InviteService | None = None,
+        tenant_account_service: TenantAccountService | None = None,
     ) -> None:
         self._billing_service = billing
         self._settings_factory = settings_factory or get_settings
-        self._slug_generator = slug_generator or self._default_slugify
         self._session_factory = session_factory
         self._auth_service = auth
         self._email_verification_service = email_verification_service
         self._invite_service = invite_service
+        self._tenant_account_service = tenant_account_service
 
     def _get_settings(self) -> Settings:
         return self._settings_factory()
@@ -120,6 +124,11 @@ class SignupService:
         if self._invite_service is None:
             self._invite_service = get_invite_service()
         return self._invite_service
+
+    def _get_tenant_account_service(self) -> TenantAccountService:
+        if self._tenant_account_service is None:
+            self._tenant_account_service = get_tenant_account_service()
+        return self._tenant_account_service
 
     def _get_billing_service(self) -> BillingService | None:
         if self._billing_service is None:
@@ -157,14 +166,32 @@ class SignupService:
             except PasswordPolicyError as exc:
                 raise SignupServiceError(str(exc)) from exc
 
-            tenant_slug = await self._ensure_unique_slug(self._slug_generator(tenant_name))
-            tenant_id, user_id = await self._provision_tenant_owner(
-                tenant_name=tenant_name.strip(),
-                tenant_slug=tenant_slug,
-                email=email,
-                password=password,
-                display_name=display_name,
-            )
+            session_factory = self._get_session_factory()
+            async with session_factory() as session:
+                async with session.begin():
+                    await self._ensure_email_available(email, session=session)
+                    tenant_service = self._get_tenant_account_service().with_repository(
+                        PostgresTenantAccountRepository.for_session(session)
+                    )
+                    try:
+                        tenant_account = await tenant_service.create_account(
+                            name=tenant_name,
+                            status=TenantAccountStatus.ACTIVE,
+                            reason="signup",
+                            allow_slug_suffix=True,
+                        )
+                    except TenantAccountSlugCollisionError as exc:
+                        raise TenantSlugCollisionError(str(exc)) from exc
+
+                    tenant_id = str(tenant_account.id)
+                    tenant_slug = tenant_account.slug
+                    user_id = await self._provision_tenant_owner(
+                        tenant_id=tenant_account.id,
+                        email=email,
+                        password=password,
+                        display_name=display_name,
+                        session=session,
+                    )
 
             resolved_plan = plan_code or settings.signup_default_plan_code
             await self._maybe_provision_subscription(
@@ -261,95 +288,103 @@ class SignupService:
                 reason=str(exc),
             )
 
-    async def _ensure_unique_slug(self, base_slug: str) -> str:
-        candidate = base_slug
-        attempts = 0
-        while await self._slug_exists(candidate):
-            attempts += 1
-            suffix = secrets.token_hex(2)
-            trimmed = base_slug[: max(16, 60 - len(suffix) - 1)]
-            candidate = f"{trimmed}-{suffix}"
-            if attempts > 10:
-                raise TenantSlugCollisionError("Unable to allocate a unique tenant slug.")
-        return candidate
+    async def _ensure_email_available(
+        self,
+        email: str,
+        *,
+        session: AsyncSession | None = None,
+    ) -> None:
+        if session is None:
+            session_factory = self._get_session_factory()
+            async with session_factory() as session:
+                await self._ensure_email_available(email, session=session)
+            return
 
-    async def _slug_exists(self, slug: str) -> bool:
-        session_factory = self._get_session_factory()
-        async with session_factory() as session:
-            result = await session.execute(
-                select(TenantAccount.id).where(TenantAccount.slug == slug).limit(1)
-            )
-            return result.scalar_one_or_none() is not None
+        existing_user = await session.scalar(
+            select(UserAccount.id).where(UserAccount.email == email.strip().lower())
+        )
+        if existing_user:
+            raise EmailAlreadyRegisteredError("Email already registered.")
 
     async def _provision_tenant_owner(
         self,
         *,
-        tenant_name: str,
-        tenant_slug: str,
+        tenant_id: uuid.UUID,
         email: str,
         password: str,
         display_name: str | None,
-    ) -> tuple[str, str]:
+        session: AsyncSession | None = None,
+    ) -> str:
         normalized_email = email.strip().lower()
         hashed_password = get_password_hash(password)
-        session_factory = self._get_session_factory()
-        async with session_factory() as session:
-            try:
-                async with session.begin():
-                    existing_user = await session.scalar(
-                        select(UserAccount.id).where(UserAccount.email == normalized_email)
+
+        async def _create_owner_records(active_session: AsyncSession) -> str:
+            existing_user = await active_session.scalar(
+                select(UserAccount.id).where(UserAccount.email == normalized_email)
+            )
+            if existing_user:
+                raise EmailAlreadyRegisteredError("Email already registered.")
+
+            user_id = uuid.uuid4()
+
+            active_session.add(
+                UserAccount(
+                    id=user_id,
+                    email=normalized_email,
+                    password_hash=hashed_password,
+                    password_pepper_version=PASSWORD_HASH_VERSION,
+                    status=UserStatus.ACTIVE,
+                )
+            )
+
+            if display_name:
+                active_session.add(
+                    UserProfile(
+                        id=uuid.uuid4(),
+                        user_id=user_id,
+                        display_name=display_name,
                     )
-                    if existing_user:
-                        raise EmailAlreadyRegisteredError("Email already registered.")
+                )
 
-                    tenant_id = uuid.uuid4()
-                    user_id = uuid.uuid4()
+            active_session.add(
+                TenantUserMembership(
+                    id=uuid.uuid4(),
+                    user_id=user_id,
+                    tenant_id=tenant_id,
+                    role=TenantRole.OWNER,
+                )
+            )
 
-                    tenant = TenantAccount(id=tenant_id, slug=tenant_slug, name=tenant_name)
-                    session.add(tenant)
+            active_session.add(
+                PasswordHistory(
+                    id=uuid.uuid4(),
+                    user_id=user_id,
+                    password_hash=hashed_password,
+                    password_pepper_version=PASSWORD_HASH_VERSION,
+                    created_at=datetime.now(UTC),
+                )
+            )
 
-                    user = UserAccount(
-                        id=user_id,
-                        email=normalized_email,
-                        password_hash=hashed_password,
-                        password_pepper_version=PASSWORD_HASH_VERSION,
-                        status=UserStatus.ACTIVE,
-                    )
-                    session.add(user)
+            await active_session.flush()
+            return str(user_id)
 
-                    if display_name:
-                        session.add(
-                            UserProfile(
-                                id=uuid.uuid4(),
-                                user_id=user_id,
-                                display_name=display_name,
-                            )
-                        )
+        if session is None:
+            session_factory = self._get_session_factory()
+            async with session_factory() as session:
+                try:
+                    async with session.begin():
+                        return await _create_owner_records(session)
+                except EmailAlreadyRegisteredError:
+                    raise
+                except IntegrityError as exc:  # pragma: no cover - rare email race
+                    raise EmailAlreadyRegisteredError("Email already registered.") from exc
 
-                    session.add(
-                        TenantUserMembership(
-                            id=uuid.uuid4(),
-                            user_id=user_id,
-                            tenant_id=tenant_id,
-                            role=TenantRole.OWNER,
-                        )
-                    )
-
-                    session.add(
-                        PasswordHistory(
-                            id=uuid.uuid4(),
-                            user_id=user_id,
-                            password_hash=hashed_password,
-                            password_pepper_version=PASSWORD_HASH_VERSION,
-                            created_at=datetime.now(UTC),
-                        )
-                    )
-
-                return str(tenant_id), str(user_id)
-            except EmailAlreadyRegisteredError:
-                raise
-            except IntegrityError as exc:  # pragma: no cover - rare slug race
-                raise TenantSlugCollisionError("Tenant slug already exists.") from exc
+        try:
+            return await _create_owner_records(session)
+        except EmailAlreadyRegisteredError:
+            raise
+        except IntegrityError as exc:  # pragma: no cover - rare email race
+            raise EmailAlreadyRegisteredError("Email already registered.") from exc
 
     async def _maybe_provision_subscription(
         self,
@@ -478,30 +513,24 @@ class SignupService:
             raise PublicSignupDisabledError(str(exc)) from exc
         return context
 
-    @staticmethod
-    def _default_slugify(value: str) -> str:
-        normalized = value.strip().lower()
-        normalized = re.sub(r"[^a-z0-9]+", "-", normalized).strip("-")
-        return normalized[:60] or "tenant"
-
 def build_signup_service(
     *,
     billing_service: BillingService | None = None,
     auth_service: AuthService | None = None,
     email_verification_service: EmailVerificationService | None = None,
     settings_factory: Callable[[], Settings] | None = None,
-    slug_generator: SlugGenerator | None = None,
     session_factory: async_sessionmaker[AsyncSession] | None = None,
     invite_service: InviteService | None = None,
+    tenant_account_service: TenantAccountService | None = None,
 ) -> SignupService:
     return SignupService(
         billing=billing_service,
         settings_factory=settings_factory,
-        slug_generator=slug_generator,
         session_factory=session_factory,
         auth=auth_service,
         email_verification_service=email_verification_service,
         invite_service=invite_service,
+        tenant_account_service=tenant_account_service,
     )
 
 

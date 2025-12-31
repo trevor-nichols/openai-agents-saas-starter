@@ -21,7 +21,7 @@ def test_scope_enforces_tenant_admin_boundary() -> None:
         _resolve_scope(actor, "tenant-2", False)
 
 
-def test_scope_allows_operator_overrides() -> None:
+def test_scope_allows_operator_access() -> None:
     actor = ServiceAccountActor(
         ServiceAccountActorType.PLATFORM_OPERATOR,
         None,
