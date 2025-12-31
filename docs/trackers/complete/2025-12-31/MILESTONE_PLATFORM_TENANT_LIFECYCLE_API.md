@@ -2,7 +2,7 @@
 # Milestone: Platform Tenant Management + Lifecycle (API)
 
 _Last updated: 2025-12-31_  \
-**Status:** In Progress  \
+**Status:** Complete  \
 **Owner:** Platform Foundations  \
 **Domain:** Backend  \
 **ID / Links:** [TBD], [docs/auth/roles.md], [docs/persistence/db-schema.md]
@@ -136,7 +136,7 @@ API service supports enterprise-grade operations without pragmatic coupling.
 |----|------|-------------|-------|
 | E1 | Unit | Tenant account + lifecycle service unit tests. | ✅ |
 | E2 | Contract | Contract tests for platform + tenant account endpoints. | ✅ |
-| E3 | Smoke | Extend smoke tests for tenant account and lifecycle actions (requires running API server). | ⚠️ |
+| E3 | Smoke | Extend smoke tests for tenant account and lifecycle actions (requires running API server). | ✅ |
 
 ### Workstream F – Artifacts + Docs
 
@@ -156,8 +156,8 @@ API service supports enterprise-grade operations without pragmatic coupling.
 | G4 | Auth | Remove operator override headers from service-account admin; require operator scope (TL-005). | ✅ |
 | G5 | API | Remove `status_reason` from tenant self-service response (TL-006). | ✅ |
 | G6 | Service | Guard `finalize_deprovision` transition (TL-007). | ✅ |
-| G7 | Tests | Add missing unit/contract/smoke coverage (TL-008). | ⚠️ |
-| G8 | QA | Run lint/typecheck/tests + record results (TL-010). | ⚠️ |
+| G7 | Tests | Add missing unit/contract/smoke coverage (TL-008). | ✅ |
+| G8 | QA | Run lint/typecheck/tests + record results (TL-010). | ✅ |
 
 ---
 
@@ -170,8 +170,8 @@ API service supports enterprise-grade operations without pragmatic coupling.
 | P1 – Domain + DB | Domain model + repo port + migration + ORM updated. | Repo compiles; migration ready. | ✅ |
 | P2 – Services | Tenant account + lifecycle services wired; signup uses service. | Unit tests green. | ✅ |
 | P3 – API | Operator + tenant self-service endpoints implemented. | Contract tests green. | ✅ |
-| P4 – Enforcement + QA | Tenant status enforcement + smoke tests + docs. | Smoke + lint + typecheck green. | ⚠️ |
-| P5 – Issue Remediation | Address review findings TL-002 through TL-010. | Issues closed; tests re-run. | ⚠️ |
+| P4 – Enforcement + QA | Tenant status enforcement + smoke tests + docs. | Smoke + lint + typecheck green. | ✅ |
+| P5 – Issue Remediation | Address review findings TL-002 through TL-010. | Issues closed; tests re-run. | ✅ |
 
 ---
 
