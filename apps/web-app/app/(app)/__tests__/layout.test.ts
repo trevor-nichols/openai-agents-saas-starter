@@ -37,7 +37,7 @@ describe('App layout navigation guards', () => {
     async () => {
       const { buildNavItems } = await import('../nav');
 
-      const nav = buildNavItems({ hasStatusScope: false, role: 'admin' });
+      const nav = buildNavItems({ hasStatusScope: false, hasOperator: false, role: 'admin' });
       const workspace = nav.find((item) => item.label === 'Workspace');
       const hasStorage = workspace?.items?.some((item) => item.href === '/ops/storage') ?? false;
       expect(hasStorage).toBe(true);
@@ -50,7 +50,7 @@ describe('App layout navigation guards', () => {
     async () => {
       const { buildNavItems } = await import('../nav');
 
-      const nav = buildNavItems({ hasStatusScope: false, role: 'member' });
+      const nav = buildNavItems({ hasStatusScope: false, hasOperator: false, role: 'member' });
       const workspace = nav.find((item) => item.label === 'Workspace');
       const hasStorage = workspace?.items?.some((item) => item.href === '/ops/storage') ?? false;
       expect(hasStorage).toBe(false);
@@ -63,7 +63,7 @@ describe('App layout navigation guards', () => {
     async () => {
       const { buildNavItems } = await import('../nav');
 
-      const nav = buildNavItems({ hasStatusScope: false, scopes: ['billing:manage'] });
+      const nav = buildNavItems({ hasStatusScope: false, hasOperator: false, scopes: ['billing:manage'] });
       const workspace = nav.find((item) => item.label === 'Workspace');
       const hasStorage = workspace?.items?.some((item) => item.href === '/ops/storage') ?? false;
       expect(hasStorage).toBe(true);

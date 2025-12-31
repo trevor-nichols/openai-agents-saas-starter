@@ -34,6 +34,8 @@ const config: StorybookConfig = {
       '@/lib/queries/signup': path.resolve(__dirname, './mocks/signup-queries.ts'),
       '@/lib/api/tenantSettings': path.resolve(__dirname, './mocks/tenantSettings-api.ts'),
       '@/lib/queries/tenantSettings': path.resolve(__dirname, './mocks/tenantSettings-queries.ts'),
+      '@/lib/api/tenantAccount': path.resolve(__dirname, './mocks/tenantAccount-api.ts'),
+      '@/lib/queries/tenantAccount': path.resolve(__dirname, './mocks/tenantAccount-queries.ts'),
       '@/lib/queries/account': path.resolve(__dirname, './mocks/account-queries.ts'),
       '@/lib/queries/accountSecurity': path.resolve(__dirname, './mocks/accountSecurity-queries.ts'),
       '@/lib/queries/accountSessions': path.resolve(__dirname, './mocks/accountSessions-queries.ts'),

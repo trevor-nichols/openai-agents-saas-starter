@@ -1,5 +1,15 @@
 import type { TenantSettings, TenantSettingsUpdateInput } from '@/types/tenantSettings';
 
+export class TenantSettingsApiError extends Error {
+  public readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = 'TenantSettingsApiError';
+    this.status = status;
+  }
+}
+
 let settings: TenantSettings = {
   tenantId: 'tenant-123',
   billingContacts: [

@@ -220,6 +220,9 @@ import type {
   HealthCheckHealthGetData,
   HealthCheckHealthGetErrors,
   HealthCheckHealthGetResponses,
+  IngestFrontendLogApiV1LogsPostData,
+  IngestFrontendLogApiV1LogsPostErrors,
+  IngestFrontendLogApiV1LogsPostResponses,
   IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostData,
   IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors,
   IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses,
@@ -4915,6 +4918,28 @@ export const issuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPost = <
     ThrowOnError
   >({
     url: "/api/v1/test-fixtures/password-reset-token",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Ingest Frontend Log
+ */
+export const ingestFrontendLogApiV1LogsPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<IngestFrontendLogApiV1LogsPostData, ThrowOnError>,
+) => {
+  return (options.client ?? client).post<
+    IngestFrontendLogApiV1LogsPostResponses,
+    IngestFrontendLogApiV1LogsPostErrors,
+    ThrowOnError
+  >({
+    url: "/api/v1/logs",
     ...options,
     headers: {
       "Content-Type": "application/json",

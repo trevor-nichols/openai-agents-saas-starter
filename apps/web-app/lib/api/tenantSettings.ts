@@ -6,6 +6,16 @@ import type {
 } from '@/lib/api/client/types.gen';
 import { apiV1Path } from '@/lib/apiPaths';
 
+export class TenantSettingsApiError extends Error {
+  public readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = 'TenantSettingsApiError';
+    this.status = status;
+  }
+}
+
 function mapContact(dto: BillingContactModel, index: number): BillingContact {
   const idSeat = dto.email ? `${dto.email}:${index}` : `contact-${index}`;
   return {
@@ -48,9 +58,11 @@ function buildUpdateDto(payload: TenantSettingsUpdateInput): TenantSettingsUpdat
   };
 }
 
-function createError(response: Response, fallbackMessage: string, detail?: string): Error {
-  const base = detail || (response.status === 401 ? 'You have been signed out. Please log back in.' : fallbackMessage);
-  return new Error(base);
+function createError(response: Response, fallbackMessage: string, detail?: string): TenantSettingsApiError {
+  const base =
+    detail ||
+    (response.status === 401 ? 'You have been signed out. Please log back in.' : fallbackMessage);
+  return new TenantSettingsApiError(response.status, base);
 }
 
 async function parseJson<T>(response: Response): Promise<T> {

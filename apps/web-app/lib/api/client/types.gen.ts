@@ -2756,6 +2756,50 @@ export type FixtureUserResult = {
 };
 
 /**
+ * FrontendLogIngestResponse
+ */
+export type FrontendLogIngestResponse = {
+  /**
+   * Accepted
+   *
+   * Whether the log event was accepted.
+   */
+  accepted?: boolean;
+};
+
+/**
+ * FrontendLogPayload
+ */
+export type FrontendLogPayload = {
+  /**
+   * Event
+   */
+  event: string;
+  /**
+   * Scope
+   */
+  scope?: string | null;
+  /**
+   * Level
+   */
+  level?: string;
+  /**
+   * Message
+   */
+  message?: string | null;
+  /**
+   * Timestamp
+   */
+  timestamp?: string | null;
+  /**
+   * Fields
+   */
+  fields?: {
+    [key: string]: unknown;
+  };
+};
+
+/**
  * FunctionTool
  */
 export type FunctionTool = {
@@ -22914,3 +22958,86 @@ export type IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostRespon
 
 export type IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostResponse =
   IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostResponses[keyof IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostResponses];
+
+export type IngestFrontendLogApiV1LogsPostData = {
+  body: FrontendLogPayload;
+  headers?: {
+    /**
+     * Authorization
+     */
+    authorization?: string | null;
+    /**
+     * X-Log-Signature
+     *
+     * HMAC signature for the raw request body. Required only when submitting anonymous frontend logs (ALLOW_ANON_FRONTEND_LOGS=true).
+     */
+    "x-log-signature"?: string | null;
+  };
+  path?: never;
+  query?: never;
+  url: "/api/v1/logs";
+};
+
+export type IngestFrontendLogApiV1LogsPostErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type IngestFrontendLogApiV1LogsPostError =
+  IngestFrontendLogApiV1LogsPostErrors[keyof IngestFrontendLogApiV1LogsPostErrors];
+
+export type IngestFrontendLogApiV1LogsPostResponses = {
+  /**
+   * Successful Response
+   */
+  202: FrontendLogIngestResponse;
+};
+
+export type IngestFrontendLogApiV1LogsPostResponse =
+  IngestFrontendLogApiV1LogsPostResponses[keyof IngestFrontendLogApiV1LogsPostResponses];

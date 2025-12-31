@@ -1,0 +1,25 @@
+import type { TenantAccountStatus } from '@/types/tenantAccount';
+
+export type TenantStatusFilter = TenantAccountStatus | 'all';
+
+export const TENANT_STATUS_LABELS: Record<TenantAccountStatus, string> = {
+  active: 'Active',
+  suspended: 'Suspended',
+  deprovisioning: 'Deprovisioning',
+  deprovisioned: 'Deprovisioned',
+};
+
+export const TENANT_STATUS_TONES: Record<TenantAccountStatus, 'default' | 'positive' | 'warning'> = {
+  active: 'positive',
+  suspended: 'warning',
+  deprovisioning: 'warning',
+  deprovisioned: 'default',
+};
+
+export const TENANT_STATUS_OPTIONS: { label: string; value: TenantStatusFilter }[] = [
+  { label: 'All statuses', value: 'all' },
+  { label: TENANT_STATUS_LABELS.active, value: 'active' },
+  { label: TENANT_STATUS_LABELS.suspended, value: 'suspended' },
+  { label: TENANT_STATUS_LABELS.deprovisioning, value: 'deprovisioning' },
+  { label: TENANT_STATUS_LABELS.deprovisioned, value: 'deprovisioned' },
+];
