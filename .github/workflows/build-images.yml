@@ -138,13 +138,14 @@ jobs:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
           push: ${{ env.PUSH_IMAGES == 'true' }}
+          load: ${{ env.PUSH_IMAGES != 'true' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Resolve image ref
-        if: env.PUSH_IMAGES == 'true'
+        if: env.PUSH_IMAGES == 'true' || github.event_name == 'pull_request'
         shell: bash
         run: |
           set -euo pipefail
@@ -173,7 +174,7 @@ jobs:
           fi
 
       - name: Trivy scan (SARIF)
-        if: env.PUSH_IMAGES == 'true'
+        if: env.PUSH_IMAGES == 'true' || github.event_name == 'pull_request'
         uses: aquasecurity/trivy-action@0.24.0
         with:
           image-ref: ${{ env.IMAGE_REF }}
@@ -182,10 +183,30 @@ jobs:
           vuln-type: os,library
           severity: CRITICAL,HIGH
           ignore-unfixed: true
-          exit-code: 1
+          exit-code: ${{ github.event_name == 'pull_request' && '0' || '1' }}
+
+      - name: Trivy scan (summary)
+        if: github.event_name == 'pull_request' || failure()
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ${{ env.IMAGE_REF }}
+          format: table
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: 0
+
+      - name: Upload Trivy SARIF artifact
+        if: always() && (env.PUSH_IMAGES == 'true' || github.event_name == 'pull_request')
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-sarif-${{ matrix.name }}
+          path: trivy-${{ matrix.name }}.sarif
+          if-no-files-found: warn
 
       - name: Upload Trivy SARIF
-        if: env.PUSH_IMAGES == 'true'
+        if: always() && env.PUSH_IMAGES == 'true'
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: trivy-${{ matrix.name }}.sarif
