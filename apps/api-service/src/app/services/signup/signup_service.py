@@ -169,7 +169,6 @@ class SignupService:
             session_factory = self._get_session_factory()
             async with session_factory() as session:
                 async with session.begin():
-                    await self._ensure_email_available(email, session=session)
                     tenant_service = self._get_tenant_account_service().with_repository(
                         PostgresTenantAccountRepository.for_session(session)
                     )
