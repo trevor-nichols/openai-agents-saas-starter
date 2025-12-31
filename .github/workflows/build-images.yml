@@ -151,6 +151,26 @@ jobs:
           sha_short="${GITHUB_SHA::7}"
           echo "IMAGE_REF=${REGISTRY}/${IMAGE_PREFIX}/${{ matrix.name }}:sha-${sha_short}" >> "$GITHUB_ENV"
 
+      - name: Configure Trivy registry auth
+        if: env.PUSH_IMAGES == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${REGISTRY}" = "ghcr.io" ]; then
+            echo "TRIVY_USERNAME=${GITHUB_ACTOR}" >> "$GITHUB_ENV"
+            echo "TRIVY_PASSWORD=${{ secrets.GITHUB_TOKEN }}" >> "$GITHUB_ENV"
+          elif [ "${USE_ECR}" = "true" ]; then
+            echo "TRIVY_USERNAME=AWS" >> "$GITHUB_ENV"
+            echo "TRIVY_PASSWORD=$(aws ecr get-login-password --region "${ECR_REGION}")" >> "$GITHUB_ENV"
+          else
+            if [ -n "${{ secrets.REGISTRY_USERNAME }}" ] && [ -n "${{ secrets.REGISTRY_PASSWORD }}" ]; then
+              echo "TRIVY_USERNAME=${{ secrets.REGISTRY_USERNAME }}" >> "$GITHUB_ENV"
+              echo "TRIVY_PASSWORD=${{ secrets.REGISTRY_PASSWORD }}" >> "$GITHUB_ENV"
+            else
+              echo "Registry auth secrets missing; Trivy may fail to pull ${REGISTRY} image." >&2
+            fi
+          fi
+
       - name: Trivy scan (SARIF)
         if: env.PUSH_IMAGES == 'true'
         uses: aquasecurity/trivy-action@0.24.0
