@@ -3,7 +3,7 @@
 Groups self-serve onboarding flows: invites, signup requests, signup orchestration, email verification, and password recovery. These services bridge anonymous visitors into authenticated tenants and enforce the org’s signup posture.
 
 ## Flows at a glance
-- Public signup (`POST /api/v1/auth/register`): Creates tenant + owner user, optional billing subscription, returns session tokens, and triggers email verification.
+- Public signup (`POST /api/v1/auth/register`): Creates tenant + owner user in provisioning state, attempts billing, promotes to active on success, returns session tokens, and triggers email verification.
 - Access request (`POST /api/v1/auth/request-access`): Collects leads when policy is `invite_only` or `approval`; operators later approve/reject.
 - Invite redemption: Required when `SIGNUP_ACCESS_POLICY` is not `public`; tokens are reserved during signup and finalized or released on success/failure.
 - Email verification: Sent after signup; marks email verified and revokes old sessions once the token is redeemed.
@@ -32,10 +32,10 @@ Groups self-serve onboarding flows: invites, signup requests, signup orchestrati
 - Email flows: `EMAIL_VERIFICATION_TOKEN_TTL_MINUTES`, `RESEND_*` template IDs, `AUTH_EMAIL_VERIFICATION_TOKEN_PEPPER`; password reset uses `PASSWORD_RESET_TOKEN_TTL_MINUTES` and `AUTH_PASSWORD_RESET_TOKEN_PEPPER`.
 
 ## Operational notes
-- Signup writes tenant, user, membership, and password history in one transaction; slug collisions raise `TenantSlugCollisionError`.
+- Signup writes tenant, user, membership, and password history in one transaction; tenant starts in `provisioning`, user starts as `pending`, and slug collisions raise `TenantSlugCollisionError`.
 - Invite reservations are always released or finalized (best-effort cleanup on exceptions).
 - Email verification and password reset tokens are hashed and fingerprinted (IP/UA) before storage; Resend delivery errors surface as 5xx to callers.
-- Billing provisioning failures return 4xx/5xx and leave tenant creation rolled back; metrics/log events emit `signup.*` breadcrumbs.
+- Billing provisioning failures return 4xx/5xx, mark the tenant deprovisioned, disable the owner user, and emit `signup.*` breadcrumbs.
 
 ## Testing touchpoints
-- Unit coverage: `tests/unit/accounts/test_signup_service.py`, `test_signup_request_service.py`, `test_email_verification_service.py`, `test_password_recovery_service.py`, plus auth API contract tests under `tests/contract` and `tests/smoke/http/test_auth_smoke.py`.
+- Unit coverage: `tests/unit/accounts/test_signup_service.py`, `test_signup_request_service.py`, `test_email_verification_service.py`, `test_password_recovery_service.py`, plus auth API contract tests under `tests/contract` (notably `test_auth_signup_register.py`) and `tests/smoke/http/test_auth_smoke.py`.

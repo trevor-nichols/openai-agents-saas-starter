@@ -12,6 +12,7 @@ from uuid import UUID
 class TenantAccountStatus(str, Enum):
     """Lifecycle states for tenant accounts."""
 
+    PROVISIONING = "provisioning"
     ACTIVE = "active"
     SUSPENDED = "suspended"
     DEPROVISIONING = "deprovisioning"

@@ -205,6 +205,12 @@ async def _enforce_tenant_status(
     if account.status == TenantAccountStatus.ACTIVE:
         return
 
+    if account.status == TenantAccountStatus.PROVISIONING:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tenant account is provisioning.",
+        )
+
     if account.status == TenantAccountStatus.SUSPENDED:
         if override is not None and _is_readonly_request(request):
             _log_operator_override(tenant_id, request, override)

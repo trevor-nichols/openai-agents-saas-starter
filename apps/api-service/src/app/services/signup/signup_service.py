@@ -8,7 +8,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -175,7 +175,7 @@ class SignupService:
                     try:
                         tenant_account = await tenant_service.create_account(
                             name=tenant_name,
-                            status=TenantAccountStatus.ACTIVE,
+                            status=TenantAccountStatus.PROVISIONING,
                             reason="signup",
                             allow_slug_suffix=True,
                         )
@@ -190,14 +190,39 @@ class SignupService:
                         password=password,
                         display_name=display_name,
                         session=session,
+                        status=UserStatus.PENDING,
                     )
 
             resolved_plan = plan_code or settings.signup_default_plan_code
-            await self._maybe_provision_subscription(
-                tenant_id=tenant_id,
-                plan_code=resolved_plan,
-                billing_email=email,
-                requested_trial_days=trial_days,
+            try:
+                await self._maybe_provision_subscription(
+                    tenant_id=tenant_id,
+                    plan_code=resolved_plan,
+                    billing_email=email,
+                    requested_trial_days=trial_days,
+                )
+            except Exception:
+                try:
+                    await self._fail_provisioning(
+                        tenant_id=tenant_account.id,
+                        user_id=user_id,
+                        reason="signup_billing_failed",
+                    )
+                except Exception:  # pragma: no cover - best effort cleanup
+                    logger.warning(
+                        "signup.provisioning_cleanup_failed",
+                        exc_info=True,
+                        extra={
+                            "tenant_id": str(tenant_account.id),
+                            "user_id": str(user_id),
+                        },
+                    )
+                raise
+
+            await self._finalize_provisioning(
+                tenant_id=tenant_account.id,
+                user_id=user_id,
+                reason="signup_completed",
             )
 
             tokens = await self._get_auth_service().login_user(
@@ -209,7 +234,7 @@ class SignupService:
             )
 
             await self._trigger_email_verification(
-                user_id=user_id,
+                user_id=str(user_id),
                 ip_address=ip_address,
                 user_agent=user_agent,
             )
@@ -245,7 +270,7 @@ class SignupService:
             return SignupResult(
                 tenant_id=tenant_id,
                 tenant_slug=tenant_slug,
-                user_id=user_id,
+                user_id=str(user_id),
                 session=tokens,
             )
         except Exception:
@@ -312,12 +337,13 @@ class SignupService:
         email: str,
         password: str,
         display_name: str | None,
+        status: UserStatus,
         session: AsyncSession | None = None,
-    ) -> str:
+    ) -> uuid.UUID:
         normalized_email = email.strip().lower()
         hashed_password = get_password_hash(password)
 
-        async def _create_owner_records(active_session: AsyncSession) -> str:
+        async def _create_owner_records(active_session: AsyncSession) -> uuid.UUID:
             existing_user = await active_session.scalar(
                 select(UserAccount.id).where(UserAccount.email == normalized_email)
             )
@@ -332,7 +358,7 @@ class SignupService:
                     email=normalized_email,
                     password_hash=hashed_password,
                     password_pepper_version=PASSWORD_HASH_VERSION,
-                    status=UserStatus.ACTIVE,
+                    status=status,
                 )
             )
 
@@ -365,7 +391,7 @@ class SignupService:
             )
 
             await active_session.flush()
-            return str(user_id)
+            return user_id
 
         if session is None:
             session_factory = self._get_session_factory()
@@ -384,6 +410,54 @@ class SignupService:
             raise
         except IntegrityError as exc:  # pragma: no cover - rare email race
             raise EmailAlreadyRegisteredError("Email already registered.") from exc
+
+    async def _finalize_provisioning(
+        self,
+        *,
+        tenant_id: uuid.UUID,
+        user_id: uuid.UUID,
+        reason: str,
+    ) -> None:
+        session_factory = self._get_session_factory()
+        async with session_factory() as session:
+            async with session.begin():
+                tenant_service = self._get_tenant_account_service().with_repository(
+                    PostgresTenantAccountRepository.for_session(session)
+                )
+                await tenant_service.complete_provisioning(
+                    tenant_id,
+                    actor_user_id=user_id,
+                    reason=reason,
+                )
+                await session.execute(
+                    update(UserAccount)
+                    .where(UserAccount.id == user_id)
+                    .values(status=UserStatus.ACTIVE, updated_at=datetime.now(UTC))
+                )
+
+    async def _fail_provisioning(
+        self,
+        *,
+        tenant_id: uuid.UUID,
+        user_id: uuid.UUID,
+        reason: str,
+    ) -> None:
+        session_factory = self._get_session_factory()
+        async with session_factory() as session:
+            async with session.begin():
+                tenant_service = self._get_tenant_account_service().with_repository(
+                    PostgresTenantAccountRepository.for_session(session)
+                )
+                await tenant_service.deprovision_account(
+                    tenant_id,
+                    actor_user_id=None,
+                    reason=reason,
+                )
+                await session.execute(
+                    update(UserAccount)
+                    .where(UserAccount.id == user_id)
+                    .values(status=UserStatus.DISABLED, updated_at=datetime.now(UTC))
+                )
 
     async def _maybe_provision_subscription(
         self,

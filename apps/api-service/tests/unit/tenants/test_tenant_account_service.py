@@ -147,6 +147,30 @@ async def test_suspend_account_updates_status() -> None:
 
 
 @pytest.mark.asyncio
+async def test_complete_provisioning_updates_status() -> None:
+    tenant_id = uuid4()
+    repository = AsyncMock()
+    repository.get = AsyncMock(
+        return_value=_account(tenant_id, TenantAccountStatus.PROVISIONING)
+    )
+    now = datetime(2025, 1, 1, tzinfo=UTC)
+    repository.update_status = AsyncMock(
+        return_value=_account(tenant_id, TenantAccountStatus.ACTIVE)
+    )
+    service = TenantAccountService(repository=repository, clock=lambda: now)
+
+    account = await service.complete_provisioning(
+        tenant_id, actor_user_id=uuid4(), reason="signup"
+    )
+
+    assert account.status == TenantAccountStatus.ACTIVE
+    await_args = repository.update_status.await_args
+    assert await_args is not None
+    update = await_args.args[1]
+    assert update.status == TenantAccountStatus.ACTIVE
+
+
+@pytest.mark.asyncio
 async def test_reactivate_rejects_invalid_transition() -> None:
     tenant_id = uuid4()
     repository = AsyncMock()

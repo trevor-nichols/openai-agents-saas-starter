@@ -28,6 +28,10 @@ _MIN_NAME_LENGTH = 2
 _SLUG_PATTERN = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$")
 
 _ALLOWED_TRANSITIONS: dict[TenantAccountStatus, set[TenantAccountStatus]] = {
+    TenantAccountStatus.PROVISIONING: {
+        TenantAccountStatus.ACTIVE,
+        TenantAccountStatus.DEPROVISIONING,
+    },
     TenantAccountStatus.ACTIVE: {
         TenantAccountStatus.SUSPENDED,
         TenantAccountStatus.DEPROVISIONING,
@@ -99,6 +103,26 @@ class TenantAccountService:
         if account is None:
             raise TenantAccountNotFoundError("Tenant account not found.")
         return account
+
+    async def complete_provisioning(
+        self,
+        tenant_id: UUID,
+        *,
+        actor_user_id: UUID | None,
+        reason: str | None,
+    ) -> TenantAccount:
+        account = await self.get_account(tenant_id)
+        if account.status == TenantAccountStatus.ACTIVE:
+            return account
+        self._ensure_transition(account.status, TenantAccountStatus.ACTIVE)
+        occurred_at = self._clock()
+        return await self._update_status(
+            tenant_id,
+            TenantAccountStatus.ACTIVE,
+            actor_user_id=actor_user_id,
+            reason=reason,
+            occurred_at=occurred_at,
+        )
 
     async def list_accounts(
         self,

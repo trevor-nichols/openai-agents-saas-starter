@@ -188,6 +188,25 @@ async def test_suspended_tenant_rejected() -> None:
 
 
 @pytest.mark.asyncio
+async def test_provisioning_tenant_rejected() -> None:
+    tenant_id = str(uuid4())
+    user: dict[str, object] = {
+        "payload": {
+            "tenant_id": tenant_id,
+            "roles": ["admin"],
+            "scope": "billing:manage",
+        }
+    }
+    with pytest.raises(HTTPException) as exc:
+        await get_tenant_context(
+            current_user=user,
+            request=_request(),
+            tenant_account_service=_tenant_service(TenantAccountStatus.PROVISIONING),
+        )
+    assert exc.value.status_code == 403
+
+
+@pytest.mark.asyncio
 async def test_operator_override_allows_read_only_for_suspended() -> None:
     tenant_id = str(uuid4())
     user: dict[str, object] = {
