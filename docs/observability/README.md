@@ -1,7 +1,7 @@
 <!-- SECTION: Title -->
 # Observability Stack & Bundled OpenTelemetry Collector
 
-_Last updated: November 18, 2025_
+_Last updated: December 31, 2025_
 
 This doc explains how the starter repo ships a turnkey OpenTelemetry Collector so every operator—from first-time users to enterprise SREs—gets a local OTLP endpoint without wiring their own infra. The same flow scales to production by pointing the FastAPI backend at any external collector or SaaS OTLP intake.
 
@@ -55,6 +55,7 @@ The collector image is pinned to `otel/opentelemetry-collector-contrib:0.139.0`,
 - By default, the Next.js client logger uses `beacon` in local dev; it posts to `/api/logs` → `/api/v1/logs` (backend) when `ENABLE_FRONTEND_LOG_INGEST=true`.
 - Auth is required unless `ALLOW_ANON_FRONTEND_LOGS=true` **and** the client sends `X-Log-Signature` = `hex(hmac_sha256(FRONTEND_LOG_SHARED_SECRET, raw_body))`.
 - Server/dev console output can also be tee’d to `LOG_ROOT/<date>/frontend/all.log` / `error.log` when you wrap dev with `node scripts/with-log-root.js` (already wired into `pnpm dev`).
+- Starter Console defaults: `ENABLE_FRONTEND_LOG_INGEST=true` for demo/staging profiles, `false` for production. Enabling in production requires explicit confirmation that retention and PII policies are in place.
 
 The wizard stores secrets in `apps/api-service/.env.local` only. The generated collector config lives under `var/observability/collector.generated.yaml`, which is gitignored to avoid leaking API keys.
 
