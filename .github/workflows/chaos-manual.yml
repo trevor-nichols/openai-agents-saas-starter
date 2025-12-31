@@ -1,0 +1,40 @@
+name: Chaos (Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Base URL of the deployed API (e.g., https://api.example.com)"
+        required: true
+        type: string
+      dry_run:
+        description: "Run a health check only (no fault injection)"
+        required: false
+        default: true
+        type: boolean
+      scenario:
+        description: "Scenario identifier (for operators)"
+        required: false
+        default: "redis-latency"
+        type: string
+      injector:
+        description: "Injector type (none|toxiproxy|custom)"
+        required: false
+        default: "none"
+        type: string
+
+jobs:
+  chaos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Run chaos stub
+        env:
+          CHAOS_BASE_URL: ${{ inputs.base_url }}
+          CHAOS_DRY_RUN: ${{ inputs.dry_run }}
+          CHAOS_SCENARIO: ${{ inputs.scenario }}
+          CHAOS_INJECTOR: ${{ inputs.injector }}
+        run: bash tools/chaos/run_chaos_stub.sh

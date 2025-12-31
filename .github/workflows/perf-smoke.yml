@@ -1,0 +1,65 @@
+name: Perf Smoke (k6)
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  perf-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DATABASE_URL: "sqlite+aiosqlite:///./perf-smoke.db"
+      REDIS_URL: "redis://localhost:6379/0"
+      RATE_LIMIT_REDIS_URL: "redis://localhost:6379/0"
+      AUTH_CACHE_REDIS_URL: "redis://localhost:6379/0"
+      SECURITY_TOKEN_REDIS_URL: "redis://localhost:6379/0"
+      USAGE_GUARDRAIL_REDIS_URL: "redis://localhost:6379/0"
+      USE_TEST_FIXTURES: "true"
+      AUTO_RUN_MIGRATIONS: "true"
+      ENABLE_BILLING: "false"
+      ENABLE_BILLING_RETRY_WORKER: "false"
+      ENABLE_RESEND_EMAIL_DELIVERY: "false"
+      ALLOW_PUBLIC_SIGNUP: "true"
+      OPENAI_API_KEY: "dummy-smoke-key"
+      STARTER_CONSOLE_SKIP_ENV: "true"
+      STARTER_CONSOLE_SKIP_VAULT_PROBE: "true"
+      PERF_BASE_URL: "http://127.0.0.1:8000"
+      PERF_DURATION: "30s"
+      PERF_VUS: "1"
+    services:
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Hatch
+        run: |
+          python -m pip install --upgrade pip
+          pip install hatch
+
+      - name: Create Hatch environment
+        working-directory: apps/api-service
+        run: hatch env create
+
+      - name: Install k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Run perf smoke
+        run: bash tools/perf/run_k6_smoke.sh
