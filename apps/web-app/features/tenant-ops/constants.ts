@@ -1,6 +1,11 @@
 import type { TenantAccountStatus } from '@/types/tenantAccount';
 
+import type { TenantLifecycleAction } from './types';
+
 export type TenantStatusFilter = TenantAccountStatus | 'all';
+
+export const DEFAULT_TENANT_STATUS_FILTER: TenantStatusFilter = 'active';
+export const TENANT_PAGE_LIMIT = 25;
 
 export const TENANT_STATUS_LABELS: Record<TenantAccountStatus, string> = {
   active: 'Active',
@@ -23,3 +28,9 @@ export const TENANT_STATUS_OPTIONS: { label: string; value: TenantStatusFilter }
   { label: TENANT_STATUS_LABELS.deprovisioning, value: 'deprovisioning' },
   { label: TENANT_STATUS_LABELS.deprovisioned, value: 'deprovisioned' },
 ];
+
+export const TENANT_ACTION_RESULT_COPY: Record<TenantLifecycleAction, string> = {
+  suspend: 'suspended',
+  reactivate: 'reactivated',
+  deprovision: 'deprovisioned',
+};

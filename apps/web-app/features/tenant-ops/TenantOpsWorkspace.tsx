@@ -6,16 +6,10 @@ import { Button } from '@/components/ui/button';
 import { GlassPanel, InlineTag, SectionHeader } from '@/components/ui/foundation';
 import { EmptyState, ErrorState, SkeletonPanel } from '@/components/ui/states';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
-import { useToast } from '@/components/ui/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
-  useCreatePlatformTenantMutation,
-  useDeprovisionPlatformTenantMutation,
   usePlatformTenantQuery,
   usePlatformTenantsQuery,
-  useReactivatePlatformTenantMutation,
-  useSuspendPlatformTenantMutation,
-  useUpdatePlatformTenantMutation,
 } from '@/lib/queries/platformTenants';
 import type {
   TenantAccountCreateInput,
@@ -23,7 +17,7 @@ import type {
   TenantAccountUpdateInput,
 } from '@/types/tenantAccount';
 
-import { TENANT_STATUS_OPTIONS, type TenantStatusFilter } from './constants';
+import { TENANT_PAGE_LIMIT } from './constants';
 import {
   TenantCreateDialog,
   TenantEditDialog,
@@ -32,109 +26,93 @@ import {
   TenantOpsFiltersPanel,
   TenantOpsTable,
 } from './components';
+import {
+  getTenantPaginationMeta,
+  useTenantOpsFilters,
+  useTenantOpsMutations,
+  useTenantOpsPagination,
+  useTenantOpsSelection,
+} from './hooks';
 import type { TenantLifecycleAction, TenantLifecycleIntent } from './types';
 
-const DEFAULT_LIMIT = 25;
-
-function resolveStatusFilter(status: TenantStatusFilter) {
-  return status === 'all' ? undefined : status;
-}
-
-const ACTION_RESULT_COPY: Record<TenantLifecycleAction, string> = {
-  suspend: 'suspended',
-  reactivate: 'reactivated',
-  deprovision: 'deprovisioned',
-};
-
 export function TenantOpsWorkspace() {
-  const toast = useToast();
   const isMobile = useIsMobile();
-  const [statusFilter, setStatusFilter] = useState<TenantStatusFilter>('active');
-  const [query, setQuery] = useState('');
-  const [appliedStatus, setAppliedStatus] = useState<TenantStatusFilter>('active');
-  const [appliedQuery, setAppliedQuery] = useState('');
-  const [offset, setOffset] = useState(0);
   const [dialogIntent, setDialogIntent] = useState<TenantLifecycleIntent | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
+
+  const {
+    statusFilter,
+    query,
+    appliedQuery,
+    appliedStatusLabel,
+    appliedFilters,
+    setStatusFilter,
+    setQuery,
+    applyFilters,
+    resetFilters,
+  } = useTenantOpsFilters();
+
+  const pagination = useTenantOpsPagination(TENANT_PAGE_LIMIT);
 
   const filters = useMemo(
     () => ({
-      status: resolveStatusFilter(appliedStatus),
-      q: appliedQuery || undefined,
-      limit: DEFAULT_LIMIT,
-      offset,
+      ...appliedFilters,
+      limit: pagination.limit,
+      offset: pagination.offset,
     }),
-    [appliedStatus, appliedQuery, offset],
+    [appliedFilters, pagination.limit, pagination.offset],
   );
 
-  const { data, isLoading, isError, error, refetch, isFetching } = usePlatformTenantsQuery(filters);
-  const suspendMutation = useSuspendPlatformTenantMutation();
-  const reactivateMutation = useReactivatePlatformTenantMutation();
-  const deprovisionMutation = useDeprovisionPlatformTenantMutation();
-  const createMutation = useCreatePlatformTenantMutation();
-  const updateMutation = useUpdatePlatformTenantMutation();
+  const tenantsQuery = usePlatformTenantsQuery(filters);
+  const tenants = tenantsQuery.data?.accounts ?? [];
+  const total = tenantsQuery.data?.total ?? 0;
+  const paginationMeta = getTenantPaginationMeta(total, pagination.offset, pagination.limit);
 
-  const total = data?.total ?? 0;
-  const tenants = useMemo(() => data?.accounts ?? [], [data?.accounts]);
-  const canPrev = offset > 0;
-  const canNext = offset + DEFAULT_LIMIT < total;
-  const pageCount = Math.max(1, Math.ceil(total / DEFAULT_LIMIT));
-  const page = Math.floor(offset / DEFAULT_LIMIT) + 1;
+  const selection = useTenantOpsSelection({ tenants, isMobile });
 
-  const resolvedTenantId = useMemo(
-    () => selectedTenantId ?? tenants[0]?.id ?? null,
-    [selectedTenantId, tenants],
-  );
-
-  const selectedTenantQuery = usePlatformTenantQuery(resolvedTenantId, {
-    enabled: Boolean(resolvedTenantId),
+  const selectedTenantQuery = usePlatformTenantQuery(selection.resolvedTenantId, {
+    enabled: Boolean(selection.resolvedTenantId),
   });
 
-  const selectedTenantSummary = useMemo(
-    () => tenants.find((tenant) => tenant.id === resolvedTenantId) ?? null,
-    [tenants, resolvedTenantId],
-  );
-  const selectedTenant = selectedTenantQuery.data ?? selectedTenantSummary;
+  const selectedTenant = selectedTenantQuery.data ?? selection.selectedTenantSummary;
 
-  const activeAction = dialogIntent?.action ?? null;
-  const activeTenant = dialogIntent?.tenant ?? null;
+  const {
+    submitLifecycle,
+    createTenant,
+    updateTenant,
+    isSubmittingLifecycle,
+    isSubmitting,
+    isCreating,
+    isUpdating,
+  } = useTenantOpsMutations();
 
-  const isSubmittingLifecycle =
-    suspendMutation.isPending || reactivateMutation.isPending || deprovisionMutation.isPending;
-  const isSubmitting = isSubmittingLifecycle || createMutation.isPending || updateMutation.isPending;
-  const sheetOpen = isMobile && detailOpen;
+  const sheetOpen = isMobile && selection.detailOpen;
 
   const handleApply = () => {
-    setAppliedStatus(statusFilter);
-    setAppliedQuery(query.trim());
-    setOffset(0);
-    setSelectedTenantId(null);
+    applyFilters();
+    pagination.resetPage();
+    selection.resetSelection();
   };
 
   const handleReset = () => {
-    setStatusFilter('active');
-    setQuery('');
-    setAppliedStatus('active');
-    setAppliedQuery('');
-    setOffset(0);
-    setSelectedTenantId(null);
+    resetFilters();
+    pagination.resetPage();
+    selection.resetSelection();
   };
 
   const handlePrevPage = () => {
-    setOffset((current) => Math.max(0, current - DEFAULT_LIMIT));
-    setSelectedTenantId(null);
+    pagination.prevPage();
+    selection.resetSelection();
   };
 
   const handleNextPage = () => {
-    setOffset((current) => current + DEFAULT_LIMIT);
-    setSelectedTenantId(null);
+    pagination.nextPage();
+    selection.resetSelection();
   };
 
   const handleAction = (action: TenantLifecycleAction, tenant: TenantAccountOperatorSummary) => {
-    setSelectedTenantId(tenant.id);
+    selection.selectTenant(tenant.id);
     setDialogIntent({ action, tenant });
   };
 
@@ -144,74 +122,36 @@ export function TenantOpsWorkspace() {
   };
 
   const handleSubmit = async ({ reason }: { reason: string }) => {
-    if (!activeAction || !activeTenant) return;
-    try {
-      if (activeAction === 'suspend') {
-        await suspendMutation.mutateAsync({ tenantId: activeTenant.id, payload: { reason } });
-      } else if (activeAction === 'reactivate') {
-        await reactivateMutation.mutateAsync({ tenantId: activeTenant.id, payload: { reason } });
-      } else {
-        await deprovisionMutation.mutateAsync({ tenantId: activeTenant.id, payload: { reason } });
-      }
-      toast.success({
-        title: 'Tenant updated',
-        description: `${activeTenant.name} is now ${ACTION_RESULT_COPY[activeAction]}.`,
-      });
+    if (!dialogIntent) return;
+    const didSubmit = await submitLifecycle({
+      action: dialogIntent.action,
+      tenant: dialogIntent.tenant,
+      reason,
+    });
+    if (didSubmit) {
       setDialogIntent(null);
-    } catch (err) {
-      toast.error({
-        title: 'Unable to update tenant',
-        description: err instanceof Error ? err.message : 'Try again shortly.',
-      });
     }
   };
 
   const handleCreate = async (payload: TenantAccountCreateInput) => {
-    try {
-      const created = await createMutation.mutateAsync({
-        name: payload.name,
-        slug: payload.slug ?? undefined,
-      });
-      toast.success({
-        title: 'Tenant created',
-        description: `${created.name} is ready for provisioning.`,
-      });
-      setCreateOpen(false);
-      setSelectedTenantId(created.id);
-      setDetailOpen(isMobile);
-    } catch (err) {
-      toast.error({
-        title: 'Unable to create tenant',
-        description: err instanceof Error ? err.message : 'Try again shortly.',
-      });
+    const created = await createTenant(payload);
+    if (!created) return;
+    setCreateOpen(false);
+    selection.selectTenant(created.id);
+    if (isMobile) {
+      selection.setDetailOpen(true);
     }
   };
 
   const handleUpdate = async (payload: TenantAccountUpdateInput) => {
     if (!selectedTenant) return;
-    try {
-      const updated = await updateMutation.mutateAsync({
-        tenantId: selectedTenant.id,
-        payload,
-      });
-      toast.success({
-        title: 'Tenant updated',
-        description: `${updated.name} details were saved.`,
-      });
-      setEditOpen(false);
-    } catch (err) {
-      toast.error({
-        title: 'Unable to update tenant',
-        description: err instanceof Error ? err.message : 'Try again shortly.',
-      });
-    }
+    const updated = await updateTenant(selectedTenant.id, payload);
+    if (!updated) return;
+    setEditOpen(false);
   };
 
   const handleViewDetails = (tenantId: string) => {
-    setSelectedTenantId(tenantId);
-    if (isMobile) {
-      setDetailOpen(true);
-    }
+    selection.openDetails(tenantId);
   };
 
   return (
@@ -231,25 +171,25 @@ export function TenantOpsWorkspace() {
         <TenantOpsFiltersPanel
           status={statusFilter}
           query={query}
-          isLoading={isFetching}
+          isLoading={tenantsQuery.isFetching}
           onStatusChange={setStatusFilter}
           onQueryChange={setQuery}
           onApply={handleApply}
           onReset={handleReset}
         />
         <p className="text-xs text-foreground/60">
-          Filters: {TENANT_STATUS_OPTIONS.find((option) => option.value === appliedStatus)?.label ?? 'Active'}{' '}
-          {appliedQuery ? `· “${appliedQuery}”` : ''}
+          Filters: {appliedStatusLabel}
+          {appliedQuery ? ` · “${appliedQuery}”` : ''}
         </p>
       </GlassPanel>
 
-      {isLoading ? (
+      {tenantsQuery.isLoading ? (
         <SkeletonPanel lines={8} />
-      ) : isError ? (
+      ) : tenantsQuery.isError ? (
         <ErrorState
           title="Unable to load tenants"
-          message={error instanceof Error ? error.message : 'Try again shortly.'}
-          onRetry={() => refetch()}
+          message={tenantsQuery.error instanceof Error ? tenantsQuery.error.message : 'Try again shortly.'}
+          onRetry={() => tenantsQuery.refetch()}
         />
       ) : total === 0 ? (
         <EmptyState
@@ -267,7 +207,7 @@ export function TenantOpsWorkspace() {
             <Button variant="outline" onClick={handleReset}>
               Reset filters
             </Button>
-            <Button onClick={handlePrevPage} disabled={!canPrev}>
+            <Button onClick={handlePrevPage} disabled={!paginationMeta.canPrev}>
               Previous page
             </Button>
           </div>
@@ -277,8 +217,8 @@ export function TenantOpsWorkspace() {
           <div className="space-y-4">
             <TenantOpsTable
               tenants={tenants}
-              selectedTenantId={resolvedTenantId}
-              onSelect={setSelectedTenantId}
+              selectedTenantId={selection.resolvedTenantId}
+              onSelect={selection.selectTenant}
               onViewDetails={handleViewDetails}
               onAction={handleAction}
               isBusy={isSubmittingLifecycle}
@@ -286,17 +226,17 @@ export function TenantOpsWorkspace() {
 
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm text-foreground/60">
-                Page {page} of {pageCount}
+                Page {paginationMeta.page} of {paginationMeta.pageCount}
               </p>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
                   onClick={handlePrevPage}
-                  disabled={!canPrev}
+                  disabled={!paginationMeta.canPrev}
                 >
                   Previous
                 </Button>
-                <Button onClick={handleNextPage} disabled={!canNext}>
+                <Button onClick={handleNextPage} disabled={!paginationMeta.canNext}>
                   Next
                 </Button>
               </div>
@@ -318,7 +258,7 @@ export function TenantOpsWorkspace() {
         </div>
       )}
 
-      <Sheet open={sheetOpen} onOpenChange={setDetailOpen}>
+      <Sheet open={sheetOpen} onOpenChange={selection.setDetailOpen}>
         <SheetContent className="w-full space-y-6 sm:max-w-lg">
           <TenantOpsDetailPanel
             variant="plain"
@@ -339,8 +279,8 @@ export function TenantOpsWorkspace() {
         onOpenChange={(open) => {
           if (!open) setDialogIntent(null);
         }}
-        tenant={activeTenant}
-        action={activeAction}
+        tenant={dialogIntent?.tenant ?? null}
+        action={dialogIntent?.action ?? null}
         isSubmitting={isSubmitting}
         onSubmit={handleSubmit}
       />
@@ -349,7 +289,7 @@ export function TenantOpsWorkspace() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         onSubmit={handleCreate}
-        isSubmitting={createMutation.isPending}
+        isSubmitting={isCreating}
       />
 
       <TenantEditDialog
@@ -357,7 +297,7 @@ export function TenantOpsWorkspace() {
         onOpenChange={setEditOpen}
         tenant={selectedTenant}
         onSubmit={handleUpdate}
-        isSubmitting={updateMutation.isPending}
+        isSubmitting={isUpdating}
       />
     </section>
   );
