@@ -78,6 +78,40 @@ def render_password_reset_email(
     return EmailTemplateContent(subject=subject, html=html, text=text, action_url=reset_url)
 
 
+def render_team_invite_email(
+    settings: Settings,
+    *,
+    token: str,
+    tenant_name: str,
+    role: str,
+    expires_at: datetime | None,
+) -> EmailTemplateContent:
+    base_url = _normalized_base_url(settings)
+    accept_url = f"{base_url}/accept-invite?{urlencode({'token': token})}"
+    subject = f"You're invited to join {tenant_name}"
+    role_label = role.replace("_", " ").title()
+    expires_str = _format_timestamp(expires_at) if expires_at else "This invite does not expire."
+    html = _wrap_html(
+        heading=f"Join {tenant_name}",
+        body=(
+            f"You've been invited to join <strong>{tenant_name}</strong> as a "
+            f"<strong>{role_label}</strong>. Click the button below to accept your invite."
+        ),
+        cta_label="Accept invite",
+        cta_url=accept_url,
+        footer=expires_str,
+        code=token,
+    )
+    text = _plain_text_message(
+        intro=f"You've been invited to join {tenant_name} as a {role_label}.",
+        instructions="Use the link or code below to accept your invite.",
+        action_url=accept_url,
+        code=token,
+        expires=expires_str,
+    )
+    return EmailTemplateContent(subject=subject, html=html, text=text, action_url=accept_url)
+
+
 def _normalized_base_url(settings: Settings) -> str:
     raw = (settings.app_public_url or "http://localhost:3000").strip()
     if not raw:
@@ -167,5 +201,6 @@ def _plain_text_message(
 __all__ = [
     "EmailTemplateContent",
     "render_password_reset_email",
+    "render_team_invite_email",
     "render_verification_email",
 ]

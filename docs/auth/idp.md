@@ -19,8 +19,9 @@
 | `disabled` | Admin-suspended user; credentials retained for audit but login blocked. | None except audit & reinstatement by privileged admin. | Manual enable, automated re-enable SOP (optional, logged). |
 | `locked` | Temporary lock due to rate-limit breach or security trigger. | No login; refresh tokens invalidated; unlock after TTL or admin override. | TTL expiry, unlock workflow, SOC escalation. |
 
-Tenant relationships:
-- A user may belong to multiple tenants; each membership carries role grants (e.g., `admin`, `member`, `billing-only`).
+Tenant relationships (canonical definitions in `docs/auth/roles.md`):
+- A user may belong to multiple tenants; each membership carries a single TenantRole (`owner`, `admin`, `member`, `viewer`).
+- Platform-level access is modeled separately via `platform_role` on the user record and is not part of tenant roles.
 - Tokens carry a single `tenant_id` claim; multi-tenant users choose the tenant context during login. Scoped tenant switching endpoints are not exposed in this release.
 - Removing the last tenant membership implicitly disables the account until a new tenant is assigned.
 
@@ -57,7 +58,7 @@ Tenant relationships:
   - `aud`: array including `agent-api` plus optional service audiences (billing, analytics) tied to requested scopes.
   - `sub`: `user:{uuid}` unique per human principal.
   - `tenant_id`: UUID referencing active tenant context.
-  - `roles`: array of role slugs derived from tenant membership (`admin`, `member`, `viewer`, etc.).
+  - `roles`: array of tenant roles for the active tenant; canonical values `owner`, `admin`, `member`, `viewer`.
   - `scopes`: array of granted scopes; subset of global taxonomy.
   - `jti`: UUIDv7 for replay detection; stored in Redis w/ TTL = token lifetime for telemetry only (no revocation required for access tokens).
   - `iat`/`nbf`: issued-at and not-before set to same epoch seconds, derived from signer clock.
@@ -74,7 +75,7 @@ Tenant relationships:
 
 ## 7. External IdP Compatibility
 - **Protocols:** Must support OIDC Authorization Code flow with PKCE and SCIM 2.0 provisioning. Local implementation mirrors these contracts to allow proxying to Auth0/Okta without changing callers.
-- **Attribute Mapping:** Standardize on `email`, `name`, `tenant_roles` claim, `external_id`. Store mapping so `sub` continuity is preserved if/when we swap IdPs.
+- **Attribute Mapping:** Standardize on `email`, `name`, `roles` claim (TenantRole values), `external_id`. Store mapping so `sub` continuity is preserved if/when we swap IdPs.
 - **Just-In-Time Provisioning:** When operating against an external IdP, we can JIT create users on first login if tenant + role info present; otherwise require SCIM sync before login succeeds.
 - **Session Federation:** Access/refresh tokens remain our own; external IdP handles primary auth but exchanges for our tokens via OIDC token endpoint. This doc ensures our token schema remains stable for that flow.
 - **Secrets & Rotation:** External IdP client secrets live alongside current pepper/keys; document rotation procedures in your security runbook and keep the process audited.

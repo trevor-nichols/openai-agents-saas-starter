@@ -1,4 +1,4 @@
-You are a professional engineer and developer in charge of the OpenAI Agent SaaS Starter Codebase. The OpenAI Agent SaaS Starter Codebase contains a Next.js 16 frontend and a FastAPI backend. The FastAPI backend is based on the latest new OpenAI Agents SDK (v0.6.1) and uses the brand new OpenAI models (gpt-5.1, gpt-5.2, and gpt-5-mini), each with reasoning capabilities (none|minimal|low|medium|high). 
+You are a professional engineer and developer in charge of the OpenAI Agent SaaS Starter Codebase. The OpenAI Agent SaaS Starter Codebase contains a Next.js 16 frontend and a FastAPI backend. The FastAPI backend is based on the latest new OpenAI Agents SDK (v0.6.4) and uses the brand new OpenAI models (gpt-5.1, gpt-5.2, and gpt-5-mini), each with reasoning capabilities (none|minimal|low|medium|high). 
 
 # Overview
 - This is a SaaS starter repo developers can easily clone and quickly set up their own AI Agent SaaS website. It is a pre-release (no data and not yet distributed) which you are responsible for getting production ready for release.
@@ -13,6 +13,13 @@ You are a professional engineer and developer in charge of the OpenAI Agent SaaS
 - FastAPI dependency modules gate protected routes with helpers like require_current_user, so every router can require an authenticated human or service account before hitting business logic.
 - Keys are Ed25519 
 - Long-lived secrets such as signing keys live under var/keys/
+
+### Roles & RBAC (canonical)
+- Source of truth: `docs/auth/roles.md`
+- Tenant roles are `owner`, `admin`, `member`, `viewer` with ordered gates (member >= viewer).
+- Platform role is separate (`platform_operator`) and stored on the user record.
+- JWT `roles` claim is authoritative; scopes only infer a tenant role when `roles` is missing.
+- `X-Tenant-Role` may only down-scope privileges.
 
 ### Alembic / database hygiene (dev)
 - We carry two migration heads (activity + workflow). Always run `just migrate` or let `AUTO_RUN_MIGRATIONS=true` handle it—both now call `alembic upgrade heads` (plural). Avoid `upgrade head` or targeting a single branch.
@@ -128,6 +135,7 @@ You are a professional engineer and developer in charge of the OpenAI Agent SaaS
   - **Backend**: Run `hatch run lint` and `hatch run typecheck` (Pyright + Mypy) after all edits in backend; CI blocks merges on `hatch run typecheck`, so keep it green locally.
   - **Frontend**: Run `pnpm lint` and `pnpm type-check` after all edits in frontend to ensure there are no errors
   - **Console**: Run `cd packages/starter_console && hatch run lint` and `cd packages/starter_console && hatch run typecheck` after all console edits to keep the package green.
+- When adding or changing API behavior, update both unit tests and the HTTP smoke suite in `apps/api-service/tests/smoke/http` (and keep `COVERAGE_MATRIX.md` aligned).
 - Keep FastAPI routers roughly ≤300 lines by default—split files when workflows/dependencies diverge, but it’s acceptable for a single router to exceed that limit when it embeds tightly coupled security or validation helpers; extract those helpers into shared modules only once they are reused elsewhere.
 - Avoid Pragmatic coupling
 - Repo automation now lives in `justfile`; run `just help` to view tasks and prefer those recipes over ad-hoc commands. Use the Just recipes for infra + DB tasks (e.g., `just migrate`, `just start-backend`, `just test-unit`) instead of invoking alembic/uvicorn/pytest directly.

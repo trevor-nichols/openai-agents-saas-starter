@@ -72,7 +72,7 @@ help:
     echo "  just cli-lint|typecheck|test        # Delegates to packages/starter_console" && \
     echo "  just contracts-lint|typecheck|test  # Delegates to packages/starter_contracts" && \
     echo "  just providers-lint|typecheck|test  # Delegates to packages/starter_providers" && \
-    echo "  just web-lint|typecheck|dev|test    # Delegates to apps/web-app"
+    echo "  just web-lint|typecheck|build|dev|test # Delegates to apps/web-app"
     @echo "  just dev-install            # Editable installs for CLI + contracts + providers (no PYTHONPATH hacks)"
 
 # -------------------------
@@ -135,6 +135,9 @@ web-lint:
 
 web-typecheck:
     {{web_just}} typecheck
+
+web-build:
+    {{web_just}} build
 
 web-dev:
     {{web_just}} dev

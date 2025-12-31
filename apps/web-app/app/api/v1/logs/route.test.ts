@@ -1,19 +1,28 @@
-import { vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { http, HttpResponse } from 'msw';
 
-import { POST } from './route';
+import { API_BASE_URL } from '@/lib/config';
+import { server } from '@/test-utils/msw/server';
 
-const mockFetch = vi.fn();
-
-vi.stubGlobal('fetch', mockFetch);
+async function loadHandler() {
+  vi.resetModules();
+  return import('./route');
+}
 
 describe('/api/logs proxy route', () => {
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
+  const logEndpoint = `${API_BASE_URL}/api/v1/logs`;
 
   it('forwards payload to backend and returns upstream body/status', async () => {
-    const backendResponse = new Response(JSON.stringify({ accepted: true }), { status: 202 });
-    mockFetch.mockResolvedValueOnce(backendResponse);
+    const { POST } = await loadHandler();
+    let receivedAuth: string | null = null;
+    let receivedBody: unknown = null;
+    server.use(
+      http.post(logEndpoint, async ({ request }) => {
+        receivedAuth = request.headers.get('authorization');
+        receivedBody = await request.json();
+        return HttpResponse.json({ accepted: true }, { status: 202 });
+      }),
+    );
 
     const request = {
       json: vi.fn().mockResolvedValue({ event: 'ui.click' }),
@@ -24,26 +33,25 @@ describe('/api/logs proxy route', () => {
 
     const response = await POST(request);
 
-    expect(mockFetch).toHaveBeenCalledTimes(1);
-    const call = mockFetch.mock.calls[0];
-    expect(call).toBeDefined();
-    const [url, options] = call as [string, RequestInit];
-    expect(url).toContain('/api/v1/logs');
-    expect((options as RequestInit).method).toBe('POST');
-    expect((options as RequestInit).headers).toMatchObject({
-      Authorization: 'Bearer abc',
-    });
+    expect(receivedAuth).toBe('Bearer abc');
+    expect(receivedBody).toEqual({ event: 'ui.click' });
 
     expect(response.status).toBe(202);
     await expect(response.json()).resolves.toEqual({ accepted: true });
   });
 
   it('forwards retry-after header from upstream', async () => {
-    const backendResponse = new Response(JSON.stringify({ detail: 'Rate limited' }), {
-      status: 429,
-      headers: { 'Retry-After': '7' },
-    });
-    mockFetch.mockResolvedValueOnce(backendResponse);
+    const { POST } = await loadHandler();
+    server.use(
+      http.post(
+        logEndpoint,
+        () =>
+          new HttpResponse(JSON.stringify({ detail: 'Rate limited' }), {
+            status: 429,
+            headers: { 'Retry-After': '7' },
+          }),
+      ),
+    );
 
     const request = {
       json: vi.fn().mockResolvedValue({ event: 'ui.click' }),
@@ -57,7 +65,8 @@ describe('/api/logs proxy route', () => {
   });
 
   it('returns 502 on upstream failure', async () => {
-    mockFetch.mockRejectedValueOnce(new Error('boom'));
+    const { POST } = await loadHandler();
+    server.use(http.post(logEndpoint, () => HttpResponse.error()));
     const request = {
       json: vi.fn().mockResolvedValue({ event: 'ui.click' }),
       headers: new Headers(),
@@ -66,9 +75,11 @@ describe('/api/logs proxy route', () => {
     const response = await POST(request);
 
     expect(response.status).toBe(502);
-    await expect(response.json()).resolves.toEqual({
-      success: false,
-      error: 'boom',
-    });
+    await expect(response.json()).resolves.toEqual(
+      expect.objectContaining({
+        success: false,
+        error: expect.stringContaining('Failed to fetch'),
+      }),
+    );
   });
 });

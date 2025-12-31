@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/form';
 import { GlassPanel, PasswordPolicyList, SectionHeader } from '@/components/ui/foundation';
 import { PasswordInput } from '@/components/ui/password-input';
-import { PASSWORD_POLICY_RULES } from '../../constants';
+import { PASSWORD_POLICY_RULES } from '@/lib/auth/passwordPolicy';
 import type { PasswordFormValues } from '../hooks/usePasswordChangeForm';
 
 interface PasswordChangeCardProps {

@@ -61,6 +61,8 @@ if TYPE_CHECKING:  # pragma: no cover - type hints only
     from app.services.signup.invite_service import InviteService
     from app.services.signup.signup_request_service import SignupRequestService
     from app.services.signup.signup_service import SignupService
+    from app.services.team.invite_service import TeamInviteService
+    from app.services.team.membership_service import TenantMembershipService
 
 
 @dataclass(slots=True)
@@ -100,6 +102,8 @@ class ApplicationContainer:
     tenant_settings_service: TenantSettingsService = field(
         default_factory=TenantSettingsService
     )
+    team_membership_service: TenantMembershipService | None = None
+    team_invite_service: TeamInviteService | None = None
     conversation_query_service: ConversationQueryService | None = None
     conversation_ledger_recorder: ConversationLedgerRecorder | None = None
     conversation_ledger_reader: ConversationLedgerReader | None = None
@@ -156,6 +160,8 @@ class ApplicationContainer:
         self.notification_preference_service = None
         self.usage_counter_service = None
         self.asset_service = None
+        self.team_membership_service = None
+        self.team_invite_service = None
         self.signup_service = None
         self.invite_service = None
         self.signup_request_service = None

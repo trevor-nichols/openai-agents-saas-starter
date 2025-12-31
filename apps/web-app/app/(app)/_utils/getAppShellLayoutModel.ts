@@ -7,6 +7,7 @@ import { buildNavItems } from '../nav';
 
 export const ACCOUNT_NAV: AppNavItem[] = [
   { href: '/account', label: 'Account' },
+  { href: '/settings/team', label: 'Team' },
   { href: '/settings/access', label: 'Signup guardrails' },
   { href: '/settings/tenant', label: 'Tenant settings' },
 ];

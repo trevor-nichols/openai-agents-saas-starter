@@ -47,11 +47,15 @@ export function WebhookSettingsCard({ webhookUrl, isSaving, onSubmit }: WebhookS
   }, [form, webhookUrl]);
 
   const handleSubmit = form.handleSubmit(async (values) => {
+    const sanitizedUrl = values.webhookUrl.trim();
+    const resolvedUrl = sanitizedUrl ? sanitizedUrl : null;
     try {
-      await onSubmit(values.webhookUrl.trim() ? values.webhookUrl.trim() : null);
+      await onSubmit(resolvedUrl);
       toast.success({
         title: 'Webhook updated',
-        description: values.webhookUrl ? 'We will start delivering billing events to this URL.' : 'Billing webhooks disabled.',
+        description: resolvedUrl
+          ? 'We will start delivering billing events to this URL.'
+          : 'Billing webhooks disabled.',
       });
     } catch (error) {
       toast.error({
@@ -87,7 +91,7 @@ export function WebhookSettingsCard({ webhookUrl, isSaving, onSubmit }: WebhookS
             <Button
               type="button"
               variant="ghost"
-              onClick={() => form.reset({ webhookUrl: '' })}
+              onClick={() => form.setValue('webhookUrl', '', { shouldDirty: true })}
               disabled={isSaving}
             >
               Clear

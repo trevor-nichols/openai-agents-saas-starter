@@ -56,24 +56,24 @@ export function useBillingOverviewData(): BillingOverviewData {
   });
 
   const planSnapshot = useMemo<PlanSnapshot>(() => {
-    const subscription = subscriptionEvent?.subscription;
-    const planCode = subscription?.plan_code ?? 'Plan pending';
-    const planStatus = formatStatusLabel(subscription?.status);
+    const effectiveSubscription = subscriptionEvent?.subscription ?? subscription ?? null;
+    const planCode = effectiveSubscription?.plan_code ?? 'Plan pending';
+    const planStatus = formatStatusLabel(effectiveSubscription?.status);
 
     return {
       planCode,
       planStatus,
-      seatCount: subscription?.seat_count ?? '—',
-      autoRenewLabel: subscription?.auto_renew ? 'Enabled' : 'Disabled',
+      seatCount: effectiveSubscription?.seat_count ?? '—',
+      autoRenewLabel: effectiveSubscription?.auto_renew ? 'Enabled' : 'Disabled',
       currentPeriodLabel: formatPeriod(
-        subscription?.current_period_start,
-        subscription?.current_period_end,
+        effectiveSubscription?.current_period_start,
+        effectiveSubscription?.current_period_end,
       ),
-      trialEndsLabel: formatDate(subscription?.trial_ends_at),
-      statusTone: resolveStatusTone(subscription?.status),
+      trialEndsLabel: formatDate(effectiveSubscription?.trial_ends_at),
+      statusTone: resolveStatusTone(effectiveSubscription?.status),
       statusLabel: planStatus,
     };
-  }, [subscriptionEvent]);
+  }, [subscription, subscriptionEvent]);
 
   const usageRows = useMemo(() => {
     return totals

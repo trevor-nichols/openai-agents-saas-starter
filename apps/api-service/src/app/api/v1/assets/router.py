@@ -87,7 +87,12 @@ async def list_assets(
     created_before: datetime | None = Query(default=None),
     _: CurrentUser = Depends(require_verified_user()),
     tenant_context: TenantContext = Depends(
-        require_tenant_role(TenantRole.VIEWER, TenantRole.ADMIN, TenantRole.OWNER)
+        require_tenant_role(
+            TenantRole.VIEWER,
+            TenantRole.MEMBER,
+            TenantRole.ADMIN,
+            TenantRole.OWNER,
+        )
     ),
     service: AssetService = Depends(_svc),
 ) -> AssetListResponse:
@@ -121,7 +126,12 @@ async def get_asset(
     asset_id: uuid.UUID,
     _: CurrentUser = Depends(require_verified_user()),
     tenant_context: TenantContext = Depends(
-        require_tenant_role(TenantRole.VIEWER, TenantRole.ADMIN, TenantRole.OWNER)
+        require_tenant_role(
+            TenantRole.VIEWER,
+            TenantRole.MEMBER,
+            TenantRole.ADMIN,
+            TenantRole.OWNER,
+        )
     ),
     service: AssetService = Depends(_svc),
 ) -> AssetResponse:
@@ -140,7 +150,12 @@ async def get_asset_download_url(
     asset_id: uuid.UUID,
     _: CurrentUser = Depends(require_verified_user()),
     tenant_context: TenantContext = Depends(
-        require_tenant_role(TenantRole.VIEWER, TenantRole.ADMIN, TenantRole.OWNER)
+        require_tenant_role(
+            TenantRole.VIEWER,
+            TenantRole.MEMBER,
+            TenantRole.ADMIN,
+            TenantRole.OWNER,
+        )
     ),
     service: AssetService = Depends(_svc),
 ) -> AssetDownloadResponse:
@@ -173,7 +188,12 @@ async def get_asset_thumbnail_urls(
     payload: AssetThumbnailUrlsRequest,
     _: CurrentUser = Depends(require_verified_user()),
     tenant_context: TenantContext = Depends(
-        require_tenant_role(TenantRole.VIEWER, TenantRole.ADMIN, TenantRole.OWNER)
+        require_tenant_role(
+            TenantRole.VIEWER,
+            TenantRole.MEMBER,
+            TenantRole.ADMIN,
+            TenantRole.OWNER,
+        )
     ),
     service: AssetService = Depends(_svc),
 ) -> AssetThumbnailUrlsResponse:

@@ -12,6 +12,7 @@ from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.domain.platform_roles import PlatformRole
 from app.infrastructure.persistence.models.base import UTC_NOW, Base, uuid_pk
 from app.infrastructure.persistence.types import CITEXTCompat, JSONBCompat
 
@@ -58,6 +59,14 @@ class UserAccount(Base):
         default=UserStatus.PENDING,
     )
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    platform_role: Mapped[PlatformRole | None] = mapped_column(
+        SAEnum(
+            PlatformRole,
+            name="platform_role",
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+        ),
+        nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=UTC_NOW
     )

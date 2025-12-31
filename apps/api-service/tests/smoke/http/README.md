@@ -13,7 +13,7 @@ Fast, deterministic checks that hit a running api-service over HTTP. Designed fo
 - Conversations list/detail/search/events + delete
 - Usage counters
 - User profile, consents, and notification preferences
-- Tenant settings (get + update)
+- Tenant settings (get + update) + tenant members/invites (list/issue/revoke)
 - Workflows list/runs + descriptors
 - Storage presign + list + download/delete
 - Uploads agent-input presign

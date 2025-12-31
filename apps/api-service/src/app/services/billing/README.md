@@ -12,6 +12,7 @@ Tenant subscription orchestration, usage metering, Stripe connectivity, and the 
 - `context.py` / `errors.py` / `models.py` / `policies.py` / `queries.py` / `utils.py` — shared dependency wiring, domain errors, DTOs, policy helpers, repository guards, and time helpers.
 - `payment_gateway/` — gateway protocol + shared DTOs.
 - `stripe/gateway.py` — Stripe implementation (customer/subscription provisioning, usage recording, error mapping + metrics).
+- `payment_gateway/fixture_gateway.py` — no-op gateway used when `USE_TEST_FIXTURES=true` to keep Playwright + local tests deterministic without Stripe calls.
 - `billing_events/` — normalizes processed Stripe events and broadcasts them per-tenant:
   - `normalizer.py` → converts raw Stripe payloads into concise `BillingEventPayload`s.
   - `publisher.py` → emits events to a `BillingEventBackend` (Redis streams) and logs activity.

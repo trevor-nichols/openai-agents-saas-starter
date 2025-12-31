@@ -24,7 +24,7 @@ def _create_app() -> FastAPI:
 
 @pytest.fixture
 def app(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
-    monkeypatch.delenv("USE_TEST_FIXTURES", raising=False)
+    monkeypatch.setenv("USE_TEST_FIXTURES", "false")
     get_settings.cache_clear()
     application = _create_app()
     with TestClient(application) as client:

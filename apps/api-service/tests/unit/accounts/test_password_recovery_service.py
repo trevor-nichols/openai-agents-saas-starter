@@ -11,6 +11,7 @@ import pytest
 
 from app.bootstrap import get_container
 from app.domain.password_reset import PasswordResetTokenRecord
+from app.domain.tenant_roles import TenantRole
 from app.domain.users import TenantMembershipDTO, UserRecord, UserRepository, UserStatus
 from app.services.signup.password_recovery_service import (
     InvalidPasswordResetTokenError,
@@ -103,9 +104,12 @@ def sample_user() -> UserRecord:
         timezone=None,
         locale=None,
         memberships=[
-            TenantMembershipDTO(tenant_id=uuid4(), role="admin", created_at=datetime.now(UTC))
+            TenantMembershipDTO(
+                tenant_id=uuid4(), role=TenantRole.ADMIN, created_at=datetime.now(UTC)
+            )
         ],
         email_verified_at=datetime.now(UTC),
+        platform_role=None,
     )
 
 

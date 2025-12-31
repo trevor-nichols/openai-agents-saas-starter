@@ -108,7 +108,7 @@ export function SidebarUserMenu({ userName, userEmail, tenantId, avatarUrl }: Si
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/settings/access">
+                <Link href="/settings/team">
                   <Settings className="mr-2 h-4 w-4" />
                   Settings
                 </Link>

@@ -28,6 +28,7 @@ from app.services.shared.rate_limit_service import (
 router = APIRouter(prefix="/chat", tags=["chat"])
 _ALLOWED_VIEWER_ROLES: tuple[TenantRole, ...] = (
     TenantRole.VIEWER,
+    TenantRole.MEMBER,
     TenantRole.ADMIN,
     TenantRole.OWNER,
 )

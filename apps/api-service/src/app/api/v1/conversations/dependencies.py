@@ -9,7 +9,7 @@ from app.services.agents.context import ConversationActorContext
 
 def allowed_roles(min_role: TenantRole) -> tuple[TenantRole, ...]:
     if min_role is TenantRole.VIEWER:
-        return (TenantRole.VIEWER, TenantRole.ADMIN, TenantRole.OWNER)
+        return (TenantRole.VIEWER, TenantRole.MEMBER, TenantRole.ADMIN, TenantRole.OWNER)
     if min_role is TenantRole.ADMIN:
         return (TenantRole.ADMIN, TenantRole.OWNER)
     return (TenantRole.OWNER,)

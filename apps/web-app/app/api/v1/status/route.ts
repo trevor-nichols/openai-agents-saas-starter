@@ -1,8 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, connection } from 'next/server';
 
 import { fetchPlatformStatusSnapshot } from '@/lib/server/services/status';
 
 export async function GET() {
+  await connection();
   try {
     const statusSnapshot = await fetchPlatformStatusSnapshot();
     return NextResponse.json({ success: true, status: statusSnapshot }, { status: 200 });

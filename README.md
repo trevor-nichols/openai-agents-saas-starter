@@ -48,7 +48,7 @@ If you only want to read the code/docs, clone and explore:
 - **Starter Console** (`packages/starter_console/`): Operator workflows (setup wizard, secrets onboarding, Stripe provisioning, auth tooling, infra helpers) with side-effect-free imports so CI/CD can run `starter-console`.
 - **Shared Contracts** (`packages/starter_contracts/`): Import-safe contracts for settings, secrets, storage, key management, provider validation, and structured logging shared by the backend and Starter Console.
 - **Starter Providers** (`packages/starter_providers/`): Concrete SDK clients (AWS Secrets Manager, Azure Key Vault, Infisical) used by backend + console while keeping contracts dependency-light.
-- **Docs & Trackers** (`docs/`): SDK references, frontend UI/data-access guides, console milestones, and project trackers.
+- **Docs & Trackers** (`docs/`): SDK references, frontend UI/data-access guides, console milestones, project trackers, and canonical RBAC roles (`docs/auth/roles.md`).
 
 ## API Service Capabilities (FastAPI)
 - **Agent specs (declarative)** — Specs live in `apps/api-service/src/app/agents/<key>/spec.py` with Jinja prompts (`prompt.md.j2`). Each spec defines tools, handoffs, outputs, memory defaults, guardrails, and vector-store bindings. Registries materialize specs into concrete OpenAI Agents at runtime.

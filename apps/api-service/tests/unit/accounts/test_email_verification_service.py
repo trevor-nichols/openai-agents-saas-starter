@@ -14,6 +14,7 @@ from app.domain.email_verification import (
     EmailVerificationTokenRecord,
     EmailVerificationTokenStore,
 )
+from app.domain.tenant_roles import TenantRole
 from app.domain.users import TenantMembershipDTO, UserRecord, UserRepository, UserStatus
 from app.services.signup.email_verification_service import (
     EmailVerificationError,
@@ -87,9 +88,12 @@ def sample_user() -> UserRecord:
         timezone=None,
         locale=None,
         memberships=[
-            TenantMembershipDTO(tenant_id=uuid4(), role="owner", created_at=datetime.now(UTC))
+            TenantMembershipDTO(
+                tenant_id=uuid4(), role=TenantRole.OWNER, created_at=datetime.now(UTC)
+            )
         ],
         email_verified_at=None,
+        platform_role=None,
     )
 
 

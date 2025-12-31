@@ -79,7 +79,7 @@ from app.services.auth.builders import (
     build_session_service,
 )
 from app.services.auth_service import AuthService
-from app.services.billing.stripe.gateway import get_stripe_gateway
+from app.services.billing.payment_gateway import get_payment_gateway
 from app.services.geoip_service import build_geoip_service
 from app.services.integrations.slack_notifier import build_slack_notifier
 from app.services.signup.email_verification_service import build_email_verification_service
@@ -201,7 +201,7 @@ async def lifespan(app: FastAPI):
 
     if settings.enable_billing:
         _ensure_billing_prerequisites(settings)
-        container.billing_service.set_gateway(get_stripe_gateway())
+        container.billing_service.set_gateway(get_payment_gateway(settings))
 
     run_migrations = settings.auto_run_migrations
     database_url = settings.database_url or ""

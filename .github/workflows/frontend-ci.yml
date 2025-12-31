@@ -67,3 +67,6 @@ jobs:
 
       - name: Type check
         run: just web-typecheck
+
+      - name: Build
+        run: just web-build

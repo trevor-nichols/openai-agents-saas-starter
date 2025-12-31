@@ -93,6 +93,19 @@ export const queryKeys = {
     all: ['tenant'] as const,
     settings: () => [...queryKeys.tenant.all, 'settings'] as const,
   },
+  team: {
+    all: ['team'] as const,
+    members: {
+      all: () => [...queryKeys.team.all, 'members'] as const,
+      list: (filters?: Record<string, unknown>) =>
+        [...queryKeys.team.members.all(), filters ?? {}] as const,
+    },
+    invites: {
+      all: () => [...queryKeys.team.all, 'invites'] as const,
+      list: (filters?: Record<string, unknown>) =>
+        [...queryKeys.team.invites.all(), filters ?? {}] as const,
+    },
+  },
   signup: {
     all: ['signup'] as const,
     policy: () => [...queryKeys.signup.all, 'policy'] as const,

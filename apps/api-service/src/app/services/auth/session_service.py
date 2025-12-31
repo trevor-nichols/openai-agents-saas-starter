@@ -358,7 +358,7 @@ class UserSessionService:
         access_payload = {
             "sub": f"user:{auth_user.user_id}",
             "tenant_id": str(auth_user.tenant_id),
-            "roles": [auth_user.role],
+            "roles": [auth_user.role.value],
             "scope": " ".join(auth_user.scopes),
             "token_use": "access",
             "iss": settings.app_name,

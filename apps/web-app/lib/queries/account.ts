@@ -6,6 +6,7 @@ import {
   resendVerificationEmailRequest,
 } from '@/lib/api/account';
 import type { AccountProfileData, AccountSessionResponse } from '@/types/account';
+import { TEAM_ROLE_ORDER, type TeamRole } from '@/types/team';
 import type { TenantSubscription } from '@/lib/types/billing';
 import { queryKeys } from './keys';
 
@@ -20,6 +21,14 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 
 function asString(value: unknown): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+function asTeamRole(value: unknown): TeamRole | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const normalized = value.toLowerCase();
+  return TEAM_ROLE_ORDER.includes(normalized as TeamRole) ? (normalized as TeamRole) : null;
 }
 
 function asBoolean(value: unknown): boolean | null {
@@ -52,7 +61,7 @@ function mapAccountProfile(
   const email = asString(payload?.['email']);
   const displayName = asString(payload?.['name']);
   const avatarUrl = asString(payload?.['avatar_url']);
-  const role = asString(payload?.['tenant_role'] ?? payload?.['role']);
+  const role = asTeamRole(payload?.['tenant_role'] ?? payload?.['role']);
   const emailVerified = asBoolean(payload?.['email_verified']) ?? false;
   const tenantId = resolveTenantId(session, payload);
   const tenantName = asString(payload?.['tenant_name']);

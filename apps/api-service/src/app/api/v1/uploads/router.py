@@ -17,6 +17,7 @@ router = APIRouter(prefix="/uploads", tags=["uploads"])
 
 _ALLOWED_VIEWER_ROLES: tuple[TenantRole, ...] = (
     TenantRole.VIEWER,
+    TenantRole.MEMBER,
     TenantRole.ADMIN,
     TenantRole.OWNER,
 )

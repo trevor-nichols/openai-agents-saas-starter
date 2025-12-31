@@ -1,4 +1,5 @@
 import type { TenantSubscription } from '@/lib/types/billing';
+import type { TeamRole } from '@/types/team';
 import type { SessionResponse } from './session';
 
 export interface AccountProfileTokenPayload {
@@ -9,8 +10,8 @@ export interface AccountProfileTokenPayload {
   tenant_id?: string;
   tenant_name?: string;
   tenant_slug?: string;
-  tenant_role?: string;
-  role?: string;
+  tenant_role?: TeamRole;
+  role?: TeamRole;
   [key: string]: unknown;
 }
 
@@ -28,7 +29,7 @@ export interface AccountUserSummary {
   id: string | null;
   email: string | null;
   displayName: string | null;
-  role: string | null;
+  role: TeamRole | null;
   avatarUrl: string | null;
   emailVerified: boolean;
 }

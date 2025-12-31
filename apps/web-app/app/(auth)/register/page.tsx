@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { connection } from 'next/server';
 
 import { AuthCard } from '@/app/(auth)/_components/AuthCard';
 import { RegisterForm } from '@/components/auth/RegisterForm';
@@ -12,6 +13,7 @@ export const metadata: Metadata = {
 };
 
 export default async function RegisterPage() {
+  await connection();
   let policy: SignupAccessPolicy | null = null;
 
   try {

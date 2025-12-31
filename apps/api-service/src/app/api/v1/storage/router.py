@@ -120,7 +120,12 @@ async def list_objects(
     offset: int = Query(0, ge=0),
     conversation_id: uuid.UUID | None = Query(default=None),
     tenant_context: TenantContext = Depends(
-        require_tenant_role(TenantRole.VIEWER, TenantRole.ADMIN, TenantRole.OWNER)
+        require_tenant_role(
+            TenantRole.VIEWER,
+            TenantRole.MEMBER,
+            TenantRole.ADMIN,
+            TenantRole.OWNER,
+        )
     ),
     service: StorageService = Depends(_svc),
 ):
@@ -144,7 +149,12 @@ async def list_objects(
 async def get_download_url(
     object_id: uuid.UUID,
     tenant_context: TenantContext = Depends(
-        require_tenant_role(TenantRole.VIEWER, TenantRole.ADMIN, TenantRole.OWNER)
+        require_tenant_role(
+            TenantRole.VIEWER,
+            TenantRole.MEMBER,
+            TenantRole.ADMIN,
+            TenantRole.OWNER,
+        )
     ),
     service: StorageService = Depends(_svc),
 ):

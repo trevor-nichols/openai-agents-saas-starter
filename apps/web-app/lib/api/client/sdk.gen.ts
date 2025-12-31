@@ -7,9 +7,21 @@ import type {
   TDataShape,
 } from "./client/index.ts";
 import type {
+  AcceptInviteApiV1TenantsInvitesAcceptPostData,
+  AcceptInviteApiV1TenantsInvitesAcceptPostErrors,
+  AcceptInviteApiV1TenantsInvitesAcceptPostResponses,
+  AcceptInviteExistingUserApiV1TenantsInvitesAcceptCurrentPostData,
+  AcceptInviteExistingUserApiV1TenantsInvitesAcceptCurrentPostErrors,
+  AcceptInviteExistingUserApiV1TenantsInvitesAcceptCurrentPostResponses,
+  AddMemberApiV1TenantsMembersPostData,
+  AddMemberApiV1TenantsMembersPostErrors,
+  AddMemberApiV1TenantsMembersPostResponses,
   AdminResetPasswordApiV1AuthPasswordResetPostData,
   AdminResetPasswordApiV1AuthPasswordResetPostErrors,
   AdminResetPasswordApiV1AuthPasswordResetPostResponses,
+  ApplyTestFixturesApiV1TestFixturesApplyPostData,
+  ApplyTestFixturesApiV1TestFixturesApplyPostErrors,
+  ApplyTestFixturesApiV1TestFixturesApplyPostResponses,
   ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostData,
   ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostErrors,
   ApproveSignupRequestApiV1AuthSignupRequestsRequestIdApprovePostResponses,
@@ -154,6 +166,9 @@ import type {
   GetGuardrailApiV1GuardrailsGuardrailKeyGetData,
   GetGuardrailApiV1GuardrailsGuardrailKeyGetErrors,
   GetGuardrailApiV1GuardrailsGuardrailKeyGetResponses,
+  GetInvitePolicyApiV1TenantsInvitesPolicyGetData,
+  GetInvitePolicyApiV1TenantsInvitesPolicyGetErrors,
+  GetInvitePolicyApiV1TenantsInvitesPolicyGetResponses,
   GetInvoiceApiV1BillingTenantsTenantIdInvoicesInvoiceIdGetData,
   GetInvoiceApiV1BillingTenantsTenantIdInvoicesInvoiceIdGetErrors,
   GetInvoiceApiV1BillingTenantsTenantIdInvoicesInvoiceIdGetResponses,
@@ -193,9 +208,18 @@ import type {
   HealthCheckHealthGetData,
   HealthCheckHealthGetErrors,
   HealthCheckHealthGetResponses,
+  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostData,
+  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors,
+  IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses,
   IssueInviteApiV1AuthInvitesPostData,
   IssueInviteApiV1AuthInvitesPostErrors,
   IssueInviteApiV1AuthInvitesPostResponses,
+  IssueInviteApiV1TenantsInvitesPostData,
+  IssueInviteApiV1TenantsInvitesPostErrors,
+  IssueInviteApiV1TenantsInvitesPostResponses,
+  IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostData,
+  IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostErrors,
+  IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostResponses,
   IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostData,
   IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostErrors,
   IssueServiceAccountTokenApiV1AuthServiceAccountsIssuePostResponses,
@@ -238,9 +262,15 @@ import type {
   ListInvitesApiV1AuthInvitesGetData,
   ListInvitesApiV1AuthInvitesGetErrors,
   ListInvitesApiV1AuthInvitesGetResponses,
+  ListInvitesApiV1TenantsInvitesGetData,
+  ListInvitesApiV1TenantsInvitesGetErrors,
+  ListInvitesApiV1TenantsInvitesGetResponses,
   ListInvoicesApiV1BillingTenantsTenantIdInvoicesGetData,
   ListInvoicesApiV1BillingTenantsTenantIdInvoicesGetErrors,
   ListInvoicesApiV1BillingTenantsTenantIdInvoicesGetResponses,
+  ListMembersApiV1TenantsMembersGetData,
+  ListMembersApiV1TenantsMembersGetErrors,
+  ListMembersApiV1TenantsMembersGetResponses,
   ListMfaMethodsApiV1AuthMfaGetData,
   ListMfaMethodsApiV1AuthMfaGetErrors,
   ListMfaMethodsApiV1AuthMfaGetResponses,
@@ -322,6 +352,9 @@ import type {
   RejectSignupRequestApiV1AuthSignupRequestsRequestIdRejectPostData,
   RejectSignupRequestApiV1AuthSignupRequestsRequestIdRejectPostErrors,
   RejectSignupRequestApiV1AuthSignupRequestsRequestIdRejectPostResponses,
+  RemoveMemberApiV1TenantsMembersUserIdDeleteData,
+  RemoveMemberApiV1TenantsMembersUserIdDeleteErrors,
+  RemoveMemberApiV1TenantsMembersUserIdDeleteResponses,
   RequestPasswordResetApiV1AuthPasswordForgotPostData,
   RequestPasswordResetApiV1AuthPasswordForgotPostErrors,
   RequestPasswordResetApiV1AuthPasswordForgotPostResponses,
@@ -331,6 +364,9 @@ import type {
   RevokeInviteApiV1AuthInvitesInviteIdRevokePostData,
   RevokeInviteApiV1AuthInvitesInviteIdRevokePostErrors,
   RevokeInviteApiV1AuthInvitesInviteIdRevokePostResponses,
+  RevokeInviteApiV1TenantsInvitesInviteIdRevokePostData,
+  RevokeInviteApiV1TenantsInvitesInviteIdRevokePostErrors,
+  RevokeInviteApiV1TenantsInvitesInviteIdRevokePostResponses,
   RevokeMfaMethodApiV1AuthMfaMethodIdDeleteData,
   RevokeMfaMethodApiV1AuthMfaMethodIdDeleteErrors,
   RevokeMfaMethodApiV1AuthMfaMethodIdDeleteResponses,
@@ -406,6 +442,9 @@ import type {
   UpdateCurrentUserProfileApiV1UsersMeProfilePatchData,
   UpdateCurrentUserProfileApiV1UsersMeProfilePatchErrors,
   UpdateCurrentUserProfileApiV1UsersMeProfilePatchResponses,
+  UpdateMemberRoleApiV1TenantsMembersUserIdRolePatchData,
+  UpdateMemberRoleApiV1TenantsMembersUserIdRolePatchErrors,
+  UpdateMemberRoleApiV1TenantsMembersUserIdRolePatchResponses,
   UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchData,
   UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchErrors,
   UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchResponses,
@@ -3415,6 +3454,275 @@ export const resendStatusIncidentApiV1StatusIncidentsIncidentIdResendPost = <
 };
 
 /**
+ * List Members
+ */
+export const listMembersApiV1TenantsMembersGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<ListMembersApiV1TenantsMembersGetData, ThrowOnError>,
+) => {
+  return (options?.client ?? client).get<
+    ListMembersApiV1TenantsMembersGetResponses,
+    ListMembersApiV1TenantsMembersGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/tenants/members",
+    ...options,
+  });
+};
+
+/**
+ * Add Member
+ */
+export const addMemberApiV1TenantsMembersPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<AddMemberApiV1TenantsMembersPostData, ThrowOnError>,
+) => {
+  return (options.client ?? client).post<
+    AddMemberApiV1TenantsMembersPostResponses,
+    AddMemberApiV1TenantsMembersPostErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/tenants/members",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Update Member Role
+ */
+export const updateMemberRoleApiV1TenantsMembersUserIdRolePatch = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    UpdateMemberRoleApiV1TenantsMembersUserIdRolePatchData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).patch<
+    UpdateMemberRoleApiV1TenantsMembersUserIdRolePatchResponses,
+    UpdateMemberRoleApiV1TenantsMembersUserIdRolePatchErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/tenants/members/{user_id}/role",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Remove Member
+ */
+export const removeMemberApiV1TenantsMembersUserIdDelete = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    RemoveMemberApiV1TenantsMembersUserIdDeleteData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).delete<
+    RemoveMemberApiV1TenantsMembersUserIdDeleteResponses,
+    RemoveMemberApiV1TenantsMembersUserIdDeleteErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/tenants/members/{user_id}",
+    ...options,
+  });
+};
+
+/**
+ * Get Invite Policy
+ */
+export const getInvitePolicyApiV1TenantsInvitesPolicyGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<
+    GetInvitePolicyApiV1TenantsInvitesPolicyGetData,
+    ThrowOnError
+  >,
+) => {
+  return (options?.client ?? client).get<
+    GetInvitePolicyApiV1TenantsInvitesPolicyGetResponses,
+    GetInvitePolicyApiV1TenantsInvitesPolicyGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/tenants/invites/policy",
+    ...options,
+  });
+};
+
+/**
+ * List Invites
+ */
+export const listInvitesApiV1TenantsInvitesGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<ListInvitesApiV1TenantsInvitesGetData, ThrowOnError>,
+) => {
+  return (options?.client ?? client).get<
+    ListInvitesApiV1TenantsInvitesGetResponses,
+    ListInvitesApiV1TenantsInvitesGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/tenants/invites",
+    ...options,
+  });
+};
+
+/**
+ * Issue Invite
+ */
+export const issueInviteApiV1TenantsInvitesPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<IssueInviteApiV1TenantsInvitesPostData, ThrowOnError>,
+) => {
+  return (options.client ?? client).post<
+    IssueInviteApiV1TenantsInvitesPostResponses,
+    IssueInviteApiV1TenantsInvitesPostErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/tenants/invites",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Revoke Invite
+ */
+export const revokeInviteApiV1TenantsInvitesInviteIdRevokePost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    RevokeInviteApiV1TenantsInvitesInviteIdRevokePostData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).post<
+    RevokeInviteApiV1TenantsInvitesInviteIdRevokePostResponses,
+    RevokeInviteApiV1TenantsInvitesInviteIdRevokePostErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/tenants/invites/{invite_id}/revoke",
+    ...options,
+  });
+};
+
+/**
+ * Accept Invite
+ */
+export const acceptInviteApiV1TenantsInvitesAcceptPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<AcceptInviteApiV1TenantsInvitesAcceptPostData, ThrowOnError>,
+) => {
+  return (options.client ?? client).post<
+    AcceptInviteApiV1TenantsInvitesAcceptPostResponses,
+    AcceptInviteApiV1TenantsInvitesAcceptPostErrors,
+    ThrowOnError
+  >({
+    url: "/api/v1/tenants/invites/accept",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Accept Invite Existing User
+ */
+export const acceptInviteExistingUserApiV1TenantsInvitesAcceptCurrentPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    AcceptInviteExistingUserApiV1TenantsInvitesAcceptCurrentPostData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).post<
+    AcceptInviteExistingUserApiV1TenantsInvitesAcceptCurrentPostResponses,
+    AcceptInviteExistingUserApiV1TenantsInvitesAcceptCurrentPostErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/tenants/invites/accept/current",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
  * Get Tenant Settings
  */
 export const getTenantSettingsApiV1TenantsSettingsGet = <
@@ -4256,5 +4564,79 @@ export const billingEventStreamApiV1BillingStreamGet = <
     ],
     url: "/api/v1/billing/stream",
     ...options,
+  });
+};
+
+/**
+ * Apply Test Fixtures
+ */
+export const applyTestFixturesApiV1TestFixturesApplyPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    ApplyTestFixturesApiV1TestFixturesApplyPostData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).post<
+    ApplyTestFixturesApiV1TestFixturesApplyPostResponses,
+    ApplyTestFixturesApiV1TestFixturesApplyPostErrors,
+    ThrowOnError
+  >({
+    url: "/api/v1/test-fixtures/apply",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Issue Email Verification Token
+ */
+export const issueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPost =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).post<
+      IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses,
+      IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors,
+      ThrowOnError
+    >({
+      url: "/api/v1/test-fixtures/email-verification-token",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    });
+  };
+
+/**
+ * Issue Password Reset Token
+ */
+export const issuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).post<
+    IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostResponses,
+    IssuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPostErrors,
+    ThrowOnError
+  >({
+    url: "/api/v1/test-fixtures/password-reset-token",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
   });
 };

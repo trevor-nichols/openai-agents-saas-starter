@@ -33,9 +33,12 @@ from .models import (
     UpcomingInvoicePreview,
 )
 from .payment_gateway import (
+    FixtureGateway,
     PaymentGateway,
     PaymentGatewayError,
     SubscriptionProvisionResult,
+    get_fixture_gateway,
+    get_payment_gateway,
 )
 from .stripe.gateway import StripeGateway, get_stripe_gateway
 
@@ -50,6 +53,7 @@ __all__ = [
     "BillingEventsService",
     "BillingError",
     "BillingService",
+    "FixtureGateway",
     "InvalidTenantIdentifierError",
     "PaymentGateway",
     "PaymentGatewayError",
@@ -67,6 +71,8 @@ __all__ = [
     "UpcomingInvoiceLineSnapshot",
     "UpcomingInvoicePreview",
     "billing_events_service",
+    "get_fixture_gateway",
+    "get_payment_gateway",
     "get_billing_events_service",
     "get_stripe_gateway",
 ]

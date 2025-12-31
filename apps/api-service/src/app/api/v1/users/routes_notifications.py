@@ -26,6 +26,7 @@ def _service() -> NotificationPreferenceService:
 
 _ALLOWED_VIEWER_ROLES: tuple[TenantRole, ...] = (
     TenantRole.VIEWER,
+    TenantRole.MEMBER,
     TenantRole.ADMIN,
     TenantRole.OWNER,
 )

@@ -19,8 +19,33 @@ async def test_context_uses_token_claims() -> None:
     }
     context = await get_tenant_context(current_user=user)
     assert context.tenant_id == "tenant-123"
-    # billing:manage escalates to OWNER even if role claim is admin
-    assert context.role == TenantRole.OWNER
+    # billing:manage does not elevate beyond admin for tenant-scoped roles
+    assert context.role == TenantRole.ADMIN
+
+
+@pytest.mark.asyncio
+async def test_roles_claim_preferred_over_scopes() -> None:
+    user: dict[str, object] = {
+        "payload": {
+            "tenant_id": "tenant-123",
+            "roles": ["viewer"],
+            "scope": "billing:manage",
+        }
+    }
+    context = await get_tenant_context(current_user=user)
+    assert context.role == TenantRole.VIEWER
+
+
+@pytest.mark.asyncio
+async def test_billing_read_scope_maps_to_viewer() -> None:
+    user: dict[str, object] = {
+        "payload": {
+            "tenant_id": "tenant-123",
+            "scope": "billing:read",
+        }
+    }
+    context = await get_tenant_context(current_user=user)
+    assert context.role == TenantRole.VIEWER
 
 
 @pytest.mark.asyncio

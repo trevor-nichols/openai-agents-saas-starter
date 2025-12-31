@@ -11,6 +11,8 @@ from uuid import UUID
 from pydantic import BaseModel, EmailStr, Field, ValidationInfo, field_validator
 
 from app.core.password_policy import PasswordPolicyError, validate_password_strength
+from app.domain.platform_roles import PlatformRole
+from app.domain.tenant_roles import TenantRole
 
 
 class UserStatus(str, Enum):
@@ -24,7 +26,7 @@ class UserStatus(str, Enum):
 
 class TenantMembershipDTO(BaseModel):
     tenant_id: UUID
-    role: str = Field(min_length=1, max_length=32)
+    role: TenantRole
     created_at: datetime
 
 
@@ -41,7 +43,7 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str = Field(min_length=14)
     tenant_id: UUID
-    role: str = Field(default="admin", min_length=1, max_length=32)
+    role: TenantRole = Field(default=TenantRole.ADMIN)
     display_name: str | None = Field(default=None, max_length=128)
 
     @field_validator("password")
@@ -91,6 +93,7 @@ class UserRecord:
     locale: str | None
     memberships: list[TenantMembershipDTO]
     email_verified_at: datetime | None
+    platform_role: PlatformRole | None
 
 
 @dataclass(slots=True)
@@ -110,7 +113,7 @@ class UserProfileSummary:
     avatar_url: str | None
     timezone: str | None
     locale: str | None
-    role: str
+    role: TenantRole
     email_verified: bool
 
 
@@ -131,7 +134,8 @@ class UserCreatePayload:
     password_pepper_version: str = "v2"
     status: UserStatus = UserStatus.ACTIVE
     tenant_id: UUID | None = None
-    role: str = "member"
+    role: TenantRole = TenantRole.MEMBER
+    platform_role: PlatformRole | None = None
     display_name: str | None = None
     user_id: UUID | None = None
 
@@ -141,7 +145,7 @@ class AuthenticatedUser:
     user_id: UUID
     tenant_id: UUID
     email: EmailStr
-    role: str
+    role: TenantRole
     scopes: list[str]
     email_verified: bool
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 from pydantic import BaseModel, EmailStr, Field
 
 from app.api.models.common import SuccessResponse
+from app.domain.tenant_roles import TenantRole
 
 
 class CurrentUserProfileResponseData(BaseModel):
@@ -35,7 +36,7 @@ class CurrentUserProfileResponseData(BaseModel):
         default=None,
         description="Optional locale for the user.",
     )
-    role: str = Field(description="Tenant role associated with the session.")
+    role: TenantRole = Field(description="Tenant role associated with the session.")
     email_verified: bool = Field(description="Whether the user's email is verified.")
 
 

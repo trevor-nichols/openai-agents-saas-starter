@@ -127,7 +127,12 @@ async def list_invoices(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     context: TenantContext = Depends(
-        require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.VIEWER)
+        require_tenant_role(
+            TenantRole.OWNER,
+            TenantRole.ADMIN,
+            TenantRole.MEMBER,
+            TenantRole.VIEWER,
+        )
     ),
 ) -> SubscriptionInvoiceListResponse:
     """List persisted invoices for the tenant subscription."""
@@ -158,7 +163,12 @@ async def get_invoice(
     tenant_id: str,
     invoice_id: str,
     context: TenantContext = Depends(
-        require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.VIEWER)
+        require_tenant_role(
+            TenantRole.OWNER,
+            TenantRole.ADMIN,
+            TenantRole.MEMBER,
+            TenantRole.VIEWER,
+        )
     ),
 ) -> SubscriptionInvoiceResponse:
     """Fetch a single invoice by processor invoice identifier."""
@@ -414,7 +424,12 @@ async def preview_upcoming_invoice(
     tenant_id: str,
     payload: UpcomingInvoicePreviewRequest,
     context: TenantContext = Depends(
-        require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.VIEWER)
+        require_tenant_role(
+            TenantRole.OWNER,
+            TenantRole.ADMIN,
+            TenantRole.MEMBER,
+            TenantRole.VIEWER,
+        )
     ),
 ) -> UpcomingInvoicePreviewResponse:
     """Preview the next invoice for a tenant subscription."""
@@ -476,7 +491,12 @@ async def list_usage_totals(
         default=None, description="Filter usage with windows starting before this time (UTC)."
     ),
     context: TenantContext = Depends(
-        require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.VIEWER)
+        require_tenant_role(
+            TenantRole.OWNER,
+            TenantRole.ADMIN,
+            TenantRole.MEMBER,
+            TenantRole.VIEWER,
+        )
     ),
 ) -> list[UsageTotalResponse]:
     """Return usage totals for metered features within an optional period window."""
@@ -511,7 +531,12 @@ async def list_billing_events(
         description="Filter by processing outcome (received/processed/failed).",
     ),
     context: TenantContext = Depends(
-        require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.VIEWER)
+        require_tenant_role(
+            TenantRole.OWNER,
+            TenantRole.ADMIN,
+            TenantRole.MEMBER,
+            TenantRole.VIEWER,
+        )
     ),
 ) -> BillingEventHistoryResponse:
     """Page through the tenant's historical billing events."""
@@ -540,7 +565,12 @@ async def list_billing_events(
 async def billing_event_stream(
     request: Request,
     context: TenantContext = Depends(
-        require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.VIEWER)
+        require_tenant_role(
+            TenantRole.OWNER,
+            TenantRole.ADMIN,
+            TenantRole.MEMBER,
+            TenantRole.VIEWER,
+        )
     ),
 ) -> StreamingResponse:
     settings = get_settings()

@@ -1,6 +1,7 @@
 'use server';
 
 import {
+  issueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePost,
   issueServiceAccountTokenApiV1AuthServiceAccountsIssuePost,
   listServiceAccountTokensApiV1AuthServiceAccountsTokensGet,
   revokeServiceAccountTokenApiV1AuthServiceAccountsTokensJtiRevokePost,
@@ -19,12 +20,20 @@ import type {
   ServiceAccountTokenSummary,
   VaultServiceAccountIssuePayload,
 } from '@/types/serviceAccounts';
-import { API_BASE_URL } from '@/lib/config';
 
 import { getServerApiClient } from '../../apiClient';
+import { getSessionMetaFromCookies } from '@/lib/auth/cookies';
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
+const OPERATOR_SCOPES = new Set(['support:*', 'platform:operator']);
+
+function hasOperatorScope(scopes?: string[] | null): boolean {
+  if (!scopes || scopes.length === 0) {
+    return false;
+  }
+  return scopes.some((scope) => OPERATOR_SCOPES.has(scope));
+}
 
 export async function listServiceAccountTokens(
   params: ServiceAccountTokenQueryParams = {},
@@ -102,17 +111,25 @@ export async function revokeServiceAccountToken(
 export async function issueServiceAccountToken(
   payload: BrowserServiceAccountIssuePayload,
 ): Promise<ServiceAccountIssueResult> {
-  const { auth } = await getServerApiClient();
-  const token = auth();
-  const baseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
+  const { client, auth } = await getServerApiClient();
+  const sessionMeta = await getSessionMetaFromCookies();
+  const operatorOverride = hasOperatorScope(sessionMeta?.scopes);
 
-  const response = await fetch(`${baseUrl}/api/v1/auth/service-accounts/browser-issue`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+  if (operatorOverride && payload.reason) {
+    headers['X-Operator-Override'] = 'true';
+    headers['X-Operator-Reason'] = payload.reason;
+  }
+
+  const response = await issueServiceAccountTokenFromBrowserApiV1AuthServiceAccountsBrowserIssuePost({
+    client,
+    auth,
+    responseStyle: 'fields',
+    throwOnError: true,
+    headers,
+    body: {
       account: payload.account,
       scopes: payload.scopes,
       tenant_id: payload.tenantId ?? undefined,
@@ -120,24 +137,14 @@ export async function issueServiceAccountToken(
       fingerprint: payload.fingerprint,
       force: payload.force ?? false,
       reason: payload.reason,
-    }),
+    },
   });
 
-  const data = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-
-  if (!response.ok || !data) {
-    const message =
-      typeof data?.detail === 'string'
-        ? data.detail
-        : typeof data?.message === 'string'
-          ? data.message
-          : typeof data?.error === 'string'
-            ? data.error
-            : 'Failed to issue service-account token.';
-    throw new Error(message);
+  if (!response.data) {
+    throw new Error('Service-account issue endpoint returned no data.');
   }
 
-  return mapServiceAccountResponse(data, payload);
+  return mapServiceAccountResponse(response.data, payload);
 }
 
 export async function issueVaultServiceAccountToken(

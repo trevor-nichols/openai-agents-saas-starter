@@ -15,6 +15,7 @@ apps/web-app/storybook-static/*
 
 # next.js
 /.next/
+/.next-mock/
 /out/
 
 # production
@@ -30,8 +31,24 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# Environments
+.env
+.env.local
+.env.compose
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.local.playwright
+.env.production
+.env.production.local
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.direnv/
 
 # vercel
 .vercel
@@ -48,3 +65,6 @@ SNAPSHOT.md
 
 # test results
 /test-results
+/tests/.auth/
+/tests/.fixtures.json
+/.playwright-downloads/

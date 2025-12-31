@@ -1,6 +1,9 @@
 import { expect, type Page } from '@playwright/test';
 
-import type { LoginCredentials } from './credentials';
+interface LoginCredentials {
+  email: string;
+  password: string;
+}
 
 export async function login(page: Page, creds: LoginCredentials): Promise<void> {
   await page.goto('/login');
@@ -10,7 +13,7 @@ export async function login(page: Page, creds: LoginCredentials): Promise<void> 
     page.waitForURL(/\/dashboard$/),
     page.getByRole('button', { name: /sign in/i }).click(),
   ]);
-  await expect(page.getByRole('heading', { name: /tenant overview/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /command center/i })).toBeVisible();
 }
 
 export async function logout(page: Page): Promise<void> {

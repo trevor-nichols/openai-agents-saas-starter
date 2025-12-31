@@ -13,6 +13,7 @@ from app.infrastructure.persistence.auth.models.signup import (
     TenantSignupInviteReservation,
     TenantSignupRequest,
 )
+from app.infrastructure.persistence.auth.models.team_invites import TenantMemberInvite
 from app.infrastructure.persistence.auth.models.user import (
     PasswordHistory,
     UserAccount,
@@ -31,6 +32,7 @@ __all__ = [
     "TenantSignupInvite",
     "TenantSignupInviteReservation",
     "TenantSignupRequest",
+    "TenantMemberInvite",
     "TenantUserMembership",
     "UsageCounter",
     "UsageCounterGranularity",

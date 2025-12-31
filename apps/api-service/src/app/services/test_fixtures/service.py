@@ -16,7 +16,9 @@ from app.bootstrap.container import ApplicationContainer, get_container
 from app.core.security import PASSWORD_HASH_VERSION, get_password_hash
 from app.core.settings import get_settings
 from app.domain.assets import AssetSourceTool, AssetType
+from app.domain.platform_roles import PlatformRole
 from app.domain.storage import StorageProviderLiteral
+from app.domain.tenant_roles import TenantRole
 from app.infrastructure.persistence.assets.models import AgentAsset
 from app.infrastructure.persistence.auth.models.membership import TenantUserMembership
 from app.infrastructure.persistence.auth.models.user import (
@@ -30,6 +32,7 @@ from app.infrastructure.persistence.billing.models import (
     SubscriptionUsage,
     TenantSubscription,
 )
+from app.infrastructure.persistence.conversations.ids import coerce_conversation_uuid
 from app.infrastructure.persistence.conversations.ledger_models import ConversationLedgerSegment
 from app.infrastructure.persistence.conversations.models import AgentConversation, AgentMessage
 from app.infrastructure.persistence.storage.models import StorageBucket, StorageObject
@@ -110,7 +113,8 @@ class FixtureUser(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
     display_name: str | None = None
-    role: str = Field(default="admin", min_length=3)
+    role: TenantRole = Field(default=TenantRole.ADMIN)
+    platform_role: PlatformRole | None = None
     verify_email: bool = True
 
 
@@ -132,7 +136,7 @@ class PlaywrightFixtureSpec(BaseModel):
 
 class FixtureUserResult(BaseModel):
     user_id: str
-    role: str
+    role: TenantRole
 
 
 class FixtureConversationResult(BaseModel):
@@ -278,6 +282,8 @@ class TestFixtureService:
 
         tenant = TenantAccount(id=uuid4(), slug=tenant_spec.slug, name=tenant_spec.name)
         session.add(tenant)
+        # Explicit flush required because session autoflush is disabled; ensures FK targets exist.
+        await session.flush()
         return tenant
 
     async def _ensure_user(
@@ -302,12 +308,14 @@ class TestFixtureService:
                 password_pepper_version=PASSWORD_HASH_VERSION,
                 status=UserStatus.ACTIVE,
                 email_verified_at=now if user_spec.verify_email else None,
+                platform_role=user_spec.platform_role,
             )
             session.add(user)
         else:
             user.password_hash = hashed_password
             user.password_pepper_version = PASSWORD_HASH_VERSION
             user.status = UserStatus.ACTIVE
+            user.platform_role = user_spec.platform_role
             if user_spec.verify_email:
                 user.email_verified_at = now
             else:
@@ -431,15 +439,20 @@ class TestFixtureService:
         results: dict[str, FixtureConversationResult] = {}
         now = datetime.now(UTC)
         for convo in conversations:
+            expected_id = coerce_conversation_uuid(convo.key)
             existing = await session.scalar(
                 select(AgentConversation).where(
                     AgentConversation.tenant_id == tenant.id,
                     AgentConversation.conversation_key == convo.key,
                 )
             )
+            if existing is not None and existing.id != expected_id:
+                await session.delete(existing)
+                await session.flush()
+                existing = None
             if existing is None:
                 conversation = AgentConversation(
-                    id=uuid4(),
+                    id=expected_id,
                     conversation_key=convo.key,
                     tenant_id=tenant.id,
                     user_id=self._resolve_user_id(convo.user_email, user_results),
@@ -468,6 +481,10 @@ class TestFixtureService:
                     ConversationLedgerSegment.conversation_id == conversation.id
                 )
             )
+
+            # Ensure conversation row exists before inserting ledger segments.
+            # Autoflush is disabled.
+            await session.flush()
 
             segment_id = uuid4()
             session.add(

@@ -122,7 +122,7 @@ Success moves the subscription to `active`.
 
 ### 4.4 List Subscriptions — `GET /`
 
-**Auth:** Tenant admins see their tenant’s subscriptions automatically; platform operators (role `platform_admin`) can pass `tenant_id` query param for audits or public (tenant-less) subscriptions.
+**Auth:** Tenant admins see their tenant’s subscriptions automatically; platform operators (role `platform_operator`) can pass `tenant_id` query param for audits or public (tenant-less) subscriptions.
 
 **Query Params**: `channel`, `status`, `tenant_id`, pagination (`cursor`, `limit`).
 
