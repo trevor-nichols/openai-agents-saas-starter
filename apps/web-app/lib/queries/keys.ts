@@ -128,6 +128,11 @@ export const queryKeys = {
         [...queryKeys.signup.requests.all(), filters] as const,
     },
   },
+  sso: {
+    all: ['sso'] as const,
+    providers: (selector?: Record<string, unknown> | null) =>
+      [...queryKeys.sso.all, 'providers', selector ?? {}] as const,
+  },
   workflows: {
     all: ['workflows'] as const,
     list: () => [...queryKeys.workflows.all, 'list'] as const,

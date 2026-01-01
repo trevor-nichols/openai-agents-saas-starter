@@ -1,6 +1,6 @@
 'use server';
 
-import type { UserLoginRequest, UserRefreshRequest } from '@/lib/api/client/types.gen';
+import type { UserLoginRequest, UserRefreshRequest, UserSessionResponse } from '@/lib/api/client/types.gen';
 import { loginWithCredentials, refreshSessionTokens } from '@/lib/server/services/auth';
 import { USE_API_MOCK } from '../config';
 import type { SessionSummary, UserSessionTokens } from '../types/auth';
@@ -20,6 +20,23 @@ export async function exchangeCredentials(
     return tokens;
   }
   const tokens = await loginWithCredentials(payload);
+  await persistSessionCookies(tokens);
+  return tokens;
+}
+
+export async function persistSessionFromResponse(payload: UserSessionResponse): Promise<UserSessionTokens> {
+  const tokens: UserSessionTokens = {
+    access_token: payload.access_token,
+    refresh_token: payload.refresh_token,
+    token_type: payload.token_type ?? 'bearer',
+    expires_at: payload.expires_at,
+    refresh_expires_at: payload.refresh_expires_at,
+    kid: payload.kid,
+    refresh_kid: payload.refresh_kid,
+    scopes: payload.scopes,
+    tenant_id: payload.tenant_id,
+    user_id: payload.user_id,
+  };
   await persistSessionCookies(tokens);
   return tokens;
 }

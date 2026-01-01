@@ -2,7 +2,7 @@
 # Milestone: Optional OIDC SSO (Google)
 
 _Last updated: 2026-01-01_  
-**Status:** In Progress  
+**Status:** Complete  
 **Owner:** Platform Foundations / Backend Auth Pod  
 **Domain:** Cross-cutting  
 **ID / Links:** docs/auth/idp.md, docs/architecture/authentication-ed25519.md, docs/frontend/data-access.md
@@ -68,9 +68,9 @@ Add production-grade, optional OIDC SSO with Google as the first provider, while
 | Area | Status | Notes |
 | --- | --- | --- |
 | Architecture/design | ✅ | Detailed API plan captured in this tracker |
-| Implementation | ⏳ | Backend hardening complete (OIDC alg allowlist, token auth method, PKCE flag, state decode); console integration complete (wizard/seed/probe); frontend pending |
-| Tests & QA | ⏳ | Console unit tests added for setup + probes; SSO unit coverage added for invite-only/domain/identity edges; frontend tests pending |
-| Docs & runbooks | ⏳ | Tracker updated; remaining docs pending |
+| Implementation | ✅ | Backend hardening + console integration + frontend SSO flow complete |
+| Tests & QA | ✅ | Unit/contract/smoke coverage in place; frontend lint/type-check verified |
+| Docs & runbooks | ✅ | IdP doc + runbook updated with SSO flow details |
 
 ---
 
@@ -78,9 +78,9 @@ Add production-grade, optional OIDC SSO with Google as the first provider, while
 
 | ID | Finding | Action | Status |
 | --- | --- | --- | --- |
-| R1 | Redis SSO state parsing can 500 on malformed payloads (non-dict/missing keys). | Guard payload decoding + return invalid/expired when malformed; add unit tests. | ✅ (tests pending) |
-| R2 | Wizard always requires client secret before token auth method selection; `none` auth method cannot be configured. | Gate client secret prompt on chosen token auth method; document behavior. | ✅ (tests pending) |
-| R3 | No direct unit tests for state-store decoding and OIDC hardening (alg allowlist + token auth method validation). | Add focused unit tests to cover these branches. | ✅ (tests pending) |
+| R1 | Redis SSO state parsing can 500 on malformed payloads (non-dict/missing keys). | Guard payload decoding + return invalid/expired when malformed; add unit tests. | ✅ |
+| R2 | Wizard always requires client secret before token auth method selection; `none` auth method cannot be configured. | Gate client secret prompt on chosen token auth method; document behavior. | ✅ |
+| R3 | No direct unit tests for state-store decoding and OIDC hardening (alg allowlist + token auth method validation). | Add focused unit tests to cover these branches. | ✅ |
 | R4 | Unrelated edits in older milestone docs included in diff. | Confirm whether to keep or revert before merge. | ✅ |
 | R5 | OIDC ID token verification does not require `exp`/`iat` claims (PyJWT defaults allow missing `exp`). | Require `exp` + `iat` via `jwt.decode(..., options={"require": ["exp", "iat"]})`; add unit coverage for missing claims. | ✅ |
 | R6 | SSO start request validation returns 422 from Pydantic when tenant context is missing/both set, but the milestone error contract expects 400/409. | Normalize to explicit HTTP errors in the route layer (consistent with `/sso/providers`), or adjust contract/tests to accept 422 if desired. | ✅ |
@@ -100,6 +100,8 @@ Add production-grade, optional OIDC SSO with Google as the first provider, while
 - api-service: `hatch run typecheck`
 - api-service: `hatch run test tests/unit/services/test_sso_oidc_client.py tests/unit/services/test_sso_service.py` (runner executed the full unit suite due to `tests/unit/` path: 934 passed, 26 skipped, 53 deselected)
 - starter-console: `hatch run test` (236 passed, 1 skipped)
+- web-app: `pnpm lint`
+- web-app: `pnpm type-check`
 
 ---
 
@@ -379,11 +381,19 @@ Disabled:
 
 ### Workstream D - Frontend Integration
 
+#### Frontend Integration Plan (Approved)
+
+- **Tenant selection required:** SSO provider listing + start requires explicit tenant selector (slug or UUID). UI keeps SSO options hidden/disabled until a tenant value is supplied. A shared helper will resolve slug vs UUID to avoid sending both.
+- **Login hint:** When the email field is a valid email, send `login_hint` in SSO start requests; otherwise omit.
+- **Redirect continuity:** Preserve `redirectTo` through the IdP round-trip using a short-lived HttpOnly cookie set by the SSO start BFF route. Validate that redirects are relative-path only; clear the cookie after success. Callback falls back to validated query param, then `/dashboard`.
+- **UI/UX:** Add a dedicated “Continue with” SSO section below the password form. Only render provider buttons when `/auth/sso/providers` returns enabled providers. Provide loading + error states.
+- **Callback page:** Create a dedicated callback page that exchanges `code` + `state` via the BFF callback route, persists cookies, handles MFA challenge via the existing dialog, and redirects on success. On failure, show a clear error with a link back to sign-in.
+
 | ID | Area | Description | Status |
 |----|------|-------------|--------|
-| D1 | API routes | Next API routes to call SSO start/callback | TODO |
-| D2 | UI | Login page shows "Continue with Google" only when `/auth/sso/providers` returns it | TODO |
-| D3 | Callback | Auth callback page sets session cookies + redirects | TODO |
+| D1 | API routes | Next API routes to call SSO start/callback | ✅ |
+| D2 | UI | Login page shows "Continue with Google" only when `/auth/sso/providers` returns it | ✅ |
+| D3 | Callback | Auth callback page sets session cookies + redirects | ✅ |
 
 ### Workstream E - Tests + Docs
 
@@ -392,8 +402,8 @@ Disabled:
 | E1 | Unit | PKCE/state store, token validation, identity linking | ✅ |
 | E2 | Contract | New SSO endpoints under `tests/contract` | ✅ |
 | E3 | Smoke | Optional SSO smoke gated by env + local IdP | ✅ |
-| E4 | Docs | Update idp.md + API docs + runbooks | TODO |
-| E5 | OpenAPI | Export fixtures + regenerate web SDK | TODO |
+| E4 | Docs | Update idp.md + API docs + runbooks | ✅ |
+| E5 | OpenAPI | Export fixtures + regenerate web SDK | ✅ |
 | E6 | Unit | Add SSO policy/identity edge coverage (invite-only new user, domain reject, identity conflict) | ✅ |
 
 ---
@@ -405,8 +415,8 @@ Disabled:
 | ----- | ----- | ------------- | ------ |
 | P0 - Alignment | Finalize schema + flow + console seeding plan | Design reviewed and agreed | ✅ |
 | P1 - Backend | Domain, persistence, services, API | SSO endpoints functional in local dev | ✅ |
-| P2 - Console + Frontend | Wizard, seed flow, login + callback UI | Local end-to-end SSO happy path | ⏳ |
-| P3 - Tests + Docs | Unit/contract/smoke + docs | All checks green, docs updated | TODO |
+| P2 - Console + Frontend | Wizard, seed flow, login + callback UI | Local end-to-end SSO happy path | ✅ |
+| P3 - Tests + Docs | Unit/contract/smoke + docs | All checks green, docs updated | ✅ |
 
 ---
 

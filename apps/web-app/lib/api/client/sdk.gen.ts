@@ -58,6 +58,9 @@ import type {
   CompleteMfaChallengeApiV1AuthMfaCompletePostData,
   CompleteMfaChallengeApiV1AuthMfaCompletePostErrors,
   CompleteMfaChallengeApiV1AuthMfaCompletePostResponses,
+  CompleteSsoApiV1AuthSsoProviderCallbackPostData,
+  CompleteSsoApiV1AuthSsoProviderCallbackPostErrors,
+  CompleteSsoApiV1AuthSsoProviderCallbackPostResponses,
   ConfirmPasswordResetApiV1AuthPasswordConfirmPostData,
   ConfirmPasswordResetApiV1AuthPasswordConfirmPostErrors,
   ConfirmPasswordResetApiV1AuthPasswordConfirmPostResponses,
@@ -307,6 +310,9 @@ import type {
   ListSignupRequestsApiV1AuthSignupRequestsGetData,
   ListSignupRequestsApiV1AuthSignupRequestsGetErrors,
   ListSignupRequestsApiV1AuthSignupRequestsGetResponses,
+  ListSsoProvidersApiV1AuthSsoProvidersGetData,
+  ListSsoProvidersApiV1AuthSsoProvidersGetErrors,
+  ListSsoProvidersApiV1AuthSsoProvidersGetResponses,
   ListStatusSubscriptionsApiV1StatusSubscriptionsGetData,
   ListStatusSubscriptionsApiV1StatusSubscriptionsGetErrors,
   ListStatusSubscriptionsApiV1StatusSubscriptionsGetResponses,
@@ -418,6 +424,9 @@ import type {
   SetDefaultPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDefaultPostData,
   SetDefaultPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDefaultPostErrors,
   SetDefaultPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDefaultPostResponses,
+  StartSsoApiV1AuthSsoProviderStartPostData,
+  StartSsoApiV1AuthSsoProviderStartPostErrors,
+  StartSsoApiV1AuthSsoProviderStartPostResponses,
   StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostData,
   StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostErrors,
   StartSubscriptionApiV1BillingTenantsTenantIdSubscriptionPostResponses,
@@ -1435,6 +1444,71 @@ export const completeMfaChallengeApiV1AuthMfaCompletePost = <
     ThrowOnError
   >({
     url: "/api/v1/auth/mfa/complete",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * List Sso Providers
+ */
+export const listSsoProvidersApiV1AuthSsoProvidersGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<ListSsoProvidersApiV1AuthSsoProvidersGetData, ThrowOnError>,
+) => {
+  return (options?.client ?? client).get<
+    ListSsoProvidersApiV1AuthSsoProvidersGetResponses,
+    ListSsoProvidersApiV1AuthSsoProvidersGetErrors,
+    ThrowOnError
+  >({
+    url: "/api/v1/auth/sso/providers",
+    ...options,
+  });
+};
+
+/**
+ * Start Sso
+ */
+export const startSsoApiV1AuthSsoProviderStartPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<StartSsoApiV1AuthSsoProviderStartPostData, ThrowOnError>,
+) => {
+  return (options.client ?? client).post<
+    StartSsoApiV1AuthSsoProviderStartPostResponses,
+    StartSsoApiV1AuthSsoProviderStartPostErrors,
+    ThrowOnError
+  >({
+    url: "/api/v1/auth/sso/{provider}/start",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Complete Sso
+ */
+export const completeSsoApiV1AuthSsoProviderCallbackPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    CompleteSsoApiV1AuthSsoProviderCallbackPostData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).post<
+    CompleteSsoApiV1AuthSsoProviderCallbackPostResponses,
+    CompleteSsoApiV1AuthSsoProviderCallbackPostErrors,
+    ThrowOnError
+  >({
+    url: "/api/v1/auth/sso/{provider}/callback",
     ...options,
     headers: {
       "Content-Type": "application/json",

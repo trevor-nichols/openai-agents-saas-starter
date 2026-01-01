@@ -82,6 +82,10 @@ Tenant relationships (canonical definitions in `docs/auth/roles.md`):
 - **MFA:** If the user has enrolled methods, SSO returns an MFA challenge (HTTP 202), same as password login.
 - **Secrets:** Client secrets are encrypted at rest using `SSO_CLIENT_SECRET_ENCRYPTION_KEY` (fallback: `AUTH_SESSION_ENCRYPTION_KEY` or `SECRET_KEY`).
 - **Ops:** `starter-console sso setup` + setup wizard can seed the provider config; env keys are `SSO_GOOGLE_*` for the initial Google preset.
+- **Frontend/BFF:** The web app uses Next API routes (`/api/v1/auth/sso/*`) to broker start/callback and to set session cookies. The user-facing callback page is `/auth/sso/{provider}/callback`.
+- **Tenant selector required:** Frontend must send exactly one of `tenant_id` (UUID) or `tenant_slug`. Missing/both values return 400/409.
+- **Login hint:** When the email input is valid, the frontend forwards it as `login_hint`.
+- **Redirect continuity:** `redirectTo` is stored in a short-lived HttpOnly cookie during SSO start; callback validates it as a relative path and redirects on success.
 - **Runbook:** See `docs/ops/sso-oidc-runbook.md` for provisioning, validation, and rotation guidance.
 
 ## 8. External IdP Compatibility

@@ -78,6 +78,14 @@ These are runtime settings (not stored in the provider config row):
 3. Callback:
    - Verify session cookies are set and the response indicates success or MFA challenge.
 
+### Web app flow notes
+
+- The Next.js web app proxies all SSO calls through the BFF routes under `/api/v1/auth/sso/*`.
+- The user is redirected back to `/auth/sso/google/callback` (front-end page), which calls the BFF callback route.
+- `redirectTo` is persisted in a short-lived HttpOnly cookie during the start request and validated as a relative path on callback before redirecting.
+- If MFA is required, the callback returns 202 with a challenge payload and the UI opens the MFA dialog before redirecting.
+- The UI enforces **exactly one** tenant selector (`tenant_id` or `tenant_slug`) before listing providers or starting SSO.
+
 ## Monitoring
 
 Logs emit structured events (JSON) with `reason` codes:

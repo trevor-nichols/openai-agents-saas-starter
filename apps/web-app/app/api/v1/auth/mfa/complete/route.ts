@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { completeMfaChallengeApiV1AuthMfaCompletePost } from '@/lib/api/client/sdk.gen';
 import type { MfaChallengeCompleteRequest, UserSessionResponse } from '@/lib/api/client/types.gen';
 import { createApiClient } from '@/lib/server/apiClient';
-import { persistSessionCookies } from '@/lib/auth/cookies';
+import { persistSessionFromResponse } from '@/lib/auth/session';
 
 export async function POST(request: Request) {
   try {
@@ -16,18 +16,7 @@ export async function POST(request: Request) {
     });
     const tokens = res.data as UserSessionResponse | undefined;
     if (tokens) {
-      await persistSessionCookies({
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token,
-        token_type: tokens.token_type ?? 'bearer',
-        expires_at: tokens.expires_at,
-        refresh_expires_at: tokens.refresh_expires_at,
-        kid: tokens.kid,
-        refresh_kid: tokens.refresh_kid,
-        scopes: tokens.scopes,
-        tenant_id: tokens.tenant_id,
-        user_id: tokens.user_id,
-      });
+      await persistSessionFromResponse(tokens);
     }
     // Do not return tokens in the body; cookies hold the session.
     return NextResponse.json({ success: true }, { status: 200 });
