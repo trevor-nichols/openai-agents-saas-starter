@@ -46,6 +46,7 @@ Operator console for the OpenAI Agents SaaS starter stack. It is the single entr
 - `auth tokens|keys|jwks`: issue service-account tokens and rotate Ed25519 keys.
 - `users ensure-dev|seed`: seed a dev user/tenant or a specific user.
 - `secrets onboard`: onboarding for Vault, AWS Secrets Manager, Azure Key Vault, Infisical.
+- `sso setup`: provision optional OIDC SSO (Google) and seed provider config.
 - `providers validate`: validate Stripe/Resend configuration (strict mode supported).
 - `stripe`: provision catalog, capture webhook secrets, replay events.
 - `release db`: run migrations + capture release summary (optionally Stripe checks).

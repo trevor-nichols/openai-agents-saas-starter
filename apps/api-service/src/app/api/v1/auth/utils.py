@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 from fastapi import HTTPException, Request, status
@@ -15,9 +15,10 @@ from app.api.models.auth import (
     UserSessionItem,
     UserSessionResponse,
 )
+from app.api.models.mfa import MfaChallengeResponse, MfaMethodView
 from app.core.settings import get_settings
 from app.domain.auth import UserSession, UserSessionTokens
-from app.services.auth_service import UserAuthenticationError
+from app.services.auth_service import MfaRequiredError, UserAuthenticationError
 from app.services.users import (
     InvalidCredentialsError,
     IpThrottledError,
@@ -130,6 +131,27 @@ def to_session_item(session: UserSession, current_session_id: UUID | None) -> Us
         client=client,
         location=location,
         current=current_session_id == session.id if current_session_id else False,
+    )
+
+
+def to_mfa_challenge_response(exc: MfaRequiredError) -> MfaChallengeResponse:
+    method_dicts = [cast(dict[str, Any], m) for m in exc.methods]
+    methods = []
+    for method in method_dicts:
+        method_id = UUID(str(method.get("id")))
+        methods.append(
+            MfaMethodView(
+                id=method_id,
+                method_type=str(method.get("method_type")),
+                label=method.get("label") if isinstance(method.get("label"), str) else None,
+                verified_at=cast(str | None, method.get("verified_at")),
+                last_used_at=cast(str | None, method.get("last_used_at")),
+                revoked_at=cast(str | None, method.get("revoked_at")),
+            )
+        )
+    return MfaChallengeResponse(
+        challenge_token=exc.challenge_token,
+        methods=methods,
     )
 
 

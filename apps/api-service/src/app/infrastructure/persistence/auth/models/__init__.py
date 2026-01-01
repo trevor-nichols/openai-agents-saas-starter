@@ -13,6 +13,7 @@ from app.infrastructure.persistence.auth.models.signup import (
     TenantSignupInviteReservation,
     TenantSignupRequest,
 )
+from app.infrastructure.persistence.auth.models.sso import SsoProviderConfigModel, UserIdentityModel
 from app.infrastructure.persistence.auth.models.team_invites import TenantMemberInvite
 from app.infrastructure.persistence.auth.models.user import (
     PasswordHistory,
@@ -32,12 +33,14 @@ __all__ = [
     "TenantSignupInvite",
     "TenantSignupInviteReservation",
     "TenantSignupRequest",
+    "SsoProviderConfigModel",
     "TenantMemberInvite",
     "TenantUserMembership",
     "UsageCounter",
     "UsageCounterGranularity",
     "UserAccount",
     "UserConsent",
+    "UserIdentityModel",
     "UserLoginEvent",
     "UserNotificationPreference",
     "UserProfile",

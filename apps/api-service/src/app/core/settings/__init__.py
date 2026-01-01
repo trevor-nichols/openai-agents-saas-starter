@@ -17,6 +17,7 @@ from .redis import RedisSettingsMixin
 from .retention import RetentionSettingsMixin
 from .security import SecuritySettingsMixin
 from .signup import SignupSettingsMixin
+from .sso import SsoSettingsMixin
 from .storage import StorageSettingsMixin
 from .usage import UsageGuardrailSettingsMixin
 
@@ -37,6 +38,7 @@ class Settings(
     ObservabilitySettingsMixin,
     RetentionSettingsMixin,
     UsageGuardrailSettingsMixin,
+    SsoSettingsMixin,
     StorageSettingsMixin,
 ):
     """Concrete application settings composed from mixins."""

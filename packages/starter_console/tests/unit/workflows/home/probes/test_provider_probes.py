@@ -27,6 +27,7 @@ def test_probe_registry_order_and_names():
         "migrations",
         "secrets",
         "billing",
+        "sso",
         "storage",
     ]
     assert [spec.name for spec in PROBE_SPECS] == expected
@@ -147,6 +148,108 @@ def test_billing_probe_delegates_to_stripe(monkeypatch):
     result = billing_mod.billing_probe(_ctx(env))
     assert result.state == ProbeState.OK
     assert result.metadata.get("provider") == "stripe"
+
+
+def test_sso_probe_skips_when_disabled():
+    from starter_console.workflows.home.probes import sso as sso_mod
+
+    result = sso_mod.sso_probe(_ctx({}))
+    assert result.state == ProbeState.SKIPPED
+    assert result.metadata.get("provider") == "google"
+
+
+def test_sso_probe_warns_on_missing_tenant_scope():
+    from starter_console.workflows.home.probes import sso as sso_mod
+
+    env = {
+        "SSO_GOOGLE_ENABLED": "true",
+        "SSO_GOOGLE_SCOPE": "tenant",
+    }
+    result = sso_mod.sso_probe(_ctx(env, warn_only=True))
+    assert result.state == ProbeState.WARN
+    assert "tenant scope" in (result.detail or "")
+
+
+def test_sso_probe_warns_on_global_scope_with_tenant_values():
+    from starter_console.workflows.home.probes import sso as sso_mod
+
+    env = {
+        "SSO_GOOGLE_ENABLED": "true",
+        "SSO_GOOGLE_SCOPE": "global",
+        "SSO_GOOGLE_TENANT_ID": "tenant-id",
+    }
+    result = sso_mod.sso_probe(_ctx(env, warn_only=True))
+    assert result.state == ProbeState.WARN
+    assert "global scope" in (result.detail or "")
+
+
+def test_sso_probe_ok_with_backend_config(monkeypatch):
+    import json
+    import subprocess
+
+    from starter_console.workflows.home.probes import sso as sso_mod
+
+    payload = {
+        "result": "ok",
+        "provider_key": "google",
+        "config_source": "global",
+        "enabled": True,
+        "auto_provision_policy": "invite_only",
+        "default_role": "member",
+        "pkce_required": True,
+        "allowed_domains_count": 0,
+    }
+
+    def fake_run_backend_script(*_args, **_kwargs):
+        return subprocess.CompletedProcess(
+            args=["hatch"],
+            returncode=0,
+            stdout=json.dumps(payload),
+            stderr="",
+        )
+
+    monkeypatch.setattr(sso_mod, "run_backend_script", fake_run_backend_script)
+
+    env = {
+        "SSO_GOOGLE_ENABLED": "true",
+        "AUTH_CACHE_REDIS_URL": "redis://localhost:6379/0",
+        "SECRET_KEY": "secret",
+    }
+    result = sso_mod.sso_probe(_ctx(env))
+    assert result.state == ProbeState.OK
+    assert "configured" in (result.detail or "")
+
+
+def test_sso_probe_warns_when_not_configured(monkeypatch):
+    import json
+    import subprocess
+
+    from starter_console.workflows.home.probes import sso as sso_mod
+
+    payload = {
+        "result": "not_configured",
+        "provider_key": "google",
+        "config_source": None,
+    }
+
+    def fake_run_backend_script(*_args, **_kwargs):
+        return subprocess.CompletedProcess(
+            args=["hatch"],
+            returncode=0,
+            stdout=json.dumps(payload),
+            stderr="",
+        )
+
+    monkeypatch.setattr(sso_mod, "run_backend_script", fake_run_backend_script)
+
+    env = {
+        "SSO_GOOGLE_ENABLED": "true",
+        "AUTH_CACHE_REDIS_URL": "redis://localhost:6379/0",
+        "SECRET_KEY": "secret",
+    }
+    result = sso_mod.sso_probe(_ctx(env, warn_only=True))
+    assert result.state == ProbeState.WARN
+    assert "not configured" in (result.detail or "")
 
 
 def test_doctor_attaches_category(monkeypatch):

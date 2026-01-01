@@ -1,7 +1,7 @@
 # Starter Console Environment Inventory
 
 This file is generated via `starter-console config write-inventory`.
-Last updated: 2025-12-28 20:09:32 UTC
+Last updated: 2026-01-01 19:15:16 UTC
 
 Legend: `✅` = wizard prompts for it, blank = requires manual population.
 
@@ -206,6 +206,11 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | SLACK_STATUS_MAX_RETRIES | int | 3 |  | ✅ | Maximum retry attempts for Slack delivery failures. |
 | SLACK_STATUS_RATE_LIMIT_WINDOW_SECONDS | float | 1.0 |  | ✅ | Per-channel throttle window for Slack posts. |
 | SLACK_STATUS_TENANT_CHANNEL_MAP | dict[str, list[str]] | — |  | ✅ | JSON map of tenant_id → channel list overrides. |
+| SSO_CALLBACK_RATE_LIMIT_PER_MINUTE | int | 30 |  |  | SSO callback requests allowed per minute. |
+| SSO_CLIENT_SECRET_ENCRYPTION_KEY | str \| NoneType | — |  |  | Optional secret used to encrypt SSO client secrets at rest. Falls back to AUTH_SESSION_ENCRYPTION_KEY or SECRET_KEY when unset. |
+| SSO_CLOCK_SKEW_SECONDS | int | 60 |  |  | Allowed clock skew when validating ID token timestamps (seconds). |
+| SSO_START_RATE_LIMIT_PER_MINUTE | int | 30 |  |  | SSO start requests allowed per minute. |
+| SSO_STATE_TTL_MINUTES | int | 10 |  |  | TTL for SSO state/nonce/PKCE payloads in Redis (minutes). |
 | STATUS_SUBSCRIPTION_EMAIL_RATE_LIMIT_PER_HOUR | int | 5 |  | ✅ | Email subscription attempts per IP per hour. |
 | STATUS_SUBSCRIPTION_ENCRYPTION_KEY | str \| NoneType | — |  | ✅ | Override secret used to encrypt subscription targets and webhook secrets. |
 | STATUS_SUBSCRIPTION_IP_RATE_LIMIT_PER_HOUR | int | 20 |  | ✅ | Webhook subscription attempts per IP per hour. |

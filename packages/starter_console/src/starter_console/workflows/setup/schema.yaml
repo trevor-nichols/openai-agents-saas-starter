@@ -190,6 +190,78 @@ prompts:
     when:
       - key: ENABLE_BILLING
         truthy: true
+  SSO_GOOGLE_ENABLED:
+    section: providers
+  SSO_GOOGLE_SCOPE:
+    section: providers
+    when:
+      - key: SSO_GOOGLE_ENABLED
+        truthy: true
+  SSO_GOOGLE_TENANT_SLUG:
+    section: providers
+    when:
+      - key: SSO_GOOGLE_SCOPE
+        equals: tenant
+  SSO_GOOGLE_TENANT_ID:
+    section: providers
+    when:
+      - key: SSO_GOOGLE_SCOPE
+        equals: tenant
+  SSO_GOOGLE_ISSUER_URL:
+    section: providers
+    when:
+      - key: SSO_GOOGLE_ENABLED
+        truthy: true
+  SSO_GOOGLE_DISCOVERY_URL:
+    section: providers
+    when:
+      - key: SSO_GOOGLE_ENABLED
+        truthy: true
+  SSO_GOOGLE_CLIENT_ID:
+    section: providers
+    when:
+      - key: SSO_GOOGLE_ENABLED
+        truthy: true
+  SSO_GOOGLE_CLIENT_SECRET:
+    section: providers
+    when:
+      - key: SSO_GOOGLE_ENABLED
+        truthy: true
+  SSO_GOOGLE_SCOPES:
+    section: providers
+    when:
+      - key: SSO_GOOGLE_ENABLED
+        truthy: true
+  SSO_GOOGLE_PKCE_REQUIRED:
+    section: providers
+    when:
+      - key: SSO_GOOGLE_ENABLED
+        truthy: true
+  SSO_GOOGLE_TOKEN_AUTH_METHOD:
+    section: providers
+    when:
+      - key: SSO_GOOGLE_ENABLED
+        truthy: true
+  SSO_GOOGLE_ID_TOKEN_ALGS:
+    section: providers
+    when:
+      - key: SSO_GOOGLE_ENABLED
+        truthy: true
+  SSO_GOOGLE_AUTO_PROVISION_POLICY:
+    section: providers
+    when:
+      - key: SSO_GOOGLE_ENABLED
+        truthy: true
+  SSO_GOOGLE_ALLOWED_DOMAINS:
+    section: providers
+    when:
+      - key: SSO_GOOGLE_AUTO_PROVISION_POLICY
+        equals: domain_allowlist
+  SSO_GOOGLE_DEFAULT_ROLE:
+    section: providers
+    when:
+      - key: SSO_GOOGLE_AUTO_PROVISION_POLICY
+        equals: domain_allowlist
   RUN_STRIPE_SEED:
     section: providers
     when:

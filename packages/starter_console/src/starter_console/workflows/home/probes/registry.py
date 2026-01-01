@@ -46,6 +46,7 @@ PROBE_SPECS: tuple[ProbeSpec, ...] = (
     ProbeSpec("migrations", lambda ctx: _migrations_probe(), category="core"),
     ProbeSpec("secrets", lambda ctx: _secrets_probe(ctx), category="secrets", optional=True),
     ProbeSpec("billing", lambda ctx: _billing_probe(ctx), category="billing", optional=True),
+    ProbeSpec("sso", lambda ctx: _sso_probe(ctx), category="auth", optional=True),
     ProbeSpec("storage", lambda ctx: _storage_probe(ctx), category="storage", optional=True),
 )
 
@@ -120,6 +121,12 @@ def _storage_probe(ctx: ProbeContext) -> ProbeResult:
     from starter_console.workflows.home.probes.storage import storage_probe
 
     return storage_probe(ctx)
+
+
+def _sso_probe(ctx: ProbeContext) -> ProbeResult:
+    from starter_console.workflows.home.probes.sso import sso_probe
+
+    return sso_probe(ctx)
 
 
 __all__ = ["ProbeContext", "ProbeSpec", "PROBE_SPECS"]

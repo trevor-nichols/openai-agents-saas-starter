@@ -26,6 +26,7 @@ def _build_args(**overrides) -> argparse.Namespace:
         "auto_infra": None,
         "auto_secrets": None,
         "auto_stripe": None,
+        "auto_sso": None,
         "auto_migrations": None,
         "auto_redis": None,
         "auto_geoip": None,

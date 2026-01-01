@@ -5,6 +5,7 @@
 * `types.py`
 * `activity/models.py`
 * `auth/models.py`
+* `auth/models/sso.py`
 * `billing/models.py`
 * `containers/models.py`
 * `conversations/models.py`
@@ -47,6 +48,8 @@
 * `user_recovery_codes`
 * `user_consents`
 * `user_notification_preferences`
+* `sso_provider_configs`
+* `user_identities`
 * `usage_counters`
 * `security_events`
 
@@ -545,6 +548,70 @@ Persisted refresh-token metadata for service accounts.
 * Conditional unique index (Postgres/SQLite): `uq_user_notification_preferences_null_tenant(user_id, channel, category)` where `tenant_id IS NULL`
 * Index: `ix_user_notification_preferences_user(user_id)`
 * Index: `ix_user_notification_preferences_tenant(tenant_id)`
+
+---
+
+## `sso_provider_configs`
+
+SSO/OIDC provider configuration per tenant with a global fallback row.
+
+| Column                      | Type               | Null | Default                 | Notes                                      |
+| --------------------------- | ------------------ | ---- | ----------------------- | ------------------------------------------ |
+| `id`                        | UUID               | NO   | `uuid_pk()`             |                                            |
+| `tenant_id`                 | UUID               | YES  | —                       | FK → `tenant_accounts.id` (CASCADE); NULL = global |
+| `provider_key`              | String(64)         | NO   | —                       |                                            |
+| `enabled`                   | Boolean            | NO   | `True`                  |                                            |
+| `issuer_url`                | String(512)        | NO   | —                       |                                            |
+| `client_id`                 | String(256)        | NO   | —                       |                                            |
+| `client_secret_encrypted`   | LargeBinary        | YES  | —                       | Encrypted client secret payload             |
+| `discovery_url`             | String(512)        | YES  | —                       |                                            |
+| `scopes_json`               | JSONB/JSON         | NO   | `list`                  | OIDC scopes                                |
+| `pkce_required`             | Boolean            | NO   | `True`                  |                                            |
+| `token_endpoint_auth_method`| String(64)         | NO   | `client_secret_post`    |                                            |
+| `allowed_id_token_algs_json`| JSONB/JSON         | NO   | `list`                  | Allowed ID token algorithms                |
+| `auto_provision_policy`     | Enum(`sso_auto_provision_policy`) | NO | `invite_only` | values: disabled/invite_only/domain_allowlist |
+| `allowed_domains_json`      | JSONB/JSON         | NO   | `list`                  |                                            |
+| `default_role`              | Enum(`tenant_role`)| NO   | `member`                | values: owner/admin/member/viewer          |
+| `created_at`                | DateTime(tz)       | NO   | `UTC_NOW`               |                                            |
+| `updated_at`                | DateTime(tz)       | NO   | `UTC_NOW`               | `onupdate=UTC_NOW`                         |
+
+**Constraints**
+
+* PK: `id`
+* FK: `tenant_id` → `tenant_accounts.id` (CASCADE)
+* Unique: (`tenant_id`, `provider_key`)
+* Unique (Postgres): `provider_key` where `tenant_id IS NULL`
+* Index: `ix_sso_provider_configs_provider_key(provider_key)`
+* Index: `ix_sso_provider_configs_tenant_id(tenant_id)`
+
+---
+
+## `user_identities`
+
+Links internal users to external IdP subjects.
+
+| Column          | Type         | Null | Default     | Notes                           |
+| --------------- | ------------ | ---- | ----------- | ------------------------------- |
+| `id`            | UUID         | NO   | `uuid_pk()` |                                 |
+| `user_id`       | UUID         | NO   | —           | FK → `users.id` (CASCADE)       |
+| `provider_key`  | String(64)   | NO   | —           |                                 |
+| `issuer`        | String(512)  | NO   | —           |                                 |
+| `subject`       | String(256)  | NO   | —           | OIDC `sub`                      |
+| `email`         | String(320)  | YES  | —           |                                 |
+| `email_verified`| Boolean      | NO   | `False`     |                                 |
+| `profile_json`  | JSONB/JSON   | YES  | —           | Optional IdP profile payload    |
+| `linked_at`     | DateTime(tz) | NO   | —           |                                 |
+| `last_login_at` | DateTime(tz) | YES  | —           |                                 |
+| `created_at`    | DateTime(tz) | NO   | `UTC_NOW`   |                                 |
+| `updated_at`    | DateTime(tz) | NO   | `UTC_NOW`   | `onupdate=UTC_NOW`              |
+
+**Constraints**
+
+* PK: `id`
+* FK: `user_id` → `users.id` (CASCADE)
+* Unique: (`provider_key`, `issuer`, `subject`)
+* Unique: (`user_id`, `provider_key`)
+* Index: `ix_user_identities_user_id(user_id)`
 
 ---
 

@@ -201,6 +201,35 @@ def test_wizard_configures_slack_section(temp_ctx: CLIContext) -> None:
     _cleanup_env(snapshot)
 
 
+def test_wizard_configures_sso_when_enabled(temp_ctx: CLIContext) -> None:
+    snapshot = dict(os.environ)
+    answers = _local_headless_answers() | {
+        "SSO_GOOGLE_ENABLED": "true",
+        "SSO_GOOGLE_SCOPE": "global",
+        "SSO_GOOGLE_ISSUER_URL": "https://accounts.google.com",
+        "SSO_GOOGLE_DISCOVERY_URL": "https://accounts.google.com/.well-known/openid-configuration",
+        "SSO_GOOGLE_CLIENT_ID": "google-client",
+        "SSO_GOOGLE_CLIENT_SECRET": "google-secret",
+        "SSO_GOOGLE_SCOPES": "openid,email,profile",
+        "SSO_GOOGLE_PKCE_REQUIRED": "true",
+        "SSO_GOOGLE_AUTO_PROVISION_POLICY": "invite_only",
+    }
+    wizard = _create_setup_wizard(
+        ctx=temp_ctx,
+        profile="demo",
+        output_format="summary",
+        input_provider=HeadlessInputProvider(answers=answers),
+    )
+    wizard.execute()
+
+    env_body = backend_env_path(temp_ctx).read_text(encoding="utf-8")
+    assert "SSO_GOOGLE_ENABLED=true" in env_body
+    assert "SSO_GOOGLE_CLIENT_ID=google-client" in env_body
+    assert "SSO_GOOGLE_CLIENT_SECRET=google-secret" in env_body
+    assert 'SSO_GOOGLE_SCOPES="openid,email,profile"' in env_body
+    _cleanup_env(snapshot)
+
+
 def test_wizard_exports_answers_when_requested(temp_ctx: CLIContext) -> None:
     snapshot = dict(os.environ)
     answers = _local_headless_answers()

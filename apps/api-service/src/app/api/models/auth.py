@@ -519,3 +519,50 @@ class UserSessionListResponse(BaseModel):
     total: int = Field(description="Total number of sessions matching the filter.")
     limit: int = Field(description="Maximum sessions returned in this response.")
     offset: int = Field(description="Offset applied when querying sessions.")
+
+
+class SsoStartRequest(BaseModel):
+    """Begin an SSO login by generating an authorize URL."""
+
+    tenant_id: str | None = Field(
+        default=None,
+        description="Tenant UUID for the SSO login.",
+    )
+    tenant_slug: str | None = Field(
+        default=None,
+        description="Tenant slug for the SSO login.",
+    )
+    login_hint: str | None = Field(
+        default=None,
+        description="Optional login hint (typically an email address).",
+    )
+
+
+class SsoStartResponse(BaseModel):
+    """SSO authorize URL response."""
+
+    authorize_url: str = Field(
+        description="OIDC provider URL to redirect the user to.",
+    )
+
+
+class SsoCallbackRequest(BaseModel):
+    """Callback payload used to exchange code + state for tokens."""
+
+    code: str = Field(min_length=1, description="Authorization code from the IdP.")
+    state: str = Field(min_length=1, description="Opaque SSO state returned by the IdP.")
+
+
+class SsoProviderView(BaseModel):
+    """Public view of an enabled SSO provider."""
+
+    provider_key: str = Field(description="Provider key identifier (e.g., google).")
+    display_name: str = Field(description="Human-friendly provider label.")
+
+
+class SsoProviderListResponse(BaseModel):
+    """List of enabled SSO providers for a tenant."""
+
+    providers: list[SsoProviderView] = Field(
+        description="Enabled providers available for the tenant.",
+    )

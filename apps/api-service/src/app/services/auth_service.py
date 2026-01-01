@@ -146,6 +146,25 @@ class AuthService:
             user_agent=user_agent,
         )
 
+    async def issue_user_session(
+        self,
+        *,
+        user_id: UUID,
+        tenant_id: UUID,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        reason: str = "sso",
+        enforce_mfa: bool = True,
+    ) -> UserSessionTokens:
+        return await self._sessions.issue_tokens_for_user(
+            user_id=user_id,
+            tenant_id=tenant_id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            reason=reason,
+            enforce_mfa=enforce_mfa,
+        )
+
     async def complete_mfa_challenge(
         self,
         *,

@@ -1353,6 +1353,43 @@
       "title": "Slack Status Tenant Channel Map",
       "type": "object"
     },
+    "SSO_CALLBACK_RATE_LIMIT_PER_MINUTE": {
+      "default": 30,
+      "description": "SSO callback requests allowed per minute.",
+      "title": "Sso Callback Rate Limit Per Minute",
+      "type": "integer"
+    },
+    "SSO_CLIENT_SECRET_ENCRYPTION_KEY": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Optional secret used to encrypt SSO client secrets at rest. Falls back to AUTH_SESSION_ENCRYPTION_KEY or SECRET_KEY when unset.",
+      "title": "Sso Client Secret Encryption Key"
+    },
+    "SSO_CLOCK_SKEW_SECONDS": {
+      "default": 60,
+      "description": "Allowed clock skew when validating ID token timestamps (seconds).",
+      "title": "Sso Clock Skew Seconds",
+      "type": "integer"
+    },
+    "SSO_START_RATE_LIMIT_PER_MINUTE": {
+      "default": 30,
+      "description": "SSO start requests allowed per minute.",
+      "title": "Sso Start Rate Limit Per Minute",
+      "type": "integer"
+    },
+    "SSO_STATE_TTL_MINUTES": {
+      "default": 10,
+      "description": "TTL for SSO state/nonce/PKCE payloads in Redis (minutes).",
+      "title": "Sso State Ttl Minutes",
+      "type": "integer"
+    },
     "STATUS_SUBSCRIPTION_EMAIL_RATE_LIMIT_PER_HOUR": {
       "default": 5,
       "description": "Email subscription attempts per IP per hour.",

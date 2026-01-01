@@ -73,14 +73,25 @@ Tenant relationships (canonical definitions in `docs/auth/roles.md`):
 - **Claims embedded:** When minting, include `iss`, `sub`, `tenant_id`, `scopes`, `token_use=refresh`, `jti`, `iat`, `exp`. Not exposed to clients except as opaque string.
 - **Revocation:** Admin logout, lockout, or password reset sets `revoked_at` and caches `jti` in Redis for TTL = remaining lifetime to short-circuit DB lookups.
 
-## 7. External IdP Compatibility
+## 7. OIDC SSO (Optional, Google First)
+- **Flow:** OIDC Authorization Code with PKCE; state + nonce stored in Redis for `SSO_STATE_TTL_MINUTES` and treated as single-use.
+- **Endpoints:** `/api/v1/auth/sso/{provider}/start`, `/api/v1/auth/sso/{provider}/callback`, `/api/v1/auth/sso/providers`.
+- **Provider config:** Tenant-scoped rows in Postgres with a global fallback row (`tenant_id IS NULL`) when tenant config is absent.
+- **Security hardening:** Allowed ID token algorithms are enforced (RS/PS/ES only). Token endpoint auth method is validated against discovery metadata. ID tokens require `exp` + `iat` and nonce validation.
+- **Provisioning policy:** Default `invite_only`; `domain_allowlist` optional; `disabled` blocks auto-provisioning. Verified email required for provisioning and identity linking.
+- **MFA:** If the user has enrolled methods, SSO returns an MFA challenge (HTTP 202), same as password login.
+- **Secrets:** Client secrets are encrypted at rest using `SSO_CLIENT_SECRET_ENCRYPTION_KEY` (fallback: `AUTH_SESSION_ENCRYPTION_KEY` or `SECRET_KEY`).
+- **Ops:** `starter-console sso setup` + setup wizard can seed the provider config; env keys are `SSO_GOOGLE_*` for the initial Google preset.
+- **Runbook:** See `docs/ops/sso-oidc-runbook.md` for provisioning, validation, and rotation guidance.
+
+## 8. External IdP Compatibility
 - **Protocols:** Must support OIDC Authorization Code flow with PKCE and SCIM 2.0 provisioning. Local implementation mirrors these contracts to allow proxying to Auth0/Okta without changing callers.
 - **Attribute Mapping:** Standardize on `email`, `name`, `roles` claim (TenantRole values), `external_id`. Store mapping so `sub` continuity is preserved if/when we swap IdPs.
 - **Just-In-Time Provisioning:** When operating against an external IdP, we can JIT create users on first login if tenant + role info present; otherwise require SCIM sync before login succeeds.
 - **Session Federation:** Access/refresh tokens remain our own; external IdP handles primary auth but exchanges for our tokens via OIDC token endpoint. This doc ensures our token schema remains stable for that flow.
 - **Secrets & Rotation:** External IdP client secrets live alongside current pepper/keys; document rotation procedures in your security runbook and keep the process audited.
 
-## 8. Governance
+## 9. Governance
 - This document plus the updated threat model are required inputs to the security review.
 - Backend + security leads must sign off before identity-provider changes are deployed.
 - Any change to password policy, lockout thresholds, or token schema requires updating this doc and notifying the platform security review channel.

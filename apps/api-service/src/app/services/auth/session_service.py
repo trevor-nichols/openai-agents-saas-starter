@@ -111,6 +111,57 @@ class UserSessionService:
             reason="login",
         )
 
+    async def issue_tokens_for_user(
+        self,
+        *,
+        user_id: UUID,
+        tenant_id: UUID,
+        ip_address: str | None,
+        user_agent: str | None,
+        reason: str,
+        session_id: UUID | None = None,
+        enforce_mfa: bool = True,
+    ) -> UserSessionTokens:
+        service = self._require_user_service()
+        try:
+            auth_user = await service.load_active_user(
+                user_id=user_id,
+                tenant_id=tenant_id,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+        except (
+            InvalidCredentialsError,
+            MembershipNotFoundError,
+            UserLockedError,
+            UserDisabledError,
+            TenantContextRequiredError,
+            IpThrottledError,
+        ) as exc:
+            raise UserAuthenticationError(str(exc)) from exc
+        if enforce_mfa:
+            challenge = await self._maybe_return_mfa_challenge(
+                auth_user,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+            if challenge:
+                raise MfaRequiredError(challenge.token, challenge.methods)
+        await service.record_login_success(
+            user_id=auth_user.user_id,
+            tenant_id=auth_user.tenant_id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            reason=reason,
+        )
+        return await self._issue_user_tokens(
+            auth_user,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            reason=reason,
+            session_id=session_id,
+        )
+
     async def refresh_user_session(
         self,
         refresh_token: str,

@@ -9,6 +9,29 @@ from redis import Redis
 
 from starter_console.adapters.stripe_cli import StripeCli
 from starter_console.core import CLIError
+from starter_console.services.sso.config import (
+    env_key,
+    normalize_policy,
+    normalize_role,
+    normalize_token_auth_method,
+    parse_domains,
+    parse_id_token_algs,
+    parse_scopes,
+)
+from starter_console.services.sso.constants import (
+    AUTO_PROVISION_POLICIES,
+    DEFAULT_AUTO_PROVISION_POLICY,
+    DEFAULT_ROLE,
+    DEFAULT_SCOPE_MODE,
+    DEFAULT_SCOPES,
+    DEFAULT_TOKEN_AUTH_METHOD,
+    GOOGLE_DISCOVERY_URL,
+    GOOGLE_ISSUER_URL,
+    GOOGLE_PROVIDER_KEY,
+    ROLE_CHOICES,
+    SCOPE_MODE_CHOICES,
+    TOKEN_AUTH_METHOD_CHOICES,
+)
 from starter_console.workflows.stripe.cli_helpers import ensure_stripe_cli
 
 from ...automation import AutomationPhase, AutomationStatus
@@ -30,6 +53,7 @@ def run(context: WizardContext, provider: InputProvider) -> None:
     _collect_redis(context, provider)
     _collect_billing(context, provider)
     _collect_email(context, provider)
+    _collect_sso(context, provider)
     _maybe_run_migrations(context, provider)
 
 
@@ -393,6 +417,195 @@ def _collect_email(context: WizardContext, provider: InputProvider) -> None:
     context.set_backend("RESEND_DEFAULT_FROM", default_from)
     context.set_backend("RESEND_EMAIL_VERIFICATION_TEMPLATE_ID", template_verify)
     context.set_backend("RESEND_PASSWORD_RESET_TEMPLATE_ID", template_reset)
+
+
+def _collect_sso(context: WizardContext, provider: InputProvider) -> None:
+    enabled_key = env_key(GOOGLE_PROVIDER_KEY, "ENABLED")
+    enabled = provider.prompt_bool(
+        key=enabled_key,
+        prompt="Enable Google SSO (OIDC)?",
+        default=context.current_bool(enabled_key, False),
+    )
+    context.set_backend_bool(enabled_key, enabled)
+    if not enabled:
+        context.console.info("Google SSO disabled.", topic="sso")
+        return
+
+    app_public_url = (context.current("APP_PUBLIC_URL") or "").strip().rstrip("/")
+    if app_public_url:
+        redirect_uri = f"{app_public_url}/auth/sso/{GOOGLE_PROVIDER_KEY}/callback"
+        context.console.info(
+            f"Register redirect URI: {redirect_uri}",
+            topic="sso",
+        )
+
+    scope_key = env_key(GOOGLE_PROVIDER_KEY, "SCOPE")
+    scope_mode = provider.prompt_choice(
+        key=scope_key,
+        prompt="SSO config scope",
+        choices=SCOPE_MODE_CHOICES,
+        default=context.current(scope_key) or DEFAULT_SCOPE_MODE,
+    ).strip()
+    context.set_backend(scope_key, scope_mode)
+
+    tenant_slug_key = env_key(GOOGLE_PROVIDER_KEY, "TENANT_SLUG")
+    tenant_id_key = env_key(GOOGLE_PROVIDER_KEY, "TENANT_ID")
+    if scope_mode == "tenant":
+        tenant_slug = provider.prompt_string(
+            key=tenant_slug_key,
+            prompt="Tenant slug for SSO config (leave blank to use tenant ID)",
+            default=context.current(tenant_slug_key) or context.current("TENANT_DEFAULT_SLUG"),
+            required=False,
+        ).strip()
+        tenant_id = ""
+        if not tenant_slug:
+            tenant_id = provider.prompt_string(
+                key=tenant_id_key,
+                prompt="Tenant ID (UUID) for SSO config",
+                default=context.current(tenant_id_key) or "",
+                required=True,
+            ).strip()
+            if not tenant_id:
+                raise CLIError("Tenant ID is required when scope=tenant.")
+        context.set_backend(tenant_slug_key, tenant_slug)
+        context.set_backend(tenant_id_key, tenant_id)
+    else:
+        context.set_backend(tenant_slug_key, "")
+        context.set_backend(tenant_id_key, "")
+
+    issuer_key = env_key(GOOGLE_PROVIDER_KEY, "ISSUER_URL")
+    issuer_url = provider.prompt_string(
+        key=issuer_key,
+        prompt="OIDC issuer URL",
+        default=context.current(issuer_key) or GOOGLE_ISSUER_URL,
+        required=True,
+    ).strip()
+    if not issuer_url:
+        raise CLIError("OIDC issuer URL is required.")
+    context.set_backend(issuer_key, issuer_url)
+
+    discovery_key = env_key(GOOGLE_PROVIDER_KEY, "DISCOVERY_URL")
+    discovery_url = provider.prompt_string(
+        key=discovery_key,
+        prompt="OIDC discovery URL (blank = issuer/.well-known)",
+        default=context.current(discovery_key) or GOOGLE_DISCOVERY_URL,
+        required=False,
+    ).strip()
+    context.set_backend(discovery_key, discovery_url)
+
+    client_id_key = env_key(GOOGLE_PROVIDER_KEY, "CLIENT_ID")
+    client_id = provider.prompt_string(
+        key=client_id_key,
+        prompt="Google client ID",
+        default=context.current(client_id_key) or "",
+        required=True,
+    ).strip()
+    if not client_id:
+        raise CLIError("Google client ID is required.")
+    context.set_backend(client_id_key, client_id)
+
+    token_auth_key = env_key(GOOGLE_PROVIDER_KEY, "TOKEN_AUTH_METHOD")
+    id_token_algs_key = env_key(GOOGLE_PROVIDER_KEY, "ID_TOKEN_ALGS")
+    has_existing_advanced = bool(
+        (context.current(token_auth_key) or "").strip()
+        or (context.current(id_token_algs_key) or "").strip()
+    )
+    use_advanced = provider.prompt_bool(
+        key="SSO_GOOGLE_ADVANCED_SETTINGS",
+        prompt="Configure advanced SSO settings (token auth method, ID token algs)?",
+        default=has_existing_advanced,
+    )
+    if use_advanced:
+        token_auth_raw = provider.prompt_choice(
+            key=token_auth_key,
+            prompt="Token endpoint auth method",
+            choices=TOKEN_AUTH_METHOD_CHOICES,
+            default=context.current(token_auth_key) or DEFAULT_TOKEN_AUTH_METHOD,
+        )
+        token_auth_method = normalize_token_auth_method(token_auth_raw)
+        id_token_algs_raw = provider.prompt_string(
+            key=id_token_algs_key,
+            prompt="Allowed ID token algorithms (comma-separated, blank = discovery)",
+            default=context.current(id_token_algs_key) or "",
+            required=False,
+        )
+        allowed_id_token_algs = parse_id_token_algs(id_token_algs_raw)
+    else:
+        token_auth_method = normalize_token_auth_method(
+            context.current(token_auth_key) or DEFAULT_TOKEN_AUTH_METHOD
+        )
+        allowed_id_token_algs = parse_id_token_algs(context.current(id_token_algs_key) or "")
+
+    context.set_backend(token_auth_key, token_auth_method)
+    context.set_backend(id_token_algs_key, ",".join(allowed_id_token_algs))
+
+    client_secret_key = env_key(GOOGLE_PROVIDER_KEY, "CLIENT_SECRET")
+    client_secret_required = token_auth_method in {"client_secret_basic", "client_secret_post"}
+    client_secret = provider.prompt_secret(
+        key=client_secret_key,
+        prompt="Google client secret",
+        existing=context.current(client_secret_key),
+        required=client_secret_required,
+    )
+    if client_secret_required and not client_secret:
+        raise CLIError("Google client secret is required.")
+    context.set_backend(client_secret_key, client_secret, mask=True)
+
+    scopes_key = env_key(GOOGLE_PROVIDER_KEY, "SCOPES")
+    scopes_raw = provider.prompt_string(
+        key=scopes_key,
+        prompt="OIDC scopes (comma-separated)",
+        default=context.current(scopes_key) or ",".join(DEFAULT_SCOPES),
+        required=True,
+    )
+    scopes = parse_scopes(scopes_raw)
+    context.set_backend(scopes_key, ",".join(scopes))
+
+    pkce_key = env_key(GOOGLE_PROVIDER_KEY, "PKCE_REQUIRED")
+    pkce_required = provider.prompt_bool(
+        key=pkce_key,
+        prompt="Require PKCE (recommended)?",
+        default=context.current_bool(pkce_key, True),
+    )
+    if token_auth_method == "none" and not pkce_required:
+        raise CLIError("Token auth method 'none' requires PKCE.")
+    context.set_backend_bool(pkce_key, pkce_required)
+
+    policy_key = env_key(GOOGLE_PROVIDER_KEY, "AUTO_PROVISION_POLICY")
+    policy_raw = provider.prompt_choice(
+        key=policy_key,
+        prompt="SSO auto-provision policy",
+        choices=AUTO_PROVISION_POLICIES,
+        default=context.current(policy_key) or DEFAULT_AUTO_PROVISION_POLICY,
+    )
+    policy = normalize_policy(policy_raw)
+    context.set_backend(policy_key, policy)
+
+    allowed_domains_key = env_key(GOOGLE_PROVIDER_KEY, "ALLOWED_DOMAINS")
+    default_role_key = env_key(GOOGLE_PROVIDER_KEY, "DEFAULT_ROLE")
+    if policy == "domain_allowlist":
+        allowed_raw = provider.prompt_string(
+            key=allowed_domains_key,
+            prompt="Allowed email domains (comma-separated)",
+            default=context.current(allowed_domains_key) or "",
+            required=True,
+        )
+        domains = parse_domains(allowed_raw)
+        if not domains:
+            raise CLIError("At least one domain is required for domain allowlist policy.")
+        context.set_backend(allowed_domains_key, ",".join(domains))
+
+        role_raw = provider.prompt_choice(
+            key=default_role_key,
+            prompt="Default role for auto-provisioned users",
+            choices=ROLE_CHOICES,
+            default=context.current(default_role_key) or DEFAULT_ROLE,
+        )
+        role = normalize_role(role_raw)
+        context.set_backend(default_role_key, role)
+    else:
+        context.set_backend(allowed_domains_key, "")
+        context.set_backend(default_role_key, context.current(default_role_key) or DEFAULT_ROLE)
 
 def _warmup_redis(context: WizardContext, targets: dict[str, str]) -> None:
     record = context.automation.get(AutomationPhase.REDIS)

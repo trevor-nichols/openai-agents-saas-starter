@@ -167,6 +167,16 @@ class SecuritySettingsMixin(BaseModel):
         description="Maximum MFA verification attempts per user per hour.",
         alias="MFA_VERIFY_RATE_LIMIT_PER_HOUR",
     )
+    sso_start_rate_limit_per_minute: int = Field(
+        default=30,
+        description="SSO start requests allowed per minute.",
+        alias="SSO_START_RATE_LIMIT_PER_MINUTE",
+    )
+    sso_callback_rate_limit_per_minute: int = Field(
+        default=30,
+        description="SSO callback requests allowed per minute.",
+        alias="SSO_CALLBACK_RATE_LIMIT_PER_MINUTE",
+    )
     contact_email_recipients: list[str] = Field(
         default_factory=lambda: ["support@localhost"],
         description=(

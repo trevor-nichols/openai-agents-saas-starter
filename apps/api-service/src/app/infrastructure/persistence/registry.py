@@ -12,6 +12,7 @@ MODEL_MODULES = (
     "app.infrastructure.persistence.auth.models.security",
     "app.infrastructure.persistence.auth.models.sessions",
     "app.infrastructure.persistence.auth.models.signup",
+    "app.infrastructure.persistence.auth.models.sso",
     "app.infrastructure.persistence.auth.models.team_invites",
     "app.infrastructure.persistence.auth.models.user",
     "app.infrastructure.persistence.billing.models",
