@@ -8,6 +8,7 @@ export const DEFAULT_TENANT_STATUS_FILTER: TenantStatusFilter = 'active';
 export const TENANT_PAGE_LIMIT = 25;
 
 export const TENANT_STATUS_LABELS: Record<TenantAccountStatus, string> = {
+  provisioning: 'Provisioning',
   active: 'Active',
   suspended: 'Suspended',
   deprovisioning: 'Deprovisioning',
@@ -15,6 +16,7 @@ export const TENANT_STATUS_LABELS: Record<TenantAccountStatus, string> = {
 };
 
 export const TENANT_STATUS_TONES: Record<TenantAccountStatus, 'default' | 'positive' | 'warning'> = {
+  provisioning: 'warning',
   active: 'positive',
   suspended: 'warning',
   deprovisioning: 'warning',
@@ -23,6 +25,7 @@ export const TENANT_STATUS_TONES: Record<TenantAccountStatus, 'default' | 'posit
 
 export const TENANT_STATUS_OPTIONS: { label: string; value: TenantStatusFilter }[] = [
   { label: 'All statuses', value: 'all' },
+  { label: TENANT_STATUS_LABELS.provisioning, value: 'provisioning' },
   { label: TENANT_STATUS_LABELS.active, value: 'active' },
   { label: TENANT_STATUS_LABELS.suspended, value: 'suspended' },
   { label: TENANT_STATUS_LABELS.deprovisioning, value: 'deprovisioning' },

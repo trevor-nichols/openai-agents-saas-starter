@@ -21,6 +21,7 @@ interface TenantAccountCardProps {
 }
 
 const statusLabel: Record<string, string> = {
+  provisioning: 'Provisioning',
   active: 'Active',
   suspended: 'Suspended',
   deprovisioning: 'Deprovisioning',
@@ -28,6 +29,7 @@ const statusLabel: Record<string, string> = {
 };
 
 const statusTone: Record<string, 'default' | 'positive' | 'warning'> = {
+  provisioning: 'warning',
   active: 'positive',
   suspended: 'warning',
   deprovisioning: 'warning',

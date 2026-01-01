@@ -11,6 +11,7 @@ import type { PlatformTenantListFilters, TenantAccountStatus } from '@/types/ten
 import { requireOperatorSession } from '../_utils/auth';
 
 const ALLOWED_STATUSES = new Set([
+  'provisioning',
   'active',
   'suspended',
   'deprovisioning',

@@ -6369,6 +6369,7 @@ export type TenantAccountSelfUpdateRequest = {
  * Lifecycle states for tenant accounts.
  */
 export type TenantAccountStatus =
+  | "provisioning"
   | "active"
   | "suspended"
   | "deprovisioning"

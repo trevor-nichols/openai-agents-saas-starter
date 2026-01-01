@@ -1,4 +1,5 @@
 export type TenantAccountStatus =
+  | 'provisioning'
   | 'active'
   | 'suspended'
   | 'deprovisioning'

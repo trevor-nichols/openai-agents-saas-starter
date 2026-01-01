@@ -43792,6 +43792,7 @@
       "TenantAccountStatus": {
         "type": "string",
         "enum": [
+          "provisioning",
           "active",
           "suspended",
           "deprovisioning",
