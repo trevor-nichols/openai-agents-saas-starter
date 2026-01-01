@@ -41,8 +41,7 @@ export AUTH_KEY_STORAGE_PATH="${AUTH_KEY_STORAGE_PATH:-${repo_root}/apps/api-ser
 
 cd "${repo_root}"
 
-hatch_cmd="cd ${api_dir} && hatch run python ../../tools/smoke/http_smoke_server.py"
-$hatch_cmd >"${log_file}" 2>&1 &
+(cd "${api_dir}" && hatch run python ../../tools/smoke/http_smoke_server.py) >"${log_file}" 2>&1 &
 api_pid=$!
 trap "kill ${api_pid} >/dev/null 2>&1 || true" EXIT
 
