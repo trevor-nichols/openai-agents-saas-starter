@@ -30,6 +30,8 @@ from app.services.billing.stripe.event_models import (
 )
 from tests.utils.fake_billing_backend import QueueBillingEventBackend
 
+TEST_TENANT_ID = str(uuid4())
+
 pytestmark = pytest.mark.stripe_replay
 
 
@@ -68,11 +70,11 @@ async def test_sse_emits_events(stub_billing_events_service):
         async with client.stream(
             "GET",
             "/api/v1/billing/stream",
-            headers={"X-Tenant-Id": "tenant-123", "X-Tenant-Role": "owner"},
+            headers={"X-Tenant-Id": TEST_TENANT_ID, "X-Tenant-Role": "owner"},
         ) as response:
             assert response.status_code == 200
 
-            await _publish_invoice_event(service)
+            await _publish_invoice_event(service, TEST_TENANT_ID)
 
             collected = ""
             async for chunk in response.aiter_text():
@@ -98,7 +100,7 @@ async def test_stream_rejects_tenant_mismatch(stub_billing_events_service):
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         response = await client.get(
             "/api/v1/billing/stream",
-            headers={"X-Tenant-Id": "tenant-999", "X-Tenant-Role": "owner"},
+            headers={"X-Tenant-Id": str(uuid4()), "X-Tenant-Role": "owner"},
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
@@ -148,7 +150,7 @@ async def test_history_endpoint_returns_events(stub_billing_events_service):
     service, _ = stub_billing_events_service
     original = service.list_history
     sample_event = BillingEventPayload(
-        tenant_id="tenant-123",
+        tenant_id=TEST_TENANT_ID,
         event_type="invoice.payment_succeeded",
         stripe_event_id="evt_history",
         occurred_at=datetime.now(UTC).isoformat(),
@@ -169,8 +171,8 @@ async def test_history_endpoint_returns_events(stub_billing_events_service):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         response = await client.get(
-            "/api/v1/billing/tenants/tenant-123/events",
-            headers={"X-Tenant-Id": "tenant-123", "X-Tenant-Role": "owner"},
+            f"/api/v1/billing/tenants/{TEST_TENANT_ID}/events",
+            headers={"X-Tenant-Id": TEST_TENANT_ID, "X-Tenant-Role": "owner"},
         )
 
     service.list_history = original
@@ -180,14 +182,14 @@ async def test_history_endpoint_returns_events(stub_billing_events_service):
     assert body["items"][0]["stripe_event_id"] == "evt_history"
 
 
-async def _publish_invoice_event(service: BillingEventsService) -> None:
+async def _publish_invoice_event(service: BillingEventsService, tenant_id: str) -> None:
     now = datetime.now(UTC)
     record = StripeEvent(
         id=uuid4(),
         stripe_event_id="evt_stream",
         event_type="invoice.payment_succeeded",
         payload={"data": {"object": {"status": "paid"}}},
-        tenant_hint="tenant-123",
+        tenant_hint=tenant_id,
         stripe_created_at=now,
         received_at=now,
         processed_at=now,
@@ -195,12 +197,12 @@ async def _publish_invoice_event(service: BillingEventsService) -> None:
         processing_attempts=1,
     )
     context = DispatchBroadcastContext(
-        tenant_id="tenant-123",
+        tenant_id=tenant_id,
         event_type="invoice.payment_succeeded",
         summary="Invoice paid",
         status="paid",
         subscription=SubscriptionSnapshotView(
-            tenant_id="tenant-123",
+            tenant_id=tenant_id,
             plan_code="starter",
             status="active",
             auto_renew=True,
@@ -211,7 +213,7 @@ async def _publish_invoice_event(service: BillingEventsService) -> None:
             cancel_at=None,
         ),
         invoice=InvoiceSnapshotView(
-            tenant_id="tenant-123",
+            tenant_id=tenant_id,
             invoice_id="in_test",
             status="paid",
             amount_due_cents=1200,
@@ -249,7 +251,7 @@ def _authorized_user():
         "user_id": "tester",
         "subject": "user:tester",
         "payload": {
-            "tenant_id": "tenant-123",
+            "tenant_id": TEST_TENANT_ID,
             "roles": ["owner"],
             "scope": "billing:manage billing:read",
         },

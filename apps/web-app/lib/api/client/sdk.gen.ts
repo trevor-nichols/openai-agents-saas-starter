@@ -82,6 +82,9 @@ import type {
   CreateStatusSubscriptionApiV1StatusSubscriptionsPostData,
   CreateStatusSubscriptionApiV1StatusSubscriptionsPostErrors,
   CreateStatusSubscriptionApiV1StatusSubscriptionsPostResponses,
+  CreateTenantApiV1PlatformTenantsPostData,
+  CreateTenantApiV1PlatformTenantsPostErrors,
+  CreateTenantApiV1PlatformTenantsPostResponses,
   CreateVectorStoreApiV1VectorStoresPostData,
   CreateVectorStoreApiV1VectorStoresPostErrors,
   CreateVectorStoreApiV1VectorStoresPostResponses,
@@ -109,6 +112,9 @@ import type {
   DeleteWorkflowRunApiV1WorkflowsRunsRunIdDeleteData,
   DeleteWorkflowRunApiV1WorkflowsRunsRunIdDeleteErrors,
   DeleteWorkflowRunApiV1WorkflowsRunsRunIdDeleteResponses,
+  DeprovisionTenantApiV1PlatformTenantsTenantIdDeprovisionPostData,
+  DeprovisionTenantApiV1PlatformTenantsTenantIdDeprovisionPostErrors,
+  DeprovisionTenantApiV1PlatformTenantsTenantIdDeprovisionPostResponses,
   DetachPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDeleteData,
   DetachPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDeleteErrors,
   DetachPaymentMethodApiV1BillingTenantsTenantIdPaymentMethodsPaymentMethodIdDeleteResponses,
@@ -184,6 +190,12 @@ import type {
   GetSignupAccessPolicyApiV1AuthSignupPolicyGetData,
   GetSignupAccessPolicyApiV1AuthSignupPolicyGetErrors,
   GetSignupAccessPolicyApiV1AuthSignupPolicyGetResponses,
+  GetTenantAccountApiV1TenantsAccountGetData,
+  GetTenantAccountApiV1TenantsAccountGetErrors,
+  GetTenantAccountApiV1TenantsAccountGetResponses,
+  GetTenantApiV1PlatformTenantsTenantIdGetData,
+  GetTenantApiV1PlatformTenantsTenantIdGetErrors,
+  GetTenantApiV1PlatformTenantsTenantIdGetResponses,
   GetTenantSettingsApiV1TenantsSettingsGetData,
   GetTenantSettingsApiV1TenantsSettingsGetErrors,
   GetTenantSettingsApiV1TenantsSettingsGetResponses,
@@ -208,6 +220,9 @@ import type {
   HealthCheckHealthGetData,
   HealthCheckHealthGetErrors,
   HealthCheckHealthGetResponses,
+  IngestFrontendLogApiV1LogsPostData,
+  IngestFrontendLogApiV1LogsPostErrors,
+  IngestFrontendLogApiV1LogsPostResponses,
   IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostData,
   IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostErrors,
   IssueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPostResponses,
@@ -295,6 +310,9 @@ import type {
   ListStatusSubscriptionsApiV1StatusSubscriptionsGetData,
   ListStatusSubscriptionsApiV1StatusSubscriptionsGetErrors,
   ListStatusSubscriptionsApiV1StatusSubscriptionsGetResponses,
+  ListTenantsApiV1PlatformTenantsGetData,
+  ListTenantsApiV1PlatformTenantsGetErrors,
+  ListTenantsApiV1PlatformTenantsGetResponses,
   ListUsageApiV1UsageGetData,
   ListUsageApiV1UsageGetErrors,
   ListUsageApiV1UsageGetResponses,
@@ -331,6 +349,9 @@ import type {
   PreviewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePostData,
   PreviewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePostErrors,
   PreviewUpcomingInvoiceApiV1BillingTenantsTenantIdUpcomingInvoicePostResponses,
+  ReactivateTenantApiV1PlatformTenantsTenantIdReactivatePostData,
+  ReactivateTenantApiV1PlatformTenantsTenantIdReactivatePostErrors,
+  ReactivateTenantApiV1PlatformTenantsTenantIdReactivatePostResponses,
   ReadinessCheckHealthReadyGetData,
   ReadinessCheckHealthReadyGetErrors,
   ReadinessCheckHealthReadyGetResponses,
@@ -427,6 +448,9 @@ import type {
   SubmitContactApiV1ContactPostData,
   SubmitContactApiV1ContactPostErrors,
   SubmitContactApiV1ContactPostResponses,
+  SuspendTenantApiV1PlatformTenantsTenantIdSuspendPostData,
+  SuspendTenantApiV1PlatformTenantsTenantIdSuspendPostErrors,
+  SuspendTenantApiV1PlatformTenantsTenantIdSuspendPostResponses,
   UnbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDeleteData,
   UnbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDeleteErrors,
   UnbindAgentContainerApiV1ContainersAgentsAgentKeyContainerDeleteResponses,
@@ -448,6 +472,12 @@ import type {
   UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchData,
   UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchErrors,
   UpdateSubscriptionApiV1BillingTenantsTenantIdSubscriptionPatchResponses,
+  UpdateTenantAccountApiV1TenantsAccountPatchData,
+  UpdateTenantAccountApiV1TenantsAccountPatchErrors,
+  UpdateTenantAccountApiV1TenantsAccountPatchResponses,
+  UpdateTenantApiV1PlatformTenantsTenantIdPatchData,
+  UpdateTenantApiV1PlatformTenantsTenantIdPatchErrors,
+  UpdateTenantApiV1PlatformTenantsTenantIdPatchResponses,
   UpdateTenantSettingsApiV1TenantsSettingsPutData,
   UpdateTenantSettingsApiV1TenantsSettingsPutErrors,
   UpdateTenantSettingsApiV1TenantsSettingsPutResponses,
@@ -3227,6 +3257,206 @@ export const downloadOpenaiContainerFileApiV1OpenaiContainersContainerIdFilesFil
   };
 
 /**
+ * List Tenants
+ */
+export const listTenantsApiV1PlatformTenantsGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<ListTenantsApiV1PlatformTenantsGetData, ThrowOnError>,
+) => {
+  return (options?.client ?? client).get<
+    ListTenantsApiV1PlatformTenantsGetResponses,
+    ListTenantsApiV1PlatformTenantsGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/platform/tenants",
+    ...options,
+  });
+};
+
+/**
+ * Create Tenant
+ */
+export const createTenantApiV1PlatformTenantsPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<CreateTenantApiV1PlatformTenantsPostData, ThrowOnError>,
+) => {
+  return (options.client ?? client).post<
+    CreateTenantApiV1PlatformTenantsPostResponses,
+    CreateTenantApiV1PlatformTenantsPostErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/platform/tenants",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Get Tenant
+ */
+export const getTenantApiV1PlatformTenantsTenantIdGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<GetTenantApiV1PlatformTenantsTenantIdGetData, ThrowOnError>,
+) => {
+  return (options.client ?? client).get<
+    GetTenantApiV1PlatformTenantsTenantIdGetResponses,
+    GetTenantApiV1PlatformTenantsTenantIdGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/platform/tenants/{tenant_id}",
+    ...options,
+  });
+};
+
+/**
+ * Update Tenant
+ */
+export const updateTenantApiV1PlatformTenantsTenantIdPatch = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    UpdateTenantApiV1PlatformTenantsTenantIdPatchData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).patch<
+    UpdateTenantApiV1PlatformTenantsTenantIdPatchResponses,
+    UpdateTenantApiV1PlatformTenantsTenantIdPatchErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/platform/tenants/{tenant_id}",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Suspend Tenant
+ */
+export const suspendTenantApiV1PlatformTenantsTenantIdSuspendPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    SuspendTenantApiV1PlatformTenantsTenantIdSuspendPostData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).post<
+    SuspendTenantApiV1PlatformTenantsTenantIdSuspendPostResponses,
+    SuspendTenantApiV1PlatformTenantsTenantIdSuspendPostErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/platform/tenants/{tenant_id}/suspend",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Reactivate Tenant
+ */
+export const reactivateTenantApiV1PlatformTenantsTenantIdReactivatePost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    ReactivateTenantApiV1PlatformTenantsTenantIdReactivatePostData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).post<
+    ReactivateTenantApiV1PlatformTenantsTenantIdReactivatePostResponses,
+    ReactivateTenantApiV1PlatformTenantsTenantIdReactivatePostErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/platform/tenants/{tenant_id}/reactivate",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Deprovision Tenant
+ */
+export const deprovisionTenantApiV1PlatformTenantsTenantIdDeprovisionPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    DeprovisionTenantApiV1PlatformTenantsTenantIdDeprovisionPostData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).post<
+    DeprovisionTenantApiV1PlatformTenantsTenantIdDeprovisionPostResponses,
+    DeprovisionTenantApiV1PlatformTenantsTenantIdDeprovisionPostErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/platform/tenants/{tenant_id}/deprovision",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
  * Submit Contact
  */
 export const submitContactApiV1ContactPost = <
@@ -3445,6 +3675,61 @@ export const resendStatusIncidentApiV1StatusIncidentsIncidentIdResendPost = <
       },
     ],
     url: "/api/v1/status/incidents/{incident_id}/resend",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Get Tenant Account
+ */
+export const getTenantAccountApiV1TenantsAccountGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<GetTenantAccountApiV1TenantsAccountGetData, ThrowOnError>,
+) => {
+  return (options?.client ?? client).get<
+    GetTenantAccountApiV1TenantsAccountGetResponses,
+    GetTenantAccountApiV1TenantsAccountGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/tenants/account",
+    ...options,
+  });
+};
+
+/**
+ * Update Tenant Account
+ */
+export const updateTenantAccountApiV1TenantsAccountPatch = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    UpdateTenantAccountApiV1TenantsAccountPatchData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? client).patch<
+    UpdateTenantAccountApiV1TenantsAccountPatchResponses,
+    UpdateTenantAccountApiV1TenantsAccountPatchErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/tenants/account",
     ...options,
     headers: {
       "Content-Type": "application/json",
@@ -4633,6 +4918,28 @@ export const issuePasswordResetTokenApiV1TestFixturesPasswordResetTokenPost = <
     ThrowOnError
   >({
     url: "/api/v1/test-fixtures/password-reset-token",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Ingest Frontend Log
+ */
+export const ingestFrontendLogApiV1LogsPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<IngestFrontendLogApiV1LogsPostData, ThrowOnError>,
+) => {
+  return (options.client ?? client).post<
+    IngestFrontendLogApiV1LogsPostResponses,
+    IngestFrontendLogApiV1LogsPostErrors,
+    ThrowOnError
+  >({
+    url: "/api/v1/logs",
     ...options,
     headers: {
       "Content-Type": "application/json",

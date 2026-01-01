@@ -6,11 +6,13 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import JSON, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.domain.tenant_accounts import TenantAccountStatus
 from app.infrastructure.persistence.models.base import UTC_NOW, Base, uuid_pk
 
 
@@ -18,13 +20,35 @@ class TenantAccount(Base):
     """Represents a customer tenant in a multi-tenant deployment."""
 
     __tablename__ = "tenant_accounts"
+    __table_args__ = (Index("ix_tenant_accounts_status", "status"),)
 
     id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pk)
     slug: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     name: Mapped[str] = mapped_column(String(128), nullable=False)
+    status: Mapped[TenantAccountStatus] = mapped_column(
+        SAEnum(
+            TenantAccountStatus,
+            name="tenant_account_status",
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+        ),
+        nullable=False,
+        default=TenantAccountStatus.ACTIVE,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=UTC_NOW, nullable=False
     )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=UTC_NOW, onupdate=UTC_NOW, nullable=False
+    )
+    status_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    status_updated_by: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    status_reason: Mapped[str | None] = mapped_column(String(256))
+    suspended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    deprovisioned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class TenantSettingsModel(Base):

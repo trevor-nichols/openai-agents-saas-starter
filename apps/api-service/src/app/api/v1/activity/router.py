@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 
 from app.api.dependencies.auth import CurrentUser, require_verified_scopes
@@ -22,12 +22,17 @@ from app.services.activity.service import (
     ActivityNotFoundError,
     InvalidActivityIdError,
 )
+from app.services.tenant.tenant_account_service import get_tenant_account_service
 
 router = APIRouter(tags=["activity"], prefix="/activity")
 
 
 @router.get("", response_model=ActivityListResponse)
 async def list_activity_events(
+    request: Request,
+    current_user: CurrentUser = Depends(require_verified_scopes("activity:read")),
+    tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
+    tenant_role_header: str | None = Header(None, alias="X-Tenant-Role"),
     limit: int = Query(50, ge=1, le=200),
     cursor: str | None = Query(None, description="Opaque pagination cursor"),
     action: str | None = Query(None, description="Filter by action name"),
@@ -38,14 +43,12 @@ async def list_activity_events(
     request_id: str | None = Query(None, description="Filter by request id"),
     created_after: datetime | None = Query(None),
     created_before: datetime | None = Query(None),
-    current_user: CurrentUser = Depends(require_verified_scopes("activity:read")),
-    tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
-    tenant_role_header: str | None = Header(None, alias="X-Tenant-Role"),
 ) -> ActivityListResponse:
     tenant_context = await _resolve_tenant_context(
         current_user,
         tenant_id_header,
         tenant_role_header,
+        request=request,
     )
 
     filters = ActivityEventFilters(
@@ -99,6 +102,7 @@ async def list_activity_events(
 
 @router.get("/stream")
 async def stream_activity_events(
+    request: Request,
     current_user: CurrentUser = Depends(require_verified_scopes("activity:read")),
     tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
     tenant_role_header: str | None = Header(None, alias="X-Tenant-Role"),
@@ -107,6 +111,7 @@ async def stream_activity_events(
         current_user,
         tenant_id_header,
         tenant_role_header,
+        request=request,
     )
 
     try:
@@ -134,6 +139,7 @@ async def stream_activity_events(
 @router.post("/{event_id}/read", response_model=ReceiptResponse)
 async def mark_activity_read(
     event_id: str,
+    request: Request,
     current_user: CurrentUser = Depends(require_verified_scopes("activity:read")),
     tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
     tenant_role_header: str | None = Header(None, alias="X-Tenant-Role"),
@@ -142,6 +148,7 @@ async def mark_activity_read(
         current_user,
         tenant_id_header,
         tenant_role_header,
+        request=request,
     )
     user_id = _get_user_id(current_user)
     try:
@@ -169,6 +176,7 @@ async def mark_activity_read(
 @router.post("/{event_id}/dismiss", response_model=ReceiptResponse)
 async def dismiss_activity(
     event_id: str,
+    request: Request,
     current_user: CurrentUser = Depends(require_verified_scopes("activity:read")),
     tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
     tenant_role_header: str | None = Header(None, alias="X-Tenant-Role"),
@@ -177,6 +185,7 @@ async def dismiss_activity(
         current_user,
         tenant_id_header,
         tenant_role_header,
+        request=request,
     )
     user_id = _get_user_id(current_user)
     try:
@@ -203,6 +212,7 @@ async def dismiss_activity(
 
 @router.post("/mark-all-read", response_model=ReceiptResponse)
 async def mark_all_activity_read(
+    request: Request,
     current_user: CurrentUser = Depends(require_verified_scopes("activity:read")),
     tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
     tenant_role_header: str | None = Header(None, alias="X-Tenant-Role"),
@@ -211,6 +221,7 @@ async def mark_all_activity_read(
         current_user,
         tenant_id_header,
         tenant_role_header,
+        request=request,
     )
     await activity_service.mark_all_read(
         tenant_id=tenant_context.tenant_id,
@@ -223,11 +234,15 @@ async def _resolve_tenant_context(
     current_user: CurrentUser,
     tenant_id_header: str | None,
     tenant_role_header: str | None,
+    *,
+    request: Request,
 ) -> TenantContext:
     return await get_tenant_context(
+        request=request,
         tenant_id_header=tenant_id_header,
         tenant_role_header=tenant_role_header,
         current_user=current_user,
+        tenant_account_service=get_tenant_account_service(),
     )
 
 

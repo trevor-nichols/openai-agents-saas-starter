@@ -1,5 +1,6 @@
 import type { AppNavItem } from '@/components/shell/AppNavLinks';
 import { getSessionMetaFromCookies } from '@/lib/auth/cookies';
+import { hasOperatorScope } from '@/lib/auth/roles';
 import { billingEnabled } from '@/lib/config/features';
 import { getCurrentUserProfile } from '@/lib/server/services/users';
 
@@ -30,8 +31,10 @@ export async function getAppShellLayoutModel(): Promise<{
   }
 
   const hasStatusScope = session?.scopes?.includes('status:manage') ?? false;
+  const hasOperator = hasOperatorScope(session?.scopes ?? null);
   const navItems = buildNavItems({
     hasStatusScope,
+    hasOperator,
     role: profile?.role ?? null,
     scopes: session?.scopes ?? null,
   });

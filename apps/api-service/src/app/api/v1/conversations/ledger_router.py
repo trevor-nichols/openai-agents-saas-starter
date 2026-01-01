@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 
 from app.api.dependencies.auth import CurrentUser, require_verified_scopes
@@ -29,6 +29,7 @@ LEDGER_STREAM_RESPONSE = {
 @router.get("/{conversation_id}/ledger/events", response_model=ConversationLedgerEventsResponse)
 async def get_conversation_ledger_events(
     conversation_id: str,
+    request: Request,
     current_user: CurrentUser = Depends(require_verified_scopes("conversations:read")),
     tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
     tenant_role_header: str | None = Header(None, alias="X-Tenant-Role"),
@@ -41,6 +42,7 @@ async def get_conversation_ledger_events(
         current_user,
         tenant_id_header,
         tenant_role_header,
+        request=request,
         min_role=TenantRole.VIEWER,
     )
 
@@ -69,6 +71,7 @@ async def get_conversation_ledger_events(
 )
 async def stream_conversation_ledger_events(
     conversation_id: str,
+    request: Request,
     current_user: CurrentUser = Depends(require_verified_scopes("conversations:read")),
     tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
     tenant_role_header: str | None = Header(None, alias="X-Tenant-Role"),
@@ -80,6 +83,7 @@ async def stream_conversation_ledger_events(
         current_user,
         tenant_id_header,
         tenant_role_header,
+        request=request,
         min_role=TenantRole.VIEWER,
     )
 

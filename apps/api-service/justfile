@@ -49,6 +49,11 @@ smoke-http:
 	# Respects SMOKE_* flags for optional surfaces; defaults keep AI/Billing off.
 	bash scripts/smoke_http.sh
 
+perf-smoke:
+	# Run a short k6 performance smoke against a local stubbed api-service.
+	# Requires: k6 on PATH and Redis (defaults to localhost:6379).
+	bash ../../tools/perf/run_k6_smoke.sh
+
 cleanup-run-events days="" batch="" sleep_ms="" dry_run="false": _check_env
     @echo "Cleaning up agent_run_events"
     {{env_runner}} {{env_compose}} {{env_local}} {{env_default}} -- bash -lc 'cd {{project_dir}} && hatch run python scripts/cleanup_run_events.py {{ if days != "" { "--days " + days } else { "" } }} {{ if batch != "" { "--batch " + batch } else { "" } }} {{ if sleep_ms != "" { "--sleep-ms " + sleep_ms } else { "" } }} {{ if dry_run == "true" { "--dry-run" } else { "" } }}'

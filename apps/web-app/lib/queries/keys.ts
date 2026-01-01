@@ -92,6 +92,14 @@ export const queryKeys = {
   tenant: {
     all: ['tenant'] as const,
     settings: () => [...queryKeys.tenant.all, 'settings'] as const,
+    account: () => [...queryKeys.tenant.all, 'account'] as const,
+  },
+  platformTenants: {
+    all: ['platform-tenants'] as const,
+    list: (filters?: Record<string, unknown>) =>
+      [...queryKeys.platformTenants.all, 'list', filters ?? {}] as const,
+    detail: (tenantId: string) =>
+      [...queryKeys.platformTenants.all, 'detail', tenantId] as const,
   },
   team: {
     all: ['team'] as const,

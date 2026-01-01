@@ -3,7 +3,7 @@
 from collections.abc import AsyncIterator
 from typing import Literal, cast
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
 from fastapi.responses import StreamingResponse
 
 from app.api.dependencies.auth import CurrentUser, require_verified_scopes
@@ -49,6 +49,7 @@ TITLE_STREAM_RESPONSE = {
 
 @router.get("", response_model=ConversationListResponse)
 async def list_conversations(
+    request: Request,
     current_user: CurrentUser = Depends(require_verified_scopes("conversations:read")),
     tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
     tenant_role_header: str | None = Header(None, alias="X-Tenant-Role"),
@@ -62,6 +63,7 @@ async def list_conversations(
         current_user,
         tenant_id_header,
         tenant_role_header,
+        request=request,
         min_role=TenantRole.VIEWER,
     )
     actor = conversation_actor(current_user, tenant_context)
@@ -82,6 +84,7 @@ async def list_conversations(
 
 @router.get("/search", response_model=ConversationSearchResponse)
 async def search_conversations(
+    request: Request,
     q: str = Query(..., min_length=1, description="Search query."),
     current_user: CurrentUser = Depends(require_verified_scopes("conversations:read")),
     tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
@@ -96,6 +99,7 @@ async def search_conversations(
         current_user,
         tenant_id_header,
         tenant_role_header,
+        request=request,
         min_role=TenantRole.VIEWER,
     )
     actor = conversation_actor(current_user, tenant_context)
@@ -137,6 +141,7 @@ async def search_conversations(
 @router.get("/{conversation_id}", response_model=ConversationHistory)
 async def get_conversation(
     conversation_id: str,
+    request: Request,
     current_user: CurrentUser = Depends(require_verified_scopes("conversations:read")),
     tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
     tenant_role_header: str | None = Header(None, alias="X-Tenant-Role"),
@@ -147,6 +152,7 @@ async def get_conversation(
         current_user,
         tenant_id_header,
         tenant_role_header,
+        request=request,
         min_role=TenantRole.VIEWER,
     )
     actor = conversation_actor(current_user, tenant_context)
@@ -167,6 +173,7 @@ async def get_conversation(
 @router.get("/{conversation_id}/messages", response_model=PaginatedMessagesResponse)
 async def get_conversation_messages(
     conversation_id: str,
+    request: Request,
     current_user: CurrentUser = Depends(require_verified_scopes("conversations:read")),
     tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
     tenant_role_header: str | None = Header(None, alias="X-Tenant-Role"),
@@ -183,6 +190,7 @@ async def get_conversation_messages(
         current_user,
         tenant_id_header,
         tenant_role_header,
+        request=request,
         min_role=TenantRole.VIEWER,
     )
     actor = conversation_actor(current_user, tenant_context)
@@ -215,6 +223,7 @@ async def get_conversation_messages(
 async def delete_conversation_message(
     conversation_id: str,
     message_id: str,
+    request: Request,
     current_user: CurrentUser = Depends(require_verified_scopes("conversations:write")),
     tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
     tenant_role_header: str | None = Header(None, alias="X-Tenant-Role"),
@@ -225,6 +234,7 @@ async def delete_conversation_message(
         current_user,
         tenant_id_header,
         tenant_role_header,
+        request=request,
         min_role=TenantRole.VIEWER,
     )
     actor = conversation_actor(current_user, tenant_context)
@@ -258,6 +268,7 @@ async def delete_conversation_message(
 async def update_conversation_memory(
     conversation_id: str,
     payload: ConversationMemoryConfigRequest,
+    request: Request,
     current_user: CurrentUser = Depends(require_verified_scopes("conversations:write")),
     tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
     tenant_role_header: str | None = Header(None, alias="X-Tenant-Role"),
@@ -268,6 +279,7 @@ async def update_conversation_memory(
         current_user,
         tenant_id_header,
         tenant_role_header,
+        request=request,
         min_role=TenantRole.ADMIN,
     )
     svc = get_conversation_service()
@@ -320,6 +332,7 @@ async def update_conversation_memory(
 async def update_conversation_title(
     conversation_id: str,
     payload: ConversationTitleUpdateRequest,
+    request: Request,
     current_user: CurrentUser = Depends(require_verified_scopes("conversations:write")),
     tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
     tenant_role_header: str | None = Header(None, alias="X-Tenant-Role"),
@@ -330,6 +343,7 @@ async def update_conversation_title(
         current_user,
         tenant_id_header,
         tenant_role_header,
+        request=request,
         min_role=TenantRole.VIEWER,
     )
 
@@ -356,6 +370,7 @@ async def update_conversation_title(
 @router.get("/{conversation_id}/events", response_model=ConversationEventsResponse)
 async def get_conversation_events(
     conversation_id: str,
+    request: Request,
     workflow_run_id: str | None = Query(
         None,
         description="Optional workflow run id to scope events to a single run.",
@@ -368,6 +383,7 @@ async def get_conversation_events(
         current_user,
         tenant_id_header,
         tenant_role_header,
+        request=request,
         min_role=TenantRole.VIEWER,
     )
     actor = conversation_actor(current_user, tenant_context)
@@ -432,6 +448,7 @@ async def get_conversation_events(
 )
 async def stream_conversation_metadata(
     conversation_id: str,
+    request: Request,
     current_user: CurrentUser = Depends(require_verified_scopes("conversations:read")),
     tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
     tenant_role_header: str | None = Header(None, alias="X-Tenant-Role"),
@@ -442,6 +459,7 @@ async def stream_conversation_metadata(
         current_user,
         tenant_id_header,
         tenant_role_header,
+        request=request,
         min_role=TenantRole.VIEWER,
     )
     tenant_id = tenant_context.tenant_id
@@ -522,6 +540,7 @@ async def stream_conversation_metadata(
 @router.delete("/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_conversation(
     conversation_id: str,
+    request: Request,
     current_user: CurrentUser = Depends(require_verified_scopes("conversations:delete")),
     tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
     tenant_role_header: str | None = Header(None, alias="X-Tenant-Role"),
@@ -532,6 +551,7 @@ async def delete_conversation(
         current_user,
         tenant_id_header,
         tenant_role_header,
+        request=request,
         min_role=TenantRole.ADMIN,
     )
     actor = conversation_actor(current_user, tenant_context)

@@ -60,7 +60,10 @@ from app.infrastructure.persistence.stripe.repository import (
     StripeEventRepository,
     configure_stripe_event_repository,
 )
-from app.infrastructure.persistence.tenants import PostgresTenantSettingsRepository
+from app.infrastructure.persistence.tenants import (
+    PostgresTenantAccountRepository,
+    PostgresTenantSettingsRepository,
+)
 from app.infrastructure.providers.openai import build_openai_provider
 from app.infrastructure.redis.factory import get_redis_factory
 from app.infrastructure.redis_types import RedisBytesClient
@@ -89,6 +92,7 @@ from app.services.signup.signup_request_service import build_signup_request_serv
 from app.services.signup.signup_service import build_signup_service
 from app.services.status.status_alert_dispatcher import build_status_alert_dispatcher
 from app.services.status.status_subscription_service import build_status_subscription_service
+from app.services.tenant.tenant_lifecycle_service import build_tenant_lifecycle_service
 from app.services.usage.policy_service import build_usage_policy_service
 from app.services.users import build_user_service
 from app.services.vector_stores import (
@@ -255,8 +259,29 @@ async def lifespan(app: FastAPI):
         postgres_repository = PostgresConversationRepository(session_factory)
         container.conversation_service.set_repository(postgres_repository)
     logger.debug("Startup checkpoint: conversation repository configured")
-    container.tenant_settings_service.set_repository(
-        PostgresTenantSettingsRepository(session_factory)
+    try:
+        _ = container.tenant_account_service.repository
+        tenant_account_repo_set = True
+    except RuntimeError:
+        tenant_account_repo_set = False
+    if not tenant_account_repo_set:
+        container.tenant_account_service.set_repository(
+            PostgresTenantAccountRepository(session_factory)
+        )
+
+    try:
+        _ = container.tenant_settings_service.repository
+        tenant_settings_repo_set = True
+    except RuntimeError:
+        tenant_settings_repo_set = False
+    if not tenant_settings_repo_set:
+        container.tenant_settings_service.set_repository(
+            PostgresTenantSettingsRepository(session_factory)
+        )
+    container.tenant_lifecycle_service = build_tenant_lifecycle_service(
+        tenant_account_service=container.tenant_account_service,
+        billing_service=container.billing_service if settings.enable_billing else None,
+        settings_factory=lambda: settings,
     )
 
     provider_registry = get_provider_registry()
@@ -334,6 +359,7 @@ async def lifespan(app: FastAPI):
         settings_factory=lambda: settings,
         session_factory=session_factory,
         invite_service=container.invite_service,
+        tenant_account_service=container.tenant_account_service,
     )
     logger.debug("Startup checkpoint: signup services configured")
 

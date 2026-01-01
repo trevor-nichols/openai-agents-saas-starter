@@ -36,6 +36,8 @@ from app.services.signup.password_recovery_service import PasswordRecoveryServic
 from app.services.status.status_alert_dispatcher import StatusAlertDispatcher
 from app.services.status.status_subscription_service import StatusSubscriptionService
 from app.services.storage.service import StorageService
+from app.services.tenant.tenant_account_service import TenantAccountService
+from app.services.tenant.tenant_lifecycle_service import TenantLifecycleService
 from app.services.tenant.tenant_settings_service import TenantSettingsService
 from app.services.usage.counters import UsageCounterService
 from app.services.usage.policy_service import UsagePolicyService
@@ -102,6 +104,10 @@ class ApplicationContainer:
     tenant_settings_service: TenantSettingsService = field(
         default_factory=TenantSettingsService
     )
+    tenant_account_service: TenantAccountService = field(
+        default_factory=TenantAccountService
+    )
+    tenant_lifecycle_service: TenantLifecycleService | None = None
     team_membership_service: TenantMembershipService | None = None
     team_invite_service: TeamInviteService | None = None
     conversation_query_service: ConversationQueryService | None = None
@@ -165,6 +171,7 @@ class ApplicationContainer:
         self.signup_service = None
         self.invite_service = None
         self.signup_request_service = None
+        self.tenant_lifecycle_service = None
         self.status_subscription_service = None
         self.status_alert_dispatcher = None
         self.geoip_service = NullGeoIPService()

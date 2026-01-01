@@ -42,11 +42,11 @@ async def list_service_account_tokens(
     ),
     tenant_id: str | None = Query(
         default=None,
-        description="Tenant UUID to filter (operator override only).",
+        description="Tenant UUID to filter (operator only).",
     ),
     include_global: bool = Query(
         default=False,
-        description="Include tenantless tokens (operator override only).",
+        description="Include tenantless tokens (operator only).",
     ),
     limit: int = Query(default=20, ge=1, le=100, description="Max tokens to return."),
     offset: int = Query(default=0, ge=0, description="Offset for pagination."),
@@ -98,7 +98,7 @@ async def revoke_service_account_token(
     if actor.actor_type == ServiceAccountActorType.PLATFORM_OPERATOR and not reason:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Reason is required when using operator override.",
+            detail="Reason is required for operator actions.",
         )
     if not reason:
         reason = "tenant_admin_manual_revoke"

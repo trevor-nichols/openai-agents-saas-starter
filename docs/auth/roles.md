@@ -2,7 +2,7 @@
 
 **Status:** Active  
 **Owner:** Platform Foundations  
-**Last Updated:** 2025-12-30
+**Last Updated:** 2025-12-31
 
 This document is the single source of truth for role semantics in the starter.
 
@@ -52,6 +52,18 @@ Supported across many APIs:
 - `X-Tenant-Role` (`viewer | member | admin | owner`)
 
 Down-scoping is allowed only to **reduce** privileges relative to the authenticated token.
+
+### 3.1 Operator Override Headers (platform-only)
+
+Used for explicit, audited operator access when a tenant is suspended.
+
+- `X-Operator-Override` (`true|1|yes|on`)  
+- `X-Operator-Reason` (required, non-empty)
+
+Rules:
+- Requires operator scopes (`platform:operator` or `support:*`).
+- Read-only only (safe methods such as `GET`).
+- Never elevates tenant role; only bypasses suspended-tenant blocking for inspection.
 
 ## 4) Data Model Surface
 

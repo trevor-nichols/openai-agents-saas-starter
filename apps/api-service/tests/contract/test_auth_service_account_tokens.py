@@ -71,18 +71,12 @@ def _token_headers(
     token: str,
     tenant_id: str | None = None,
     tenant_role: str | None = None,
-    operator_override: bool = False,
-    operator_reason: str | None = None,
 ) -> dict[str, str]:
     headers = {"Authorization": f"Bearer {token}"}
     if tenant_id:
         headers["X-Tenant-Id"] = tenant_id
     if tenant_role:
         headers["X-Tenant-Role"] = tenant_role
-    if operator_override:
-        headers["X-Operator-Override"] = "true"
-    if operator_reason:
-        headers["X-Operator-Reason"] = operator_reason
     return headers
 
 
@@ -129,21 +123,9 @@ def test_tenant_admin_list_tokens_scoped(client: TestClient, mock_auth_service: 
     )
 
 
-def test_operator_list_requires_reason(client: TestClient, mock_auth_service: AsyncMock) -> None:
+def test_operator_list_allows_cross_tenant(client: TestClient, mock_auth_service: AsyncMock) -> None:
     token = _mint_access_token(tenant_id=None, scopes=["support:*"])
-
-    response = client.get(
-        "/api/v1/auth/service-accounts/tokens",
-        headers=_token_headers(token=token, operator_override=True),
-    )
-
-    assert response.status_code == 400
-    mock_auth_service.list_service_account_tokens.assert_not_called()
-
-
-def test_operator_list_cross_tenant(client: TestClient, mock_auth_service: AsyncMock) -> None:
     target_tenant = str(uuid4())
-    token = _mint_access_token(tenant_id=None, scopes=["support:*"])
     mock_auth_service.list_service_account_tokens.return_value = ServiceAccountTokenListResult(
         tokens=[_sample_token_view(target_tenant)],
         total=1,
@@ -151,11 +133,7 @@ def test_operator_list_cross_tenant(client: TestClient, mock_auth_service: Async
 
     response = client.get(
         f"/api/v1/auth/service-accounts/tokens?tenant_id={target_tenant}&include_global=true",
-        headers=_token_headers(
-            token=token,
-            operator_override=True,
-            operator_reason="audit",
-        ),
+        headers=_token_headers(token=token),
     )
 
     assert response.status_code == 200
@@ -195,7 +173,7 @@ def test_operator_revoke_requires_reason(client: TestClient, mock_auth_service: 
     response = client.post(
         "/api/v1/auth/service-accounts/tokens/sample-jti/revoke",
         json={},
-        headers=_token_headers(token=token, operator_override=True),
+        headers=_token_headers(token=token),
     )
 
     assert response.status_code == 400

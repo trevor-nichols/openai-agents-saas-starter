@@ -67,6 +67,22 @@ REGISTRY: dict[str, ActivityEventDefinition] = {
         allowed=("service_account", "reason"),
         required=("service_account",),
     ),
+    # Tenant lifecycle
+    "tenant.lifecycle": _def(
+        "tenant.lifecycle",
+        allowed=("event", "from_status", "to_status", "reason"),
+        required=("event", "to_status"),
+    ),
+    "tenant.account.created": _def(
+        "tenant.account.created",
+        allowed=("slug", "name", "status", "reason"),
+        required=("slug", "name", "status"),
+    ),
+    "tenant.account.updated": _def(
+        "tenant.account.updated",
+        allowed=("fields",),
+        required=("fields",),
+    ),
     # Conversations / agents
     "conversation.created": _def(
         "conversation.created",

@@ -85,6 +85,7 @@ from app.infrastructure.providers.openai import build_openai_provider
 from app.services.agents import AgentService, get_agent_service
 from app.services.agents.provider_registry import get_provider_registry
 from app.services.conversation_service import conversation_service
+from tests.utils.tenant_accounts import StubTenantAccountRepository
 
 config_module.get_settings.cache_clear()
 
@@ -148,6 +149,7 @@ def _reset_application_container() -> Generator[None, None, None]:
     container = reset_container()
     # Use in-memory conversation repository to avoid DB/migration coupling in tests
     container.conversation_service.set_repository(EphemeralConversationRepository())
+    container.tenant_account_service.set_repository(StubTenantAccountRepository())
     yield
 
 

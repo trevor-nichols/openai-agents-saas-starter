@@ -57,10 +57,17 @@ def configure(context: WizardContext, provider: InputProvider) -> None:
     ).lower()
     context.set_frontend("NEXT_PUBLIC_LOG_LEVEL", log_level)
 
+    ingest_enabled = context.current_bool(
+        "ENABLE_FRONTEND_LOG_INGEST",
+        default=context.profile in {"demo", "staging"},
+    )
+    sink_default = context.frontend_env.get("NEXT_PUBLIC_LOG_SINK") or (
+        "beacon" if ingest_enabled else "console"
+    )
     raw_sink = provider.prompt_string(
         key="NEXT_PUBLIC_LOG_SINK",
         prompt="Frontend log sink (console/beacon/none)",
-        default=context.frontend_env.get("NEXT_PUBLIC_LOG_SINK") or "console",
+        default=sink_default,
         required=True,
     ).strip().lower()
     sink = raw_sink if raw_sink in {"console", "beacon", "none"} else "console"

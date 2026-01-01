@@ -8,6 +8,10 @@ import pytest
 from app.api.v1.conversations import router
 
 
+def _dummy_request(method: str = "GET") -> SimpleNamespace:
+    return SimpleNamespace(method=method, url=SimpleNamespace(path="/"))
+
+
 class StubQueryService:
     def __init__(self):
         self.called_with = None
@@ -63,6 +67,7 @@ async def test_list_conversations_uses_query_service(monkeypatch):
     )
 
     response = await router.list_conversations(
+        request=_dummy_request(),
         current_user={"user_id": "u1"},
         tenant_id_header=None,
         tenant_role_header=None,
@@ -94,6 +99,7 @@ async def test_get_conversation_messages_uses_query_service(monkeypatch):
 
     response = await router.get_conversation_messages(
         conversation_id="c123",
+        request=_dummy_request(),
         current_user={"user_id": "u1"},
         tenant_id_header=None,
         tenant_role_header=None,

@@ -45,15 +45,19 @@ const BILLING_NAV: AppNavItem = {
   icon: 'credit-card',
 };
 
-const OPS_NAV: AppNavItem[] = [
-  {
-    href: '/ops/status',
-    label: 'Ops',
-    badge: 'Admin',
-    badgeVariant: 'outline',
-    icon: 'activity',
-  },
-];
+const OPS_STATUS_ITEM: AppNavItem = {
+  href: '/ops/status',
+  label: 'Status',
+  badge: 'Admin',
+  badgeVariant: 'outline',
+};
+
+const OPS_TENANTS_ITEM: AppNavItem = {
+  href: '/ops/tenants',
+  label: 'Tenants',
+  badge: 'Operator',
+  badgeVariant: 'outline',
+};
 
 export function buildPrimaryNav({ includeStorage = false }: { includeStorage?: boolean } = {}): AppNavItem[] {
   const workspaceItems = includeStorage ? WORKSPACE_ITEMS_WITH_STORAGE : WORKSPACE_BASE_ITEMS;
@@ -67,19 +71,37 @@ export function buildPrimaryNav({ includeStorage = false }: { includeStorage?: b
 
 export function buildNavItems({
   hasStatusScope,
+  hasOperator,
   role,
   scopes,
 }: {
   hasStatusScope: boolean;
+  hasOperator: boolean;
   role?: string | null;
   scopes?: string[] | null;
 }): AppNavItem[] {
   const primaryNav = buildPrimaryNav({
     includeStorage: isTenantAdmin({ role, scopes }),
   });
-  if (!hasStatusScope) {
+  const opsItems: AppNavItem[] = [];
+  if (hasStatusScope) {
+    opsItems.push(OPS_STATUS_ITEM);
+  }
+  if (hasOperator) {
+    opsItems.push(OPS_TENANTS_ITEM);
+  }
+
+  if (opsItems.length === 0) {
     return primaryNav;
   }
 
-  return [...primaryNav, ...OPS_NAV];
+  return [
+    ...primaryNav,
+    {
+      href: '/ops',
+      label: 'Ops',
+      icon: 'activity',
+      items: opsItems,
+    },
+  ];
 }

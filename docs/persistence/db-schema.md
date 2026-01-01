@@ -123,12 +123,20 @@ Represents a customer tenant.
 | `id`         | UUID         | NO   | `uuid_pk()` |        |
 | `slug`       | String(64)   | NO   | —           | unique |
 | `name`       | String(128)  | NO   | —           |        |
+| `status`     | Enum         | NO   | `active`    | values: active/suspended/deprovisioning/deprovisioned |
 | `created_at` | DateTime(tz) | NO   | `UTC_NOW`   |        |
+| `updated_at` | DateTime(tz) | NO   | `UTC_NOW`   | `onupdate=UTC_NOW` |
+| `status_updated_at` | DateTime(tz) | YES | — | last lifecycle transition |
+| `status_updated_by` | UUID | YES | — | FK → `users.id` (`SET NULL`) |
+| `status_reason` | String(256) | YES | — | operator/admin reason |
+| `suspended_at` | DateTime(tz) | YES | — | last suspension time |
+| `deprovisioned_at` | DateTime(tz) | YES | — | final deprovision time |
 
 **Constraints**
 
 * PK: `id`
 * Unique: `slug`
+* Index: `status`
 
 ---
 

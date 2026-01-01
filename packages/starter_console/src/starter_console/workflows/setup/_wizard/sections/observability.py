@@ -128,11 +128,37 @@ def run(context: WizardContext, provider: InputProvider) -> None:
         context.set_backend_bool("ENABLE_OTEL_COLLECTOR", False)
         _clear_collector_exporters(context)
 
+    ingest_default = context.current_bool(
+        "ENABLE_FRONTEND_LOG_INGEST",
+        default=context.profile in {"demo", "staging"},
+    )
     ingest_enabled = provider.prompt_bool(
         key="ENABLE_FRONTEND_LOG_INGEST",
         prompt="Accept authenticated frontend logs at /api/v1/logs?",
-        default=context.current_bool("ENABLE_FRONTEND_LOG_INGEST", False),
+        default=ingest_default,
     )
+    if ingest_enabled and context.profile == "production":
+        console.warn(
+            (
+                "Frontend log ingest is enabled for production. Ensure you have approved "
+                "retention rules and a PII redaction/collection policy before proceeding."
+            ),
+            topic="frontend-logging",
+        )
+        confirmed = provider.prompt_bool(
+            key="CONFIRM_ENABLE_FRONTEND_LOG_INGEST",
+            prompt="Confirm production frontend log ingest is approved?",
+            default=False,
+        )
+        if not confirmed:
+            console.warn(
+                (
+                    "Production frontend log ingest not confirmed; disabling "
+                    "ENABLE_FRONTEND_LOG_INGEST."
+                ),
+                topic="frontend-logging",
+            )
+            ingest_enabled = False
     context.set_backend_bool("ENABLE_FRONTEND_LOG_INGEST", ingest_enabled)
 
     geo = normalize_geoip_provider(
