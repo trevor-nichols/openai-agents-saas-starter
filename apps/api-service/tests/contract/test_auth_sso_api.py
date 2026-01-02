@@ -16,9 +16,8 @@ from app.domain.auth import UserSessionTokens
 from app.domain.sso import SsoAutoProvisionPolicy, SsoProviderConfig, SsoTokenAuthMethod
 from app.domain.tenant_roles import TenantRole
 from app.services.auth.errors import MfaRequiredError, UserAuthenticationError
-from app.services.sso import SsoConfigurationError, SsoTokenError
+from app.services.sso import SsoConfigurationError, SsoStartResult, SsoTokenError
 from app.services.users import UserLockedError
-from app.services.sso.service import SsoStartResult
 from main import app
 
 

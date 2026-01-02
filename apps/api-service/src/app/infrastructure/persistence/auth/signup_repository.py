@@ -9,6 +9,7 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.core.normalization import normalize_email
 from app.domain.signup import (
     SignupInvite,
     SignupInviteCreate,
@@ -29,13 +30,6 @@ from app.infrastructure.persistence.auth.models.signup import (
     TenantSignupInviteReservation,
     TenantSignupRequest,
 )
-
-
-def _normalize_email(value: str | None) -> str | None:
-    if value is None:
-        return None
-    normalized = value.strip().lower()
-    return normalized or None
 
 
 class PostgresSignupInviteRepository(SignupInviteRepository):
@@ -138,7 +132,7 @@ class PostgresSignupInviteRepository(SignupInviteRepository):
         offset: int,
     ) -> SignupInviteListResult:
         filters: list[Any] = []
-        normalized_email = _normalize_email(email)
+        normalized_email = normalize_email(email)
         if status:
             filters.append(TenantSignupInvite.status == status)
         if normalized_email:
@@ -164,7 +158,7 @@ class PostgresSignupInviteRepository(SignupInviteRepository):
         now: datetime,
         expires_at: datetime,
     ) -> SignupInviteReservation | None:
-        normalized_email = _normalize_email(email) or email
+        normalized_email = normalize_email(email) or email
         async with self._session_factory() as session:
             async with session.begin():
                 invite_stmt = (

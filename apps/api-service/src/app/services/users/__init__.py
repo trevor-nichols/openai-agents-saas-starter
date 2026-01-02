@@ -17,11 +17,20 @@ from .errors import (
     UserServiceError,
 )
 from .factory import build_user_service, get_user_service
+from .provisioning import (
+    UserProvisioningConflictError,
+    UserProvisioningError,
+    UserProvisioningRequest,
+    UserProvisioningResult,
+    UserProvisioningService,
+    build_user_provisioning_service,
+)
 from .service import UserService
 from .throttling import LoginThrottle, NullLoginThrottle, RedisLoginThrottle, build_ip_throttler
 
 __all__ = [
     "build_ip_throttler",
+    "build_user_provisioning_service",
     "build_user_service",
     "EmailAlreadyInUseError",
     "get_user_service",
@@ -37,6 +46,11 @@ __all__ = [
     "TenantContextRequiredError",
     "UserDisabledError",
     "UserLockedError",
+    "UserProvisioningConflictError",
+    "UserProvisioningError",
+    "UserProvisioningRequest",
+    "UserProvisioningResult",
+    "UserProvisioningService",
     "UserService",
     "UserServiceError",
 ]

@@ -49,15 +49,18 @@ from app.domain.users import (
     UserStatus,
 )
 from app.services.auth_service import AuthService
-from app.services.sso.oidc_client import OidcDiscoveryDocument, OidcTokenResponse
-from app.services.sso.service import (
+from app.services.sso.errors import (
     SsoConfigurationError,
     SsoIdentityError,
     SsoProvisioningError,
-    SsoService,
     SsoStateError,
-    _code_challenge,
 )
+from app.services.sso.oidc_client import OidcDiscoveryDocument, OidcTokenResponse
+from app.services.sso.pkce import code_challenge
+from app.services.sso.provisioning import SsoProvisioner
+from app.services.sso.service import SsoService
+from app.services.team.acceptance_service import TeamInviteAcceptanceService
+from app.services.users.provisioning import UserProvisioningService
 from app.services.sso.state_store import SsoStatePayload
 
 
@@ -655,7 +658,7 @@ async def test_start_sso_builds_authorize_url_and_stores_state() -> None:
     assert params["redirect_uri"][0].endswith("/auth/sso/google/callback")
     assert params["login_hint"][0] == "owner@example.com"
     assert state_store.saved_payload.pkce_verifier is not None
-    assert params["code_challenge"][0] == _code_challenge(
+    assert params["code_challenge"][0] == code_challenge(
         state_store.saved_payload.pkce_verifier
     )
 
@@ -919,7 +922,7 @@ async def test_complete_sso_domain_allowlist_provisions_new_user() -> None:
 async def test_complete_sso_domain_allowlist_logs_provisioned_for_existing_user(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import app.services.sso.service as sso_service_mod
+    import app.services.sso.provisioning as sso_provisioning_mod
 
     tenant = _build_tenant()
     config = _build_config(
@@ -952,7 +955,7 @@ async def test_complete_sso_domain_allowlist_logs_provisioned_for_existing_user(
     def fake_log_event(event: str, **fields: object) -> None:
         events.append((event, dict(fields)))
 
-    monkeypatch.setattr(sso_service_mod, "log_event", fake_log_event)
+    monkeypatch.setattr(sso_provisioning_mod, "log_event", fake_log_event)
 
     service = _service(
         tenant=tenant,
@@ -1262,18 +1265,34 @@ def _service(
     auth_service: FakeAuthService | None = None,
     oidc_factory=None,
 ) -> SsoService:
+    resolved_user_repo = user_repo or FakeUserRepo(None)
+    resolved_membership_repo = membership_repo or FakeMembershipRepo(exists=True)
+    resolved_invite_repo = invite_repo or FakeInviteRepo([])
+    resolved_invite_acceptance_repo = invite_acceptance_repo or FakeInviteAcceptanceRepo()
+    invite_acceptance_service = TeamInviteAcceptanceService(
+        invite_repository=resolved_invite_repo,
+        acceptance_repository=resolved_invite_acceptance_repo,
+        user_repository=resolved_user_repo,
+    )
+    user_provisioning_service = UserProvisioningService(
+        user_repository=resolved_user_repo,
+        membership_repository=resolved_membership_repo,
+    )
+    provisioner = SsoProvisioner(
+        membership_repository=resolved_membership_repo,
+        invite_acceptance_service=invite_acceptance_service,
+        user_provisioning_service=user_provisioning_service,
+    )
     return SsoService(
         settings_factory=_settings,
         state_store=state_store or FakeStateStore(),
         provider_repository=provider_repo or FakeProviderRepo(config or _build_config(tenant.id)),
         identity_repository=identity_repo or FakeIdentityRepo(),
-        user_repository=user_repo or FakeUserRepo(None),
-        membership_repository=membership_repo or FakeMembershipRepo(exists=True),
-        invite_repository=invite_repo or FakeInviteRepo([]),
-        invite_acceptance_repository=invite_acceptance_repo or FakeInviteAcceptanceRepo(),
+        user_repository=resolved_user_repo,
         tenant_repository=tenant_repo or FakeTenantRepo(tenant),
         auth_service=auth_service or FakeAuthService(_tokens()),
         oidc_client_factory=oidc_factory,
+        provisioner=provisioner,
     )
 
 
