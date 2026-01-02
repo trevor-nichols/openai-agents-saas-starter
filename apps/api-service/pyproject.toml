@@ -27,7 +27,7 @@ dependencies = [
   "fastapi>=0.115.12,<0.116.0",
   "uvicorn[standard]>=0.32.1,<0.33.0",
   "httpx>=0.28.1,<0.29.0",
-  "aiofiles>=23.2.1,<24.0.0",
+  "aiofiles>=23.2.1,<26.0.0",
   "starter-contracts @ file:../../packages/starter_contracts",
   "starter-providers @ file:../../packages/starter_providers",
   "pydantic>=2.12.3,<2.13.0",
