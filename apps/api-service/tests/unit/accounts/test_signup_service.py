@@ -33,6 +33,10 @@ from app.services.signup.signup_service import (
     PublicSignupDisabledError,
     SignupService,
 )
+from app.services.signup.provisioning import (
+    SignupProvisioningOutcome,
+    SignupProvisioningService,
+)
 
 _TEST_TENANT_ID = UUID("11111111-2222-3333-4444-555555555555")
 _TEST_USER_ID = UUID("22222222-3333-4444-5555-666666666666")
@@ -142,32 +146,28 @@ class StubInviteService:
 
 
 @dataclass
-class StubTenantAccount:
-    id: UUID
-    slug: str
+class StubProvisioningService:
+    tenant_slug: str
+    tenant_id: UUID
+    user_id: UUID
+    provision_exc: Exception | None = None
+    finalize_calls: list[dict[str, Any]] = field(default_factory=list)
+    fail_calls: list[dict[str, Any]] = field(default_factory=list)
 
+    async def provision_tenant_owner(self, **_: Any) -> SignupProvisioningOutcome:
+        if self.provision_exc:
+            raise self.provision_exc
+        return SignupProvisioningOutcome(
+            tenant_id=self.tenant_id,
+            tenant_slug=self.tenant_slug,
+            user_id=self.user_id,
+        )
 
-class StubTenantAccountService:
-    def __init__(
-        self,
-        *,
-        slug: str,
-        tenant_id: UUID,
-        error: Exception | None = None,
-    ) -> None:
-        self.slug = slug
-        self.tenant_id = tenant_id
-        self.calls: list[dict[str, Any]] = []
-        self._error = error
+    async def finalize_provisioning(self, **kwargs: Any) -> None:
+        self.finalize_calls.append(kwargs)
 
-    async def create_account(self, **kwargs: Any) -> StubTenantAccount:
-        self.calls.append(kwargs)
-        if self._error:
-            raise self._error
-        return StubTenantAccount(id=self.tenant_id, slug=self.slug)
-
-    def with_repository(self, _repository: Any) -> "StubTenantAccountService":
-        return self
+    async def fail_provisioning(self, **kwargs: Any) -> None:
+        self.fail_calls.append(kwargs)
 
 
 @pytest.fixture(autouse=True)
@@ -211,42 +211,21 @@ def _build_settings(**overrides: Any) -> Settings:
 
 def _patch_internals(
     service: SignupService,
-    monkeypatch: pytest.MonkeyPatch,
     *,
     slug: str = "acme",
     tenant_id: UUID = _TEST_TENANT_ID,
     user_id: UUID = _TEST_USER_ID,
     provision_exc: Exception | None = None,
-    email_exc: Exception | None = None,
-    account_exc: Exception | None = None,
 ) -> None:
-    async def fake_email(self, _email: str, **_: Any) -> None:
-        if email_exc:
-            raise email_exc
-
-    async def fake_provision(self, **_: Any) -> UUID:
-        if provision_exc:
-            raise provision_exc
-        return user_id
-
-    async def noop_finalize(self, **_: Any) -> None:
-        return None
-
-    async def noop_fail(self, **_: Any) -> None:
-        return None
-
-    service._tenant_account_service = cast(
+    service._provisioning = cast(
         Any,
-        StubTenantAccountService(
-            slug=slug,
+        StubProvisioningService(
+            tenant_slug=slug,
             tenant_id=tenant_id,
-            error=account_exc,
+            user_id=user_id,
+            provision_exc=provision_exc,
         ),
     )
-    monkeypatch.setattr(SignupService, "_ensure_email_available", fake_email, raising=False)
-    monkeypatch.setattr(SignupService, "_provision_tenant_owner", fake_provision, raising=False)
-    monkeypatch.setattr(SignupService, "_finalize_provisioning", noop_finalize, raising=False)
-    monkeypatch.setattr(SignupService, "_fail_provisioning", noop_fail, raising=False)
 
 
 @pytest.mark.asyncio
@@ -275,7 +254,7 @@ async def test_register_uses_plan_trial_when_override_disallowed(
         ),
         session_factory=session_factory,
     )
-    _patch_internals(service, monkeypatch)
+    _patch_internals(service)
 
     result = await service.register(
         email="owner@example.com",
@@ -321,7 +300,7 @@ async def test_register_allows_shorter_trial_when_flag_enabled(
         ),
         session_factory=session_factory,
     )
-    _patch_internals(service, monkeypatch)
+    _patch_internals(service)
 
     await service.register(
         email="flag@example.com",
@@ -365,7 +344,7 @@ async def test_register_clamps_override_to_plan_cap(
         ),
         session_factory=session_factory,
     )
-    _patch_internals(service, monkeypatch)
+    _patch_internals(service)
 
     await service.register(
         email="clamp@example.com",
@@ -401,7 +380,6 @@ async def test_register_propagates_duplicate_email(
     )
     _patch_internals(
         service,
-        monkeypatch,
         provision_exc=EmailAlreadyRegisteredError("duplicate"),
     )
 
@@ -437,10 +415,19 @@ async def test_register_rolls_back_tenant_on_owner_failure(
         session_factory=session_factory,
     )
 
-    async def fail_provision(self, **_: Any) -> UUID:
+    async def fail_provision(
+        self,
+        _session,
+        **_: Any,
+    ) -> UUID:
         raise EmailAlreadyRegisteredError("duplicate")
 
-    monkeypatch.setattr(SignupService, "_provision_tenant_owner", fail_provision, raising=False)
+    monkeypatch.setattr(
+        SignupProvisioningService,
+        "_create_owner_records",
+        fail_provision,
+        raising=False,
+    )
 
     async with session_factory() as session:
         before = await session.scalar(select(func.count()).select_from(ORMTenantAccount))
@@ -573,7 +560,7 @@ async def test_register_surfaces_billing_plan_errors(
         ),
         session_factory=session_factory,
     )
-    _patch_internals(service, monkeypatch)
+    _patch_internals(service)
 
     with pytest.raises(PlanNotFoundError):
         await service.register(
@@ -607,7 +594,7 @@ async def test_register_requires_invite_under_invite_only_policy(
         invite_service=cast(InviteService, invite_stub),
         session_factory=session_factory,
     )
-    _patch_internals(service, monkeypatch)
+    _patch_internals(service)
 
     with pytest.raises(PublicSignupDisabledError):
         await service.register(
@@ -641,7 +628,7 @@ async def test_register_consumes_invite_when_token_present(
         invite_service=cast(InviteService, invite_stub),
         session_factory=session_factory,
     )
-    _patch_internals(service, monkeypatch)
+    _patch_internals(service)
 
     await service.register(
         email="invite-token@example.com",
@@ -679,7 +666,7 @@ async def test_register_invalid_invite_maps_to_public_signup_error(
         invite_service=cast(InviteService, invite_stub),
         session_factory=session_factory,
     )
-    _patch_internals(service, monkeypatch)
+    _patch_internals(service)
 
     with pytest.raises(PublicSignupDisabledError):
         await service.register(
@@ -713,7 +700,7 @@ async def test_register_email_mismatch_maps_to_public_signup_error(
         invite_service=cast(InviteService, invite_stub),
         session_factory=session_factory,
     )
-    _patch_internals(service, monkeypatch)
+    _patch_internals(service)
 
     with pytest.raises(PublicSignupDisabledError):
         await service.register(
@@ -749,7 +736,6 @@ async def test_register_releases_invite_on_failure(
     )
     _patch_internals(
         service,
-        monkeypatch,
         provision_exc=EmailAlreadyRegisteredError("duplicate"),
     )
 

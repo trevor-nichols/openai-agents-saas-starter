@@ -3,86 +3,30 @@
 from __future__ import annotations
 
 import logging
-import uuid
 from collections.abc import Callable
-from dataclasses import dataclass
-from datetime import UTC, datetime
-
-from sqlalchemy import select, update
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.password_policy import PasswordPolicyError, validate_password_strength
-from app.core.security import PASSWORD_HASH_VERSION, get_password_hash
 from app.core.settings import Settings, get_settings
-from app.domain.tenant_accounts import TenantAccountStatus
-from app.domain.tenant_roles import TenantRole
-from app.infrastructure.db import get_async_sessionmaker
-from app.infrastructure.persistence.auth.models.membership import TenantUserMembership
-from app.infrastructure.persistence.auth.models.user import (
-    PasswordHistory,
-    UserAccount,
-    UserProfile,
-    UserStatus,
+from app.services.auth_service import AuthService, get_auth_service
+from app.services.billing.billing_service import BillingService
+from app.services.signup.billing import SignupBillingService
+from app.services.signup.contracts import SignupCommand, SignupResult
+from app.services.signup.email_verification_service import EmailVerificationService
+from app.services.signup.errors import (
+    BillingProvisioningError,
+    EmailAlreadyRegisteredError,
+    PublicSignupDisabledError,
+    SignupServiceError,
+    TenantSlugCollisionError,
 )
-from app.infrastructure.persistence.tenants.account_repository import (
-    PostgresTenantAccountRepository,
-)
-from app.observability.logging import log_event
-from app.services.activity import activity_service
-from app.services.auth_service import AuthService, UserSessionTokens, get_auth_service
-from app.services.billing.billing_service import BillingService, get_billing_service
-from app.services.billing.errors import BillingError, PaymentProviderError
-from app.services.signup.email_verification_service import (
-    EmailVerificationService,
-    get_email_verification_service,
-)
-from app.services.signup.invite_service import (
-    InviteEmailMismatchError,
-    InviteExpiredError,
-    InviteNotFoundError,
-    InviteRequestMismatchError,
-    InviteReservationContext,
-    InviteRevokedError,
-    InviteService,
-    InviteTokenRequiredError,
-    get_invite_service,
-)
-from app.services.tenant.tenant_account_service import (
-    TenantAccountService,
-    TenantAccountSlugCollisionError,
-    get_tenant_account_service,
-)
+from app.services.signup.invite_policy import SignupInvitePolicyService
+from app.services.signup.invite_service import InviteReservationContext, InviteService
+from app.services.signup.notifications import SignupNotificationService
+from app.services.signup.provisioning import SignupProvisioningService
+from app.services.signup.telemetry import SignupTelemetry
+from app.services.tenant.tenant_account_service import TenantAccountService
 
 logger = logging.getLogger(__name__)
-
-
-class SignupServiceError(RuntimeError):
-    """Base error for signup orchestration."""
-
-
-class PublicSignupDisabledError(SignupServiceError):
-    """Raised when public signup is disabled via configuration."""
-
-
-class TenantSlugCollisionError(SignupServiceError):
-    """Raised when a tenant slug cannot be provisioned."""
-
-
-class EmailAlreadyRegisteredError(SignupServiceError):
-    """Raised when the supplied email already exists."""
-
-
-class BillingProvisioningError(SignupServiceError):
-    """Raised when billing fails during signup."""
-
-
-@dataclass(slots=True)
-class SignupResult:
-    tenant_id: str
-    tenant_slug: str
-    user_id: str
-    session: UserSessionTokens
 
 
 class SignupService:
@@ -93,7 +37,7 @@ class SignupService:
         *,
         billing: BillingService | None = None,
         settings_factory: Callable[[], Settings] | None = None,
-        session_factory: async_sessionmaker[AsyncSession] | None = None,
+        session_factory=None,
         auth: AuthService | None = None,
         email_verification_service: EmailVerificationService | None = None,
         invite_service: InviteService | None = None,
@@ -106,6 +50,11 @@ class SignupService:
         self._email_verification_service = email_verification_service
         self._invite_service = invite_service
         self._tenant_account_service = tenant_account_service
+        self._billing = None
+        self._invite_policy = None
+        self._notifications = None
+        self._provisioning = None
+        self._telemetry = None
 
     def _get_settings(self) -> Settings:
         return self._settings_factory()
@@ -115,28 +64,41 @@ class SignupService:
             self._auth_service = get_auth_service()
         return self._auth_service
 
-    def _get_email_verification_service(self) -> EmailVerificationService:
-        if self._email_verification_service is None:
-            self._email_verification_service = get_email_verification_service()
-        return self._email_verification_service
+    def _get_billing(self) -> SignupBillingService:
+        if self._billing is None:
+            self._billing = SignupBillingService(
+                billing_service=self._billing_service,
+                settings_factory=self._settings_factory,
+            )
+        return self._billing
 
-    def _get_invite_service(self) -> InviteService:
-        if self._invite_service is None:
-            self._invite_service = get_invite_service()
-        return self._invite_service
+    def _get_invite_policy(self) -> SignupInvitePolicyService:
+        if self._invite_policy is None:
+            self._invite_policy = SignupInvitePolicyService(
+                invite_service=self._invite_service,
+                settings_factory=self._settings_factory,
+            )
+        return self._invite_policy
 
-    def _get_tenant_account_service(self) -> TenantAccountService:
-        if self._tenant_account_service is None:
-            self._tenant_account_service = get_tenant_account_service()
-        return self._tenant_account_service
+    def _get_notifications(self) -> SignupNotificationService:
+        if self._notifications is None:
+            self._notifications = SignupNotificationService(
+                email_verification=self._email_verification_service
+            )
+        return self._notifications
 
-    def _get_billing_service(self) -> BillingService | None:
-        if self._billing_service is None:
-            try:
-                self._billing_service = get_billing_service()
-            except RuntimeError:
-                self._billing_service = None
-        return self._billing_service
+    def _get_provisioning(self) -> SignupProvisioningService:
+        if self._provisioning is None:
+            self._provisioning = SignupProvisioningService(
+                session_factory=self._session_factory,
+                tenant_account_service=self._tenant_account_service,
+            )
+        return self._provisioning
+
+    def _get_telemetry(self) -> SignupTelemetry:
+        if self._telemetry is None:
+            self._telemetry = SignupTelemetry()
+        return self._telemetry
 
     async def register(
         self,
@@ -151,61 +113,53 @@ class SignupService:
         user_agent: str | None,
         invite_token: str | None,
     ) -> SignupResult:
+        command = SignupCommand(
+            email=email,
+            password=password,
+            tenant_name=tenant_name,
+            display_name=display_name,
+            plan_code=plan_code,
+            trial_days=trial_days,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            invite_token=invite_token,
+        )
+        return await self._register(command)
+
+    async def _register(self, command: SignupCommand) -> SignupResult:
         settings = self._get_settings()
-        invite_context: InviteReservationContext | None = None
-        if settings.signup_access_policy != "public":
-            invite_context = await self._reserve_invite_context(
-                policy=settings.signup_access_policy,
-                invite_token=invite_token,
-                email=email,
-            )
+        invite_context = await self._get_invite_policy().reserve_if_required(
+            email=command.email,
+            invite_token=command.invite_token,
+        )
 
         try:
             try:
-                validate_password_strength(password, user_inputs=[email])
+                validate_password_strength(command.password, user_inputs=[command.email])
             except PasswordPolicyError as exc:
                 raise SignupServiceError(str(exc)) from exc
 
-            session_factory = self._get_session_factory()
-            async with session_factory() as session:
-                async with session.begin():
-                    tenant_service = self._get_tenant_account_service().with_repository(
-                        PostgresTenantAccountRepository.for_session(session)
-                    )
-                    try:
-                        tenant_account = await tenant_service.create_account(
-                            name=tenant_name,
-                            status=TenantAccountStatus.PROVISIONING,
-                            reason="signup",
-                            allow_slug_suffix=True,
-                        )
-                    except TenantAccountSlugCollisionError as exc:
-                        raise TenantSlugCollisionError(str(exc)) from exc
+            provisioning = self._get_provisioning()
+            provisioned = await provisioning.provision_tenant_owner(
+                tenant_name=command.tenant_name,
+                email=command.email,
+                password=command.password,
+                display_name=command.display_name,
+            )
 
-                    tenant_id = str(tenant_account.id)
-                    tenant_slug = tenant_account.slug
-                    user_id = await self._provision_tenant_owner(
-                        tenant_id=tenant_account.id,
-                        email=email,
-                        password=password,
-                        display_name=display_name,
-                        session=session,
-                        status=UserStatus.PENDING,
-                    )
-
-            resolved_plan = plan_code or settings.signup_default_plan_code
+            resolved_plan = command.plan_code or settings.signup_default_plan_code
             try:
-                await self._maybe_provision_subscription(
-                    tenant_id=tenant_id,
+                await self._get_billing().provision_subscription_if_needed(
+                    tenant_id=str(provisioned.tenant_id),
                     plan_code=resolved_plan,
-                    billing_email=email,
-                    requested_trial_days=trial_days,
+                    billing_email=command.email,
+                    requested_trial_days=command.trial_days,
                 )
             except Exception:
                 try:
-                    await self._fail_provisioning(
-                        tenant_id=tenant_account.id,
-                        user_id=user_id,
+                    await provisioning.fail_provisioning(
+                        tenant_id=provisioned.tenant_id,
+                        user_id=provisioned.user_id,
                         reason="signup_billing_failed",
                     )
                 except Exception:  # pragma: no cover - best effort cleanup
@@ -213,64 +167,52 @@ class SignupService:
                         "signup.provisioning_cleanup_failed",
                         exc_info=True,
                         extra={
-                            "tenant_id": str(tenant_account.id),
-                            "user_id": str(user_id),
+                            "tenant_id": str(provisioned.tenant_id),
+                            "user_id": str(provisioned.user_id),
                         },
                     )
                 raise
 
-            await self._finalize_provisioning(
-                tenant_id=tenant_account.id,
-                user_id=user_id,
+            await provisioning.finalize_provisioning(
+                tenant_id=provisioned.tenant_id,
+                user_id=provisioned.user_id,
                 reason="signup_completed",
             )
 
             tokens = await self._get_auth_service().login_user(
-                email=email,
-                password=password,
-                tenant_id=tenant_id,
-                ip_address=ip_address,
-                user_agent=user_agent,
+                email=command.email,
+                password=command.password,
+                tenant_id=str(provisioned.tenant_id),
+                ip_address=command.ip_address,
+                user_agent=command.user_agent,
             )
 
-            await self._trigger_email_verification(
-                user_id=str(user_id),
-                ip_address=ip_address,
-                user_agent=user_agent,
+            await self._get_notifications().send_email_verification(
+                user_id=str(provisioned.user_id),
+                ip_address=command.ip_address,
+                user_agent=command.user_agent,
             )
 
-            log_event(
-                "signup.completed",
-                result="success",
-                tenant_id=tenant_id,
-                tenant_slug=tenant_slug,
-                plan_code=resolved_plan or "none",
+            await self._get_telemetry().record_signup_success(
+                tenant_id=str(provisioned.tenant_id),
+                tenant_slug=provisioned.tenant_slug,
+                user_id=str(provisioned.user_id),
+                plan_code=resolved_plan,
                 invite_id=str(invite_context.invite.id) if invite_context else None,
+                user_agent=command.user_agent,
+                ip_address=command.ip_address,
             )
-
-            try:
-                await activity_service.record(
-                    tenant_id=str(tenant_id),
-                    action="auth.signup.success",
-                    actor_id=str(user_id),
-                    actor_type="user",
-                    object_type="tenant",
-                    object_id=str(tenant_id),
-                    source="api",
-                    user_agent=user_agent,
-                    ip_address=ip_address,
-                    metadata={"user_id": str(user_id), "tenant_id": str(tenant_id)},
-                )
-            except Exception:  # pragma: no cover - best effort
-                logger.debug("activity.log.signup.skipped", exc_info=True)
 
             if invite_context:
-                await invite_context.mark_succeeded(tenant_id=tenant_id, user_id=user_id)
+                await invite_context.mark_succeeded(
+                    tenant_id=str(provisioned.tenant_id),
+                    user_id=provisioned.user_id,
+                )
 
             return SignupResult(
-                tenant_id=tenant_id,
-                tenant_slug=tenant_slug,
-                user_id=str(user_id),
+                tenant_id=str(provisioned.tenant_id),
+                tenant_slug=provisioned.tenant_slug,
+                user_id=str(provisioned.user_id),
                 session=tokens,
             )
         except Exception:
@@ -289,302 +231,6 @@ class SignupService:
             return
         await invite_context.ensure_released(reason=reason)
 
-    async def _trigger_email_verification(
-        self,
-        *,
-        user_id: str,
-        ip_address: str | None,
-        user_agent: str | None,
-    ) -> None:
-        try:
-            service = self._get_email_verification_service()
-            await service.send_verification_email(
-                user_id=user_id,
-                email=None,
-                ip_address=ip_address,
-                user_agent=user_agent,
-            )
-        except Exception as exc:  # pragma: no cover - best effort
-            log_event(
-                "signup.email_verification",
-                result="error",
-                user_id=user_id,
-                reason=str(exc),
-            )
-
-    async def _ensure_email_available(
-        self,
-        email: str,
-        *,
-        session: AsyncSession | None = None,
-    ) -> None:
-        if session is None:
-            session_factory = self._get_session_factory()
-            async with session_factory() as session:
-                await self._ensure_email_available(email, session=session)
-            return
-
-        existing_user = await session.scalar(
-            select(UserAccount.id).where(UserAccount.email == email.strip().lower())
-        )
-        if existing_user:
-            raise EmailAlreadyRegisteredError("Email already registered.")
-
-    async def _provision_tenant_owner(
-        self,
-        *,
-        tenant_id: uuid.UUID,
-        email: str,
-        password: str,
-        display_name: str | None,
-        status: UserStatus,
-        session: AsyncSession | None = None,
-    ) -> uuid.UUID:
-        normalized_email = email.strip().lower()
-        hashed_password = get_password_hash(password)
-
-        async def _create_owner_records(active_session: AsyncSession) -> uuid.UUID:
-            existing_user = await active_session.scalar(
-                select(UserAccount.id).where(UserAccount.email == normalized_email)
-            )
-            if existing_user:
-                raise EmailAlreadyRegisteredError("Email already registered.")
-
-            user_id = uuid.uuid4()
-
-            active_session.add(
-                UserAccount(
-                    id=user_id,
-                    email=normalized_email,
-                    password_hash=hashed_password,
-                    password_pepper_version=PASSWORD_HASH_VERSION,
-                    status=status,
-                )
-            )
-
-            if display_name:
-                active_session.add(
-                    UserProfile(
-                        id=uuid.uuid4(),
-                        user_id=user_id,
-                        display_name=display_name,
-                    )
-                )
-
-            active_session.add(
-                TenantUserMembership(
-                    id=uuid.uuid4(),
-                    user_id=user_id,
-                    tenant_id=tenant_id,
-                    role=TenantRole.OWNER,
-                )
-            )
-
-            active_session.add(
-                PasswordHistory(
-                    id=uuid.uuid4(),
-                    user_id=user_id,
-                    password_hash=hashed_password,
-                    password_pepper_version=PASSWORD_HASH_VERSION,
-                    created_at=datetime.now(UTC),
-                )
-            )
-
-            await active_session.flush()
-            return user_id
-
-        if session is None:
-            session_factory = self._get_session_factory()
-            async with session_factory() as session:
-                try:
-                    async with session.begin():
-                        return await _create_owner_records(session)
-                except EmailAlreadyRegisteredError:
-                    raise
-                except IntegrityError as exc:  # pragma: no cover - rare email race
-                    raise EmailAlreadyRegisteredError("Email already registered.") from exc
-
-        try:
-            return await _create_owner_records(session)
-        except EmailAlreadyRegisteredError:
-            raise
-        except IntegrityError as exc:  # pragma: no cover - rare email race
-            raise EmailAlreadyRegisteredError("Email already registered.") from exc
-
-    async def _finalize_provisioning(
-        self,
-        *,
-        tenant_id: uuid.UUID,
-        user_id: uuid.UUID,
-        reason: str,
-    ) -> None:
-        session_factory = self._get_session_factory()
-        async with session_factory() as session:
-            async with session.begin():
-                tenant_service = self._get_tenant_account_service().with_repository(
-                    PostgresTenantAccountRepository.for_session(session)
-                )
-                await tenant_service.complete_provisioning(
-                    tenant_id,
-                    actor_user_id=user_id,
-                    reason=reason,
-                )
-                await session.execute(
-                    update(UserAccount)
-                    .where(UserAccount.id == user_id)
-                    .values(status=UserStatus.ACTIVE, updated_at=datetime.now(UTC))
-                )
-
-    async def _fail_provisioning(
-        self,
-        *,
-        tenant_id: uuid.UUID,
-        user_id: uuid.UUID,
-        reason: str,
-    ) -> None:
-        session_factory = self._get_session_factory()
-        async with session_factory() as session:
-            async with session.begin():
-                tenant_service = self._get_tenant_account_service().with_repository(
-                    PostgresTenantAccountRepository.for_session(session)
-                )
-                await tenant_service.deprovision_account(
-                    tenant_id,
-                    actor_user_id=None,
-                    reason=reason,
-                )
-                await session.execute(
-                    update(UserAccount)
-                    .where(UserAccount.id == user_id)
-                    .values(status=UserStatus.DISABLED, updated_at=datetime.now(UTC))
-                )
-
-    async def _maybe_provision_subscription(
-        self,
-        *,
-        tenant_id: str,
-        plan_code: str | None,
-        billing_email: str,
-        requested_trial_days: int | None,
-    ) -> None:
-        settings = self._get_settings()
-        if not plan_code or not settings.enable_billing:
-            # Billing disabled or no plan requested; record telemetry only.
-            log_event(
-                "signup.billing_skipped",
-                result="skipped",
-                tenant_id=tenant_id,
-                reason="billing_disabled" if not settings.enable_billing else "plan_missing",
-            )
-            return
-
-        service = self._get_billing_service()
-        if service is None:
-            raise BillingProvisioningError("Billing service is not configured.")
-
-        trial_days = await self._select_trial_days(
-            plan_code=plan_code,
-            requested_trial_days=requested_trial_days,
-        )
-        try:
-            await service.start_subscription(
-                tenant_id=tenant_id,
-                plan_code=plan_code,
-                billing_email=billing_email,
-                auto_renew=True,
-                seat_count=1,
-                trial_days=trial_days,
-            )
-        except PaymentProviderError as exc:
-            raise BillingProvisioningError(str(exc)) from exc
-        except BillingError:
-            raise
-        else:
-            log_event(
-                "signup.billing_provisioned",
-                result="success",
-                tenant_id=tenant_id,
-                plan_code=plan_code,
-                trial_days=trial_days,
-            )
-
-    async def _select_trial_days(
-        self,
-        *,
-        plan_code: str | None,
-        requested_trial_days: int | None,
-    ) -> int | None:
-        settings = self._get_settings()
-        plan_trial_days = await self._lookup_plan_trial_days(plan_code)
-        max_allowed: int | None
-        if plan_trial_days is not None:
-            max_allowed = plan_trial_days
-        else:
-            max_allowed = settings.signup_default_trial_days
-        max_allowed = max_allowed if max_allowed and max_allowed > 0 else None
-
-        if not settings.allow_signup_trial_override or requested_trial_days is None:
-            return max_allowed
-
-        cap = max_allowed if max_allowed is not None else 0
-        candidate = min(requested_trial_days, cap)
-        return candidate if candidate and candidate > 0 else None
-
-    async def _lookup_plan_trial_days(self, plan_code: str | None) -> int | None:
-        if not plan_code:
-            return None
-        service = self._get_billing_service()
-        if service is None:
-            return None
-        try:
-            plans = await service.list_plans()
-        except BillingError as exc:
-            log_event(
-                "signup.plan_lookup_failed",
-                result="error",
-                plan_code=plan_code,
-                error=str(exc),
-            )
-            return None
-
-        for plan in plans:
-            if plan.code == plan_code:
-                return plan.trial_days
-        return None
-
-    def _get_session_factory(self) -> async_sessionmaker[AsyncSession]:
-        if self._session_factory is None:
-            self._session_factory = get_async_sessionmaker()
-        return self._session_factory
-
-    async def _reserve_invite_context(
-        self,
-        *,
-        policy: str,
-        invite_token: str | None,
-        email: str,
-    ):
-        if policy == "public":  # pragma: no cover - guard
-            return None
-        try:
-            context = await self._get_invite_service().reserve_for_signup(
-                token=invite_token,
-                email=email,
-                require_request=policy == "approval",
-            )
-        except InviteTokenRequiredError as exc:
-            raise PublicSignupDisabledError(str(exc)) from exc
-        except InviteExpiredError as exc:
-            raise PublicSignupDisabledError(str(exc)) from exc
-        except InviteRequestMismatchError as exc:
-            raise PublicSignupDisabledError(str(exc)) from exc
-        except InviteRevokedError as exc:
-            raise PublicSignupDisabledError(str(exc)) from exc
-        except InviteNotFoundError as exc:
-            raise PublicSignupDisabledError(str(exc)) from exc
-        except InviteEmailMismatchError as exc:
-            raise PublicSignupDisabledError(str(exc)) from exc
-        return context
 
 def build_signup_service(
     *,
@@ -592,7 +238,7 @@ def build_signup_service(
     auth_service: AuthService | None = None,
     email_verification_service: EmailVerificationService | None = None,
     settings_factory: Callable[[], Settings] | None = None,
-    session_factory: async_sessionmaker[AsyncSession] | None = None,
+    session_factory=None,
     invite_service: InviteService | None = None,
     tenant_account_service: TenantAccountService | None = None,
 ) -> SignupService:
@@ -633,10 +279,10 @@ signup_service = _SignupServiceHandle()
 __all__ = [
     "BillingProvisioningError",
     "EmailAlreadyRegisteredError",
-    "SignupServiceError",
     "PublicSignupDisabledError",
     "SignupResult",
     "SignupService",
+    "SignupServiceError",
     "TenantSlugCollisionError",
     "build_signup_service",
     "get_signup_service",
