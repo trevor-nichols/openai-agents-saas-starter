@@ -10,7 +10,12 @@ Groups self-serve onboarding flows: invites, signup requests, signup orchestrati
 - Password recovery: Issues reset tokens and resets credentials with policy + reuse enforcement.
 
 ## Services and responsibilities
-- `SignupService` (`signup_service.py`): Orchestrates tenant creation, owner user provisioning, password hashing, membership/slug creation, optional billing subscription, session issuance, activity logging, and email verification trigger. Enforces invite requirements when public signup is disabled.
+- `SignupService` (`signup_service.py`): Orchestrates signup by delegating to specialized helpers for invite policy enforcement, provisioning, billing, notifications, and telemetry.
+- `SignupInvitePolicyService` (`invite_policy.py`): Reserves/validates invite context when signup is not public.
+- `SignupProvisioningService` (`provisioning.py`): Creates tenant + owner records in a single transaction, then finalizes or deprovisions on downstream outcomes.
+- `SignupBillingService` (`billing.py`): Applies billing enablement rules and trial-day selection before provisioning subscriptions.
+- `SignupNotificationService` (`notifications.py`): Triggers email verification as a best-effort follow-up.
+- `SignupTelemetry` (`telemetry.py`): Emits signup completion events + activity breadcrumbs.
 - `InviteService` (`invite_service.py`): Operator-facing issuance, reservation, redemption, and revocation of signup invites; backs approval flows and rate-limit guarded redemptions.
 - `SignupRequestService` (`signup_request_service.py`): Manages inbound access requests, quotas, honeypot checks, and operator approvals that mint invites.
 - `EmailVerificationService` (`email_verification_service.py`): Mints verification tokens, persists them in the token store, and delivers via Resend (or logs). Redeeming marks the user verified and revokes existing sessions.

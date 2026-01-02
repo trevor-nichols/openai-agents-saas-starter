@@ -23,6 +23,7 @@ _COMMAND_MODULES = (
     "starter_console.commands.providers",
     "starter_console.commands.release",
     "starter_console.commands.secrets",
+    "starter_console.commands.sso",
     "starter_console.commands.start",
     "starter_console.commands.status",
     "starter_console.commands.stripe",

@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
+from app.core.normalization import normalize_email
 from app.core.password_policy import PasswordPolicyError, validate_password_strength
 from app.core.security import PASSWORD_HASH_VERSION, get_password_hash
 from app.core.settings import get_settings
@@ -100,7 +101,9 @@ class TeamInviteService:
                 "Invite expiry must be between 1 and "
                 f"{TEAM_INVITE_POLICY.max_expires_hours} hours."
             )
-        normalized_email = _normalize_email(invited_email)
+        normalized_email = normalize_email(invited_email)
+        if not normalized_email:
+            raise TeamInviteValidationError("Invite email is required.")
 
         existing_user = await self._user_repository.get_user_by_email(normalized_email)
         if existing_user is not None:
@@ -155,7 +158,7 @@ class TeamInviteService:
         return await self._invite_repository.list_invites(
             tenant_id=tenant_id,
             status=status,
-            email=_normalize_email(email) if email else None,
+            email=normalize_email(email) if email else None,
             limit=limit,
             offset=offset,
         )
@@ -335,15 +338,6 @@ def _hash_token(token: str) -> str:
 
 def _token_hint(token: str) -> str:
     return token[:8]
-
-
-def _normalize_email(value: str | None) -> str:
-    if value is None:
-        raise TeamInviteValidationError("Invite email is required.")
-    normalized = value.strip().lower()
-    if not normalized:
-        raise TeamInviteValidationError("Invite email is required.")
-    return normalized
 
 
 def build_team_invite_service(

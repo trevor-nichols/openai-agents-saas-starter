@@ -1,7 +1,7 @@
 # Human Identity Provider Requirements
 
 **Status:** Active requirements (security review required)  
-**Last Updated:** 2025-11-07  
+**Last Updated:** 2026-01-02  
 **Owners:** Platform Security Guild · Backend Auth Pod
 
 ---
@@ -24,6 +24,7 @@ Tenant relationships (canonical definitions in `docs/auth/roles.md`):
 - Platform-level access is modeled separately via `platform_role` on the user record and is not part of tenant roles.
 - Tokens carry a single `tenant_id` claim; multi-tenant users choose the tenant context during login. Scoped tenant switching endpoints are not exposed in this release.
 - Removing the last tenant membership implicitly disables the account until a new tenant is assigned.
+- Tenant identifiers follow the policy in `docs/auth/tenant-identifier-policy.md` (canonical `tenant_id`, slug at boundaries only).
 
 ## 3. Credential Policy (Passwords + Secrets)
 - **Hashing:** bcrypt `$2b$` with cost `work_factor >= 13`, salted per bcrypt spec plus a global pepper `AUTH_PASSWORD_PEPPER` loaded from secret storage. Pepper rotation requires rehash on next successful login.
@@ -73,14 +74,30 @@ Tenant relationships (canonical definitions in `docs/auth/roles.md`):
 - **Claims embedded:** When minting, include `iss`, `sub`, `tenant_id`, `scopes`, `token_use=refresh`, `jti`, `iat`, `exp`. Not exposed to clients except as opaque string.
 - **Revocation:** Admin logout, lockout, or password reset sets `revoked_at` and caches `jti` in Redis for TTL = remaining lifetime to short-circuit DB lookups.
 
-## 7. External IdP Compatibility
+## 7. OIDC SSO (Optional, Multi-Provider)
+- **Flow:** OIDC Authorization Code with PKCE; state + nonce stored in Redis for `SSO_STATE_TTL_MINUTES` and treated as single-use.
+- **Endpoints:** `/api/v1/auth/sso/{provider}/start`, `/api/v1/auth/sso/{provider}/callback`, `/api/v1/auth/sso/providers`.
+- **Provider config:** Tenant-scoped rows in Postgres with a global fallback row (`tenant_id IS NULL`) when tenant config is absent.
+- **Security hardening:** Allowed ID token algorithms are enforced (RS/PS/ES only). Token endpoint auth method is validated against discovery metadata. ID tokens require `exp` + `iat` and nonce validation.
+- **Provisioning policy:** Default `invite_only`; `domain_allowlist` optional; `disabled` blocks auto-provisioning. Verified email required for provisioning and identity linking.
+- **MFA:** If the user has enrolled methods, SSO returns an MFA challenge (HTTP 202), same as password login.
+- **Secrets:** Client secrets are encrypted at rest using `SSO_CLIENT_SECRET_ENCRYPTION_KEY` (fallback: `AUTH_SESSION_ENCRYPTION_KEY` or `SECRET_KEY`).
+- **Ops:** `starter-console sso setup` + setup wizard can seed provider configs. Env keys use `SSO_<PROVIDER>_*` (e.g., `SSO_GOOGLE_*`, `SSO_AZURE_*`). Provider keys must match `[a-z0-9_]+` and the `custom` key is reserved for the preset selector. `SSO_PROVIDERS` is required and authoritative; use an empty value to disable all providers.
+- **Presets:** Console ships presets for Google, Azure (Entra ID), Okta, and Auth0 plus a custom OIDC path. Azure/Okta/Auth0 presets include issuer/discovery URL templates with `{placeholder}` tokens that must be replaced before seeding.
+- **Frontend/BFF:** The web app uses Next API routes (`/api/v1/auth/sso/*`) to broker start/callback and to set session cookies. The user-facing callback page is `/auth/sso/{provider}/callback`.
+- **Tenant selector required:** Frontend must send exactly one of `tenant_id` (UUID) or `tenant_slug`. Missing/both values return 400/409. See `docs/auth/tenant-identifier-policy.md` for the boundary contract.
+- **Login hint:** When the email input is valid, the frontend forwards it as `login_hint`.
+- **Redirect continuity:** `redirectTo` is stored in a short-lived HttpOnly cookie during SSO start; callback validates it as a relative path and redirects on success.
+- **Runbook:** See `docs/ops/sso-oidc-runbook.md` for provisioning, validation, and rotation guidance.
+
+## 8. External IdP Compatibility
 - **Protocols:** Must support OIDC Authorization Code flow with PKCE and SCIM 2.0 provisioning. Local implementation mirrors these contracts to allow proxying to Auth0/Okta without changing callers.
 - **Attribute Mapping:** Standardize on `email`, `name`, `roles` claim (TenantRole values), `external_id`. Store mapping so `sub` continuity is preserved if/when we swap IdPs.
 - **Just-In-Time Provisioning:** When operating against an external IdP, we can JIT create users on first login if tenant + role info present; otherwise require SCIM sync before login succeeds.
 - **Session Federation:** Access/refresh tokens remain our own; external IdP handles primary auth but exchanges for our tokens via OIDC token endpoint. This doc ensures our token schema remains stable for that flow.
 - **Secrets & Rotation:** External IdP client secrets live alongside current pepper/keys; document rotation procedures in your security runbook and keep the process audited.
 
-## 8. Governance
+## 9. Governance
 - This document plus the updated threat model are required inputs to the security review.
 - Backend + security leads must sign off before identity-provider changes are deployed.
 - Any change to password policy, lockout thresholds, or token schema requires updating this doc and notifying the platform security review channel.

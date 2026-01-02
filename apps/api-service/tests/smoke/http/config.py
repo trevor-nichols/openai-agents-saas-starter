@@ -39,6 +39,8 @@ class SmokeConfig:
     enable_auth_signup: bool
     enable_auth_extended: bool
     enable_auth_mfa: bool
+    enable_auth_sso: bool
+    sso_provider: str
     enable_service_accounts: bool
     enable_contact: bool
     enable_status_subscriptions: bool
@@ -74,6 +76,8 @@ def load_config() -> SmokeConfig:
         enable_auth_signup=_env_bool("SMOKE_ENABLE_AUTH_SIGNUP", False),
         enable_auth_extended=_env_bool("SMOKE_ENABLE_AUTH_EXTENDED", False),
         enable_auth_mfa=_env_bool("SMOKE_ENABLE_AUTH_MFA", False),
+        enable_auth_sso=_env_bool("SMOKE_ENABLE_AUTH_SSO", False),
+        sso_provider=os.getenv("SMOKE_SSO_PROVIDER", "google"),
         enable_service_accounts=_env_bool("SMOKE_ENABLE_SERVICE_ACCOUNTS", False),
         enable_contact=_env_bool("SMOKE_ENABLE_CONTACT", False),
         enable_status_subscriptions=_env_bool("SMOKE_ENABLE_STATUS_SUBSCRIPTIONS", False),

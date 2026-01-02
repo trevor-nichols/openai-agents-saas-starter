@@ -7,16 +7,18 @@ from app.core.settings import Settings, get_settings
 from app.infrastructure.persistence.auth.repository import get_refresh_token_repository
 from app.infrastructure.persistence.auth.session_repository import get_user_session_repository
 from app.services.auth import RefreshTokenManager, SessionStore
+from app.services.auth.mfa_service import MfaService, get_mfa_service
 from app.services.auth.service_account_service import ServiceAccountTokenService
 from app.services.auth.session_service import UserSessionService
 from app.services.geoip_service import GeoIPService, NullGeoIPService
-from app.services.users import UserService
+from app.services.users import UserService, get_user_service
 
 
 def build_session_service(
     *,
     settings: Settings | None = None,
     user_service: UserService | None = None,
+    mfa_service: MfaService | None = None,
     geoip_service: GeoIPService | None = None,
 ) -> UserSessionService:
     settings = settings or get_settings()
@@ -24,10 +26,13 @@ def build_session_service(
     session_repo = get_user_session_repository()
     refresh_manager = RefreshTokenManager(refresh_repo)
     session_store = SessionStore(session_repo, geoip_service or NullGeoIPService())
+    resolved_user_service = user_service or get_user_service()
+    resolved_mfa_service = mfa_service or get_mfa_service()
     return UserSessionService(
         refresh_tokens=refresh_manager,
         session_store=session_store,
-        user_service=user_service,
+        user_service=resolved_user_service,
+        mfa_service=resolved_mfa_service,
     )
 
 

@@ -32,7 +32,7 @@ from app.services.auth.errors import (
     UserLogoutError,
     UserRefreshError,
 )
-from app.services.auth.mfa_service import get_mfa_service
+from app.services.auth.mfa_service import MfaService, get_mfa_service
 from app.services.geoip_service import GeoIPService, get_geoip_service
 from app.services.users import UserService, get_user_service
 
@@ -46,6 +46,7 @@ class AuthService:
         *,
         refresh_repository: RefreshTokenRepository | None = None,
         user_service: UserService | None = None,
+        mfa_service: MfaService | None = None,
         session_repository: UserSessionRepository | None = None,
         geoip_service: GeoIPService | None = None,
         session_service: UserSessionService | None = None,
@@ -54,19 +55,23 @@ class AuthService:
         refresh_repo = refresh_repository or get_refresh_token_repository()
         session_repo = session_repository or get_user_session_repository()
         geoip = geoip_service or get_geoip_service()
-        mfa_service = get_mfa_service()
         refresh_tokens = RefreshTokenManager(refresh_repo)
         session_store = SessionStore(session_repo, geoip)
         self._service_accounts = service_account_service or ServiceAccountTokenService(
             registry=registry,
             refresh_tokens=refresh_tokens,
         )
-        self._sessions = session_service or UserSessionService(
-            refresh_tokens=RefreshTokenManager(refresh_repo),
-            session_store=session_store,
-            user_service=user_service,
-            mfa_service=mfa_service,
-        )
+        if session_service is None:
+            resolved_user_service = user_service or get_user_service()
+            resolved_mfa_service = mfa_service or get_mfa_service()
+            self._sessions = UserSessionService(
+                refresh_tokens=RefreshTokenManager(refresh_repo),
+                session_store=session_store,
+                user_service=resolved_user_service,
+                mfa_service=resolved_mfa_service,
+            )
+        else:
+            self._sessions = session_service
 
         def _forward_verify_token(
             token: str,
@@ -144,6 +149,25 @@ class AuthService:
             tenant_id=tenant_id,
             ip_address=ip_address,
             user_agent=user_agent,
+        )
+
+    async def issue_user_session(
+        self,
+        *,
+        user_id: UUID,
+        tenant_id: UUID,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        reason: str = "sso",
+        enforce_mfa: bool = True,
+    ) -> UserSessionTokens:
+        return await self._sessions.issue_tokens_for_user(
+            user_id=user_id,
+            tenant_id=tenant_id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            reason=reason,
+            enforce_mfa=enforce_mfa,
         )
 
     async def complete_mfa_challenge(

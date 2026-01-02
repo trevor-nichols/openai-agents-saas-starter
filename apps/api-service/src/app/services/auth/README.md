@@ -3,7 +3,7 @@
 Developer-facing overview of how authentication is wired across the API: issuing/verifying JWTs, managing human sessions, handling MFA, and minting service-account tokens.
 
 ## What this area does
-- Issues short-lived access tokens and long-lived refresh tokens for human users via `UserSessionService`, including optional MFA challenges and session device tracking.
+- Issues short-lived access tokens and long-lived refresh tokens for human users via `UserSessionService`, including optional MFA challenges and session device tracking (token creation is delegated to `session_token_issuer.py`).
 - Persists and revokes session metadata (fingerprints, GeoIP, user-agent summaries) through `SessionStore` backed by the `UserSessionRepository`.
 - Issues, reuses, and rate-limits service-account refresh tokens via `ServiceAccountTokenService`, enforcing the catalog in `core/service_accounts.py`.
 - Wraps the pieces behind the `AuthService` façade and exposes FastAPI dependencies (`require_current_user`, `require_scopes`, `require_verified_user`, tenant helpers) used by routers under `app/api/v1/auth/**`.
@@ -11,7 +11,10 @@ Developer-facing overview of how authentication is wired across the API: issuing
 
 ## Key modules
 - `auth_service.py`: Thin façade composing session + service-account sub-services and wiring token verification for refresh/logout flows.
-- `auth/session_service.py`: Human login/refresh/logout/session revocation; rotates refresh tokens, enforces tenant context, and embeds claims (`sub=user:<uuid>`, `tenant_id`, `roles`, `scope`, `email_verified`, `sid`) into access tokens.
+- `auth/session_service.py`: Human login/refresh/logout/session revocation orchestration; delegates claim parsing and token signing to focused helpers.
+- `auth/session_claims.py`: Claim parsing/validation helpers for refresh + MFA challenge tokens.
+- `auth/session_token_issuer.py`: Signs access/refresh tokens and produces session metadata for persistence.
+- `auth/mfa_challenge_service.py`: Issues MFA challenge tokens and formats method payloads.
 - `auth/refresh_token_manager.py`: Convenience wrapper over `RefreshTokenRepository` (Postgres + Redis cache in `infrastructure/persistence/auth/repository.py`), handles jti lookup/revocation and list views for service-account tokens.
 - `auth/session_store.py`: Persists session metadata via `UserSessionRepository`, enriching with GeoIP (`GeoIPService`) and user-agent summaries when available.
 - `auth/service_account_service.py`: Issues service-account refresh tokens with per-account/global burst limits, catalog validation, and optional tenant scoping; reuses an active token unless `force=true`.

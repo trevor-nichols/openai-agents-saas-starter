@@ -14,7 +14,7 @@
 
 ### Non-Goals
 - Implementing a user identity provider or UI flows (assume upstream IdP or local user store already exists).
-- Adding OAuth/OIDC flows beyond JWT issuance and verification.
+- Documenting end-to-end OAuth/OIDC SSO flows (covered in `docs/auth/idp.md`); this document focuses on JWT issuance and verification.
 - Building secret-storage infrastructure; we integrate with an existing sealed volume or secret manager abstraction.
 
 ## 2. Current Context

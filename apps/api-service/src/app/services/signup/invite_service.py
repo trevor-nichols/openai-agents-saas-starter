@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
+from app.core.normalization import normalize_email
 from app.core.settings import Settings, get_settings
 from app.domain.signup import (
     SignupInvite,
@@ -136,7 +137,7 @@ class InviteService:
             SignupInviteCreate(
                 token_hash=hashed,
                 token_hint=_token_hint(token),
-                invited_email=_normalize_email(invited_email),
+                invited_email=normalize_email(invited_email),
                 issuer_user_id=_normalize_uuid(issuer_user_id),
                 issuer_tenant_id=_normalize_uuid(issuer_tenant_id),
                 signup_request_id=signup_request_id,
@@ -205,7 +206,7 @@ class InviteService:
     ) -> SignupInviteListResult:
         return await self.repository.list_invites(
             status=status,
-            email=_normalize_email(email),
+            email=normalize_email(email),
             signup_request_id=signup_request_id,
             limit=limit,
             offset=offset,
@@ -233,7 +234,7 @@ class InviteService:
         if invite.expires_at and invite.expires_at <= now:
             await self.repository.mark_revoked(invite.id, timestamp=now, reason="expired")
             raise InviteExpiredError("Invite token has expired.")
-        if invite.invited_email and invite.invited_email != _normalize_email(email):
+        if invite.invited_email and invite.invited_email != normalize_email(email):
             raise InviteEmailMismatchError("Invite token is restricted to a different email.")
         if require_request and invite.signup_request_id is None:
             raise InviteRequestMismatchError(
@@ -294,13 +295,6 @@ class InviteService:
     def _get_reservation_ttl_seconds(self) -> int:
         settings = self._settings_factory()
         return max(60, settings.signup_invite_reservation_ttl_seconds)
-
-
-def _normalize_email(value: str | None) -> str | None:
-    if value is None:
-        return None
-    normalized = value.strip().lower()
-    return normalized or None
 
 
 def _normalize_uuid(value: str | UUID | None) -> UUID | None:

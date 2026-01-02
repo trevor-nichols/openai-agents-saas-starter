@@ -5422,6 +5422,100 @@ export type SignupRequestResponse = {
 export type SignupRequestStatus = "pending" | "approved" | "rejected";
 
 /**
+ * SsoCallbackRequest
+ *
+ * Callback payload used to exchange code + state for tokens.
+ */
+export type SsoCallbackRequest = {
+  /**
+   * Code
+   *
+   * Authorization code from the IdP.
+   */
+  code: string;
+  /**
+   * State
+   *
+   * Opaque SSO state returned by the IdP.
+   */
+  state: string;
+};
+
+/**
+ * SsoProviderListResponse
+ *
+ * List of enabled SSO providers for a tenant.
+ */
+export type SsoProviderListResponse = {
+  /**
+   * Providers
+   *
+   * Enabled providers available for the tenant.
+   */
+  providers: Array<SsoProviderView>;
+};
+
+/**
+ * SsoProviderView
+ *
+ * Public view of an enabled SSO provider.
+ */
+export type SsoProviderView = {
+  /**
+   * Provider Key
+   *
+   * Provider key identifier (e.g., google).
+   */
+  provider_key: string;
+  /**
+   * Display Name
+   *
+   * Human-friendly provider label.
+   */
+  display_name: string;
+};
+
+/**
+ * SsoStartRequest
+ *
+ * Begin an SSO login by generating an authorize URL.
+ */
+export type SsoStartRequest = {
+  /**
+   * Tenant Id
+   *
+   * Tenant UUID for the SSO login.
+   */
+  tenant_id?: string | null;
+  /**
+   * Tenant Slug
+   *
+   * Tenant slug for the SSO login.
+   */
+  tenant_slug?: string | null;
+  /**
+   * Login Hint
+   *
+   * Optional login hint (typically an email address).
+   */
+  login_hint?: string | null;
+};
+
+/**
+ * SsoStartResponse
+ *
+ * SSO authorize URL response.
+ */
+export type SsoStartResponse = {
+  /**
+   * Authorize Url
+   *
+   * OIDC provider URL to redirect the user to.
+   */
+  authorize_url: string;
+};
+
+/**
  * StartSubscriptionRequest
  */
 export type StartSubscriptionRequest = {
@@ -11559,6 +11653,244 @@ export type CompleteMfaChallengeApiV1AuthMfaCompletePostResponses = {
 
 export type CompleteMfaChallengeApiV1AuthMfaCompletePostResponse =
   CompleteMfaChallengeApiV1AuthMfaCompletePostResponses[keyof CompleteMfaChallengeApiV1AuthMfaCompletePostResponses];
+
+export type ListSsoProvidersApiV1AuthSsoProvidersGetData = {
+  body?: never;
+  path?: never;
+  query?: {
+    /**
+     * Tenant Id
+     */
+    tenant_id?: string | null;
+    /**
+     * Tenant Slug
+     */
+    tenant_slug?: string | null;
+  };
+  url: "/api/v1/auth/sso/providers";
+};
+
+export type ListSsoProvidersApiV1AuthSsoProvidersGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type ListSsoProvidersApiV1AuthSsoProvidersGetError =
+  ListSsoProvidersApiV1AuthSsoProvidersGetErrors[keyof ListSsoProvidersApiV1AuthSsoProvidersGetErrors];
+
+export type ListSsoProvidersApiV1AuthSsoProvidersGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: SsoProviderListResponse;
+};
+
+export type ListSsoProvidersApiV1AuthSsoProvidersGetResponse =
+  ListSsoProvidersApiV1AuthSsoProvidersGetResponses[keyof ListSsoProvidersApiV1AuthSsoProvidersGetResponses];
+
+export type StartSsoApiV1AuthSsoProviderStartPostData = {
+  body: SsoStartRequest;
+  path: {
+    /**
+     * Provider
+     */
+    provider: string;
+  };
+  query?: never;
+  url: "/api/v1/auth/sso/{provider}/start";
+};
+
+export type StartSsoApiV1AuthSsoProviderStartPostErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type StartSsoApiV1AuthSsoProviderStartPostError =
+  StartSsoApiV1AuthSsoProviderStartPostErrors[keyof StartSsoApiV1AuthSsoProviderStartPostErrors];
+
+export type StartSsoApiV1AuthSsoProviderStartPostResponses = {
+  /**
+   * Successful Response
+   */
+  200: SsoStartResponse;
+};
+
+export type StartSsoApiV1AuthSsoProviderStartPostResponse =
+  StartSsoApiV1AuthSsoProviderStartPostResponses[keyof StartSsoApiV1AuthSsoProviderStartPostResponses];
+
+export type CompleteSsoApiV1AuthSsoProviderCallbackPostData = {
+  body: SsoCallbackRequest;
+  path: {
+    /**
+     * Provider
+     */
+    provider: string;
+  };
+  query?: never;
+  url: "/api/v1/auth/sso/{provider}/callback";
+};
+
+export type CompleteSsoApiV1AuthSsoProviderCallbackPostErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type CompleteSsoApiV1AuthSsoProviderCallbackPostError =
+  CompleteSsoApiV1AuthSsoProviderCallbackPostErrors[keyof CompleteSsoApiV1AuthSsoProviderCallbackPostErrors];
+
+export type CompleteSsoApiV1AuthSsoProviderCallbackPostResponses = {
+  /**
+   * Response Complete Sso Api V1 Auth Sso  Provider  Callback Post
+   *
+   * Successful Response
+   */
+  200: UserSessionResponse | MfaChallengeResponse;
+  /**
+   * MFA required; challenge token and available methods returned.
+   */
+  202: MfaChallengeResponse;
+};
+
+export type CompleteSsoApiV1AuthSsoProviderCallbackPostResponse =
+  CompleteSsoApiV1AuthSsoProviderCallbackPostResponses[keyof CompleteSsoApiV1AuthSsoProviderCallbackPostResponses];
 
 export type ChatWithAgentApiV1ChatPostData = {
   body: AgentChatRequest;

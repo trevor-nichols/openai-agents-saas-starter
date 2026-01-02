@@ -4,25 +4,7 @@ import { cookies } from 'next/headers';
 
 import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE, SESSION_META_COOKIE } from '../config';
 import type { UserSessionTokens } from '../types/auth';
-
-const forceSecureCookies = process.env.AGENT_FORCE_SECURE_COOKIES === 'true';
-const allowInsecureCookies = process.env.AGENT_ALLOW_INSECURE_COOKIES === 'true';
-const shouldUseSecureCookies =
-  forceSecureCookies || (process.env.NODE_ENV === 'production' && !allowInsecureCookies);
-
-const SECURE_COOKIE_BASE = {
-  httpOnly: true,
-  sameSite: 'lax' as const,
-  secure: shouldUseSecureCookies,
-  path: '/',
-};
-
-const META_COOKIE_BASE = {
-  httpOnly: false,
-  sameSite: 'lax' as const,
-  secure: shouldUseSecureCookies,
-  path: '/',
-};
+import { META_COOKIE_BASE, SECURE_COOKIE_BASE } from './cookieConfig';
 
 export async function persistSessionCookies(tokens: UserSessionTokens): Promise<void> {
   const store = await cookies();

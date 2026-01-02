@@ -33,6 +33,7 @@ from .preflight import run_preflight
 from .schema import load_schema
 from .schema_provider import SchemaAwareInputProvider
 from .section_specs import SECTION_LABELS, SECTION_SPECS
+from .sso import run_sso_automation
 from .state import WizardStateStore
 from .tenant_summary import capture_tenant_summary
 from .ui import WizardUIView
@@ -55,6 +56,11 @@ _AUTOMATION_PROMPTS: dict[AutomationPhase, tuple[str, str, bool]] = {
     AutomationPhase.STRIPE: (
         "AUTO_STRIPE",
         "Automatically run Stripe provisioning after providers are configured?",
+        False,
+    ),
+    AutomationPhase.SSO: (
+        "AUTO_SSO",
+        "Automatically seed SSO provider configuration after setup?",
         False,
     ),
     AutomationPhase.MIGRATIONS: (
@@ -88,6 +94,7 @@ _AUTOMATION_DEPENDENCIES: dict[AutomationPhase, set[str]] = {
     AutomationPhase.INFRA: {"Docker Engine", "Docker Compose"},
     AutomationPhase.SECRETS: {"Docker Engine", "Docker Compose"},
     AutomationPhase.STRIPE: {"Stripe CLI"},
+    AutomationPhase.SSO: set(),
     AutomationPhase.MIGRATIONS: set(),
     AutomationPhase.REDIS: set(),
     AutomationPhase.GEOIP: set(),
@@ -99,6 +106,7 @@ _AUTOMATION_PROFILE_LIMITS: dict[AutomationPhase, set[str] | None] = {
     AutomationPhase.INFRA: {"demo"},
     AutomationPhase.SECRETS: {"demo"},
     AutomationPhase.STRIPE: None,
+    AutomationPhase.SSO: None,
     AutomationPhase.MIGRATIONS: None,
     AutomationPhase.REDIS: None,
     AutomationPhase.GEOIP: None,
@@ -110,6 +118,7 @@ _AUTOMATION_LABELS: dict[AutomationPhase, str] = {
     AutomationPhase.INFRA: "Demo Infra",
     AutomationPhase.SECRETS: "Vault Helpers",
     AutomationPhase.STRIPE: "Stripe Provisioning",
+    AutomationPhase.SSO: "SSO Provisioning",
     AutomationPhase.MIGRATIONS: "DB Migrations",
     AutomationPhase.REDIS: "Redis Warm-up",
     AutomationPhase.GEOIP: "GeoIP Downloads",
@@ -238,6 +247,7 @@ class SetupWizard:
         self.context.save_env_files()
         self.context.load_environment()
         self.context.refresh_settings_cache()
+        run_sso_automation(self.context)
         run_dev_user_automation(self.context)
         capture_tenant_summary(self.context)
         run_demo_token_automation(self.context)

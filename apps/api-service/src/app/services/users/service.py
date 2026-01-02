@@ -195,20 +195,6 @@ class UserService:
 
         await self._repository.reset_lockout_counter(user.id)
         await self._repository.clear_user_lock(user.id)
-        await self._login_events.record(
-            user_id=user.id,
-            tenant_id=membership.tenant_id,
-            result="success",
-            reason="login",
-            ip_address=ip_address,
-            user_agent=user_agent,
-        )
-        log_event(
-            "auth.login",
-            result="success",
-            user_id=str(user.id),
-            tenant_id=str(membership.tenant_id),
-        )
         return AuthenticatedUser(
             user_id=user.id,
             tenant_id=membership.tenant_id,
@@ -216,6 +202,47 @@ class UserService:
             role=membership.role,
             scopes=self._scope_resolver(membership.role, user.platform_role),
             email_verified=user.email_verified_at is not None,
+        )
+
+    async def record_login_success(
+        self,
+        *,
+        user_id: UUID,
+        tenant_id: UUID,
+        ip_address: str | None,
+        user_agent: str | None,
+        reason: str,
+    ) -> None:
+        await self._record_login_success(
+            user_id=user_id,
+            tenant_id=tenant_id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            reason=reason,
+        )
+
+    async def _record_login_success(
+        self,
+        *,
+        user_id: UUID,
+        tenant_id: UUID,
+        ip_address: str | None,
+        user_agent: str | None,
+        reason: str,
+    ) -> None:
+        await self._login_events.record(
+            user_id=user_id,
+            tenant_id=tenant_id,
+            result="success",
+            reason=reason,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        log_event(
+            "auth.login",
+            result="success",
+            user_id=str(user_id),
+            tenant_id=str(tenant_id),
         )
 
     async def load_active_user(

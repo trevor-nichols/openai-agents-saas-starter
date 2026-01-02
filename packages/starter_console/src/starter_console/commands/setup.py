@@ -158,6 +158,21 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         help="Explicitly disable Stripe automation.",
     )
     wizard_parser.add_argument(
+        "--auto-sso",
+        dest="auto_sso",
+        action="store_const",
+        const=True,
+        default=None,
+        help="Automatically seed SSO provider configuration after setup.",
+    )
+    wizard_parser.add_argument(
+        "--no-auto-sso",
+        dest="auto_sso",
+        action="store_const",
+        const=False,
+        help="Disable SSO automation.",
+    )
+    wizard_parser.add_argument(
         "--auto-migrations",
         dest="auto_migrations",
         action="store_const",
@@ -265,6 +280,7 @@ def handle_setup_wizard(args: argparse.Namespace, ctx: CLIContext) -> int:
             AutomationPhase.INFRA: args.auto_infra,
             AutomationPhase.SECRETS: args.auto_secrets,
             AutomationPhase.STRIPE: args.auto_stripe,
+            AutomationPhase.SSO: args.auto_sso,
             AutomationPhase.MIGRATIONS: args.auto_migrations,
             AutomationPhase.REDIS: args.auto_redis,
             AutomationPhase.GEOIP: args.auto_geoip,

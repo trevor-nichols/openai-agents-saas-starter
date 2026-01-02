@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
@@ -22,12 +22,13 @@ from app.api.models.auth import (
     UserSessionListResponse,
     UserSessionResponse,
 )
-from app.api.models.mfa import MfaChallengeResponse, MfaMethodView
+from app.api.models.mfa import MfaChallengeResponse
 from app.api.v1.auth.utils import (
     current_session_uuid,
     extract_client_ip,
     extract_user_agent,
     map_user_auth_error,
+    to_mfa_challenge_response,
     to_session_item,
     to_user_session_response,
 )
@@ -77,24 +78,7 @@ async def login_for_access_token(
             user_agent=user_agent,
         )
     except MfaRequiredError as exc:
-        method_dicts = [cast(dict[str, Any], m) for m in exc.methods]
-        methods = []
-        for m in method_dicts:
-            method_id = UUID(str(m.get("id")))
-            methods.append(
-                MfaMethodView(
-                    id=method_id,
-                    method_type=str(m.get("method_type")),
-                    label=m.get("label") if isinstance(m.get("label"), str) else None,
-                    verified_at=cast(str | None, m.get("verified_at")),
-                    last_used_at=cast(str | None, m.get("last_used_at")),
-                    revoked_at=cast(str | None, m.get("revoked_at")),
-                )
-            )
-        payload_body = MfaChallengeResponse(
-            challenge_token=exc.challenge_token,
-            methods=methods,
-        )
+        payload_body = to_mfa_challenge_response(exc)
         response.status_code = status.HTTP_202_ACCEPTED
         return payload_body
     except UserAuthenticationError as exc:

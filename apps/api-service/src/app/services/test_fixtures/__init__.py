@@ -1,6 +1,8 @@
 """Exports for deterministic test fixture orchestration."""
 
-from .service import FixtureApplyResult, PlaywrightFixtureSpec, TestFixtureError, TestFixtureService
+from .errors import TestFixtureError
+from .schemas import FixtureApplyResult, PlaywrightFixtureSpec
+from .service import TestFixtureService
 
 __all__ = [
     "FixtureApplyResult",
@@ -8,4 +10,3 @@ __all__ = [
     "TestFixtureError",
     "TestFixtureService",
 ]
-

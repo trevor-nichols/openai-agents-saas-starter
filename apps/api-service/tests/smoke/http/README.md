@@ -23,6 +23,7 @@ Fast, deterministic checks that hit a running api-service over HTTP. Designed fo
 - Optional: Chat + workflow run + run-stream (`SMOKE_ENABLE_AI=1` and model key available)
 - Optional: Conversation ledger events/stream + workflow replay (requires streaming, `SMOKE_ENABLE_AI=1`)
 - Optional: Activity stream (`SMOKE_ENABLE_ACTIVITY_STREAM=1`)
+- Optional: SSO provider listing + start (`SMOKE_ENABLE_AUTH_SSO=1` + configured provider)
 - Optional: OpenAI file download proxy (`SMOKE_ENABLE_OPENAI_FILES=1` + file id)
 - Optional: Vector stores CRUD + search (`SMOKE_ENABLE_VECTOR=1`)
 - Optional: Containers create/list/bind/unbind/delete (`SMOKE_ENABLE_CONTAINERS=1`)
@@ -56,6 +57,8 @@ SMOKE_BASE_URL=http://localhost:8000 pytest -m smoke tests/smoke/http --maxfail=
 - `SMOKE_ENABLE_AUTH_SIGNUP` (1/0) — public signup flows
 - `SMOKE_ENABLE_AUTH_EXTENDED` (1/0) — email verification, password reset/change, session management
 - `SMOKE_ENABLE_AUTH_MFA` (1/0) — MFA enroll/verify flows
+- `SMOKE_ENABLE_AUTH_SSO` (1/0) — SSO provider list + start (requires configured provider)
+- `SMOKE_SSO_PROVIDER` — provider key to validate in smoke (default `google`)
 - `SMOKE_ENABLE_SERVICE_ACCOUNTS` (1/0) — service account issuance/token management
 - `SMOKE_ENABLE_CONTACT` (1/0) — contact form endpoint
 - `SMOKE_ENABLE_STATUS_SUBSCRIPTIONS` (1/0) — status subscription management + resend

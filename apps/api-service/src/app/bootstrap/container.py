@@ -63,6 +63,7 @@ if TYPE_CHECKING:  # pragma: no cover - type hints only
     from app.services.signup.invite_service import InviteService
     from app.services.signup.signup_request_service import SignupRequestService
     from app.services.signup.signup_service import SignupService
+    from app.services.sso.service import SsoService
     from app.services.team.invite_service import TeamInviteService
     from app.services.team.membership_service import TenantMembershipService
 
@@ -99,6 +100,7 @@ class ApplicationContainer:
     signup_service: SignupService | None = None
     invite_service: InviteService | None = None
     signup_request_service: SignupRequestService | None = None
+    sso_service: SsoService | None = None
     status_subscription_service: StatusSubscriptionService | None = None
     status_alert_dispatcher: StatusAlertDispatcher | None = None
     tenant_settings_service: TenantSettingsService = field(
@@ -171,6 +173,7 @@ class ApplicationContainer:
         self.signup_service = None
         self.invite_service = None
         self.signup_request_service = None
+        self.sso_service = None
         self.tenant_lifecycle_service = None
         self.status_subscription_service = None
         self.status_alert_dispatcher = None

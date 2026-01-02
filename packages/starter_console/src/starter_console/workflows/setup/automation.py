@@ -9,6 +9,7 @@ class AutomationPhase(str, Enum):
     INFRA = "infra"
     SECRETS = "secrets"
     STRIPE = "stripe"
+    SSO = "sso"
     MIGRATIONS = "migrations"
     REDIS = "redis"
     GEOIP = "geoip"
@@ -88,6 +89,7 @@ ALL_AUTOMATION_PHASES: tuple[AutomationPhase, ...] = (
     AutomationPhase.INFRA,
     AutomationPhase.SECRETS,
     AutomationPhase.STRIPE,
+    AutomationPhase.SSO,
     AutomationPhase.MIGRATIONS,
     AutomationPhase.REDIS,
     AutomationPhase.GEOIP,
