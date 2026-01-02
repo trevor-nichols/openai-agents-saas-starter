@@ -2,20 +2,104 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
+from starter_console.core import CLIError
 from starter_console.core.constants import PROJECT_ROOT
 from starter_console.core.status_models import ProbeResult, ProbeState
 from starter_console.services.infra.backend_scripts import extract_json_payload, run_backend_script
-from starter_console.services.sso.config import env_key, parse_bool
+from starter_console.services.sso.config import (
+    env_key,
+    parse_bool,
+    resolve_enabled_providers,
+)
 from starter_console.workflows.home.probes.registry import ProbeContext
 
-DEFAULT_PROVIDER_KEY = "google"
 SCOPE_CHOICES = {"global", "tenant"}
 
 
-def sso_probe(ctx: ProbeContext, *, provider_key: str = DEFAULT_PROVIDER_KEY) -> ProbeResult:
+def sso_probe(ctx: ProbeContext) -> ProbeResult:
+    explicit_list = "SSO_PROVIDERS" in ctx.env
+    try:
+        provider_keys = resolve_enabled_providers(ctx.env)
+    except CLIError as exc:
+        detail = str(exc)
+        reason = (
+            "missing_providers_list"
+            if "SSO_PROVIDERS" in detail
+            else "invalid_provider_key"
+        )
+        remediation = (
+            "Set SSO_PROVIDERS (empty value disables all providers)."
+            if reason == "missing_providers_list"
+            else "Fix SSO_PROVIDERS or provider key formatting."
+        )
+        return ProbeResult(
+            name="sso",
+            state=ProbeState.WARN if ctx.warn_only else ProbeState.ERROR,
+            detail=detail,
+            remediation=remediation,
+            metadata={"providers": [], "reason": reason},
+        )
+    if not provider_keys:
+        return ProbeResult(
+            name="sso",
+            state=ProbeState.SKIPPED,
+            detail="sso disabled",
+            metadata={"providers": [], "reason": "disabled"},
+        )
+
+    results: dict[str, ProbeResult] = {}
+    for key in provider_keys:
+        results[key] = _probe_provider(ctx, provider_key=key, assume_enabled=explicit_list)
+
+    worst = max(results.values(), key=lambda item: item.severity_rank)
+    failing = [
+        provider
+        for provider, result in results.items()
+        if result.state in {ProbeState.ERROR, ProbeState.WARN}
+    ]
+    if not failing:
+        detail = f"sso configured ({', '.join(provider_keys)})"
+    else:
+        detail = f"sso issues for: {', '.join(failing)}"
+
+    metadata = {
+        "providers": provider_keys,
+        "results": {
+            provider: {
+                "state": result.state.value,
+                "detail": result.detail,
+                "remediation": result.remediation,
+                **(result.metadata or {}),
+            }
+            for provider, result in results.items()
+        },
+    }
+
+    return ProbeResult(
+        name="sso",
+        state=worst.state,
+        detail=detail,
+        metadata=metadata,
+    )
+
+
+def _probe_provider(
+    ctx: ProbeContext,
+    *,
+    provider_key: str,
+    assume_enabled: bool,
+) -> ProbeResult:
     key = provider_key.strip().lower()
-    enabled = parse_bool(ctx.env.get(env_key(key, "ENABLED")), default=False)
+    enabled = parse_bool(ctx.env.get(env_key(key, "ENABLED")), default=assume_enabled)
     if not enabled:
+        if assume_enabled:
+            return ProbeResult(
+                name="sso",
+                state=ProbeState.WARN if ctx.warn_only else ProbeState.ERROR,
+                detail="provider listed but disabled in env",
+                remediation=f"Set {env_key(key, 'ENABLED')}=true or remove from SSO_PROVIDERS.",
+                metadata={"provider": key, "reason": "disabled"},
+            )
         return ProbeResult(
             name="sso",
             state=ProbeState.SKIPPED,
@@ -28,7 +112,7 @@ def sso_probe(ctx: ProbeContext, *, provider_key: str = DEFAULT_PROVIDER_KEY) ->
         return _failure(
             ctx,
             detail=f"invalid scope '{scope_raw}'",
-            remediation="Set SSO_GOOGLE_SCOPE to global or tenant.",
+            remediation=f"Set {env_key(key, 'SCOPE')} to global or tenant.",
             metadata={"provider": key, "scope": scope_raw},
         )
 
@@ -38,14 +122,19 @@ def sso_probe(ctx: ProbeContext, *, provider_key: str = DEFAULT_PROVIDER_KEY) ->
         return _failure(
             ctx,
             detail="global scope should not include tenant id or slug",
-            remediation="Clear SSO_GOOGLE_TENANT_ID/SSO_GOOGLE_TENANT_SLUG or set scope=tenant.",
+            remediation=(
+                f"Clear {env_key(key, 'TENANT_ID')}/{env_key(key, 'TENANT_SLUG')} "
+                "or set scope=tenant."
+            ),
             metadata={"provider": key, "scope": scope_raw},
         )
     if scope_raw == "tenant" and not (tenant_id or tenant_slug):
         return _failure(
             ctx,
             detail="tenant scope requires tenant id or slug",
-            remediation="Set SSO_GOOGLE_TENANT_ID or SSO_GOOGLE_TENANT_SLUG.",
+            remediation=(
+                f"Set {env_key(key, 'TENANT_ID')} or {env_key(key, 'TENANT_SLUG')}."
+            ),
             metadata={"provider": key, "scope": scope_raw},
         )
 

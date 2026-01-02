@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 
@@ -19,9 +20,47 @@ from .constants import (
     TOKEN_AUTH_METHOD_CHOICES,
 )
 
+_PROVIDER_KEY_RE = re.compile(r"^[a-z0-9_]+$")
+_TEMPLATE_RE = re.compile(r"{[a-zA-Z0-9_]+}")
+_RESERVED_PROVIDER_KEYS = {"custom"}
+
+
+def normalize_provider_key(raw: str, *, allow_reserved: bool = False) -> str:
+    value = raw.strip().lower()
+    if not value:
+        raise CLIError("provider_key is required.")
+    if not _PROVIDER_KEY_RE.match(value):
+        raise CLIError("provider_key must match [a-z0-9_]+.")
+    if not allow_reserved and value in _RESERVED_PROVIDER_KEYS:
+        raise CLIError(
+            f"provider_key '{value}' is reserved for presets; choose another key."
+        )
+    return value
+
+
+def contains_template_placeholders(value: str | None) -> bool:
+    if not value:
+        return False
+    return bool(_TEMPLATE_RE.search(value))
+
+
+def ensure_templates_filled(
+    value: str | None,
+    *,
+    label: str,
+    provider_key: str | None = None,
+) -> None:
+    if not contains_template_placeholders(value):
+        return
+    suffix = f" for provider '{provider_key}'" if provider_key else ""
+    raise CLIError(
+        f"{label}{suffix} contains template placeholders; replace them first."
+    )
+
 
 def env_key(provider_key: str, suffix: str) -> str:
-    return f"SSO_{provider_key.strip().upper()}_{suffix}"
+    normalized = normalize_provider_key(provider_key)
+    return f"SSO_{normalized.upper()}_{suffix}"
 
 
 @dataclass(slots=True)
@@ -106,6 +145,18 @@ def parse_list(raw: str | None) -> list[str]:
     return [item.strip() for item in value.split() if item.strip()]
 
 
+def parse_provider_list(raw: str | None) -> list[str]:
+    providers = [normalize_provider_key(item) for item in parse_list(raw)]
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for provider in providers:
+        if provider in seen:
+            continue
+        seen.add(provider)
+        ordered.append(provider)
+    return ordered
+
+
 def parse_scopes(raw: str | None) -> list[str]:
     scopes = parse_list(raw)
     return scopes or list(DEFAULT_SCOPES)
@@ -162,15 +213,31 @@ def normalize_token_auth_method(raw: str | None) -> str:
     return value
 
 
+def resolve_enabled_providers(env: Mapping[str, str]) -> list[str]:
+    if "SSO_PROVIDERS" not in env:
+        raise CLIError(
+            "SSO_PROVIDERS must be set (use an empty value to disable all providers)."
+        )
+    return parse_provider_list(env.get("SSO_PROVIDERS"))
+
+
 def build_config_from_env(
     env: Mapping[str, str],
     *,
     provider_key: str,
     defaults: Mapping[str, str] | None = None,
+    enabled_default: bool | None = None,
+    enforce_enabled_flag: bool = False,
 ) -> SsoProviderSeedConfig | None:
-    key = provider_key.strip().lower()
+    key = normalize_provider_key(provider_key)
     defaults = defaults or {}
-    enabled = parse_bool(env.get(env_key(key, "ENABLED")), default=False)
+    if enforce_enabled_flag:
+        enabled = parse_bool(
+            env.get(env_key(key, "ENABLED")),
+            default=bool(enabled_default) if enabled_default is not None else False,
+        )
+    else:
+        enabled = bool(enabled_default) if enabled_default is not None else True
     if not enabled:
         return None
 
@@ -185,9 +252,14 @@ def build_config_from_env(
     if tenant_scope == "tenant" and not (tenant_id or tenant_slug):
         raise CLIError("SSO tenant scope requires TENANT_ID or TENANT_SLUG.")
 
-    issuer_url = (env.get(env_key(key, "ISSUER_URL")) or defaults.get("issuer_url") or "").strip()
+    issuer_url = (
+        env.get(env_key(key, "ISSUER_URL"))
+        or defaults.get("issuer_url")
+        or ""
+    ).strip()
     if not issuer_url:
         raise CLIError("issuer_url is required for SSO setup.")
+    ensure_templates_filled(issuer_url, label="Issuer URL", provider_key=key)
 
     client_id = (env.get(env_key(key, "CLIENT_ID")) or "").strip()
     if not client_id:
@@ -208,22 +280,34 @@ def build_config_from_env(
         or defaults.get("discovery_url")
         or ""
     ).strip()
+    ensure_templates_filled(discovery_url, label="Discovery URL", provider_key=key)
     discovery_value = discovery_url or None
 
     scopes = parse_scopes(env.get(env_key(key, "SCOPES")) or defaults.get("scopes"))
+    pkce_default_raw = defaults.get("pkce_required")
+    pkce_default = (
+        parse_bool(str(pkce_default_raw), default=True)
+        if pkce_default_raw is not None
+        else True
+    )
     pkce_required = parse_bool(
-        env.get(env_key(key, "PKCE_REQUIRED")), default=True
+        env.get(env_key(key, "PKCE_REQUIRED")), default=pkce_default
     )
     if token_auth_method == "none" and not pkce_required:
         raise CLIError("token_auth_method=none requires PKCE.")
     allowed_id_token_algs = parse_id_token_algs(
         env.get(env_key(key, "ID_TOKEN_ALGS")) or defaults.get("id_token_algs")
     )
-    auto_policy = normalize_policy(env.get(env_key(key, "AUTO_PROVISION_POLICY")))
+    auto_policy = normalize_policy(
+        env.get(env_key(key, "AUTO_PROVISION_POLICY"))
+        or defaults.get("auto_provision_policy")
+    )
     allowed_domains = parse_domains(env.get(env_key(key, "ALLOWED_DOMAINS")))
     if auto_policy == "domain_allowlist" and not allowed_domains:
         raise CLIError("allowed_domains is required for domain_allowlist policy.")
-    default_role = normalize_role(env.get(env_key(key, "DEFAULT_ROLE")))
+    default_role = normalize_role(
+        env.get(env_key(key, "DEFAULT_ROLE")) or defaults.get("default_role")
+    )
 
     return SsoProviderSeedConfig(
         provider_key=key,
@@ -248,13 +332,18 @@ def build_config_from_env(
 __all__ = [
     "SsoProviderSeedConfig",
     "build_config_from_env",
+    "contains_template_placeholders",
+    "ensure_templates_filled",
     "env_key",
+    "normalize_provider_key",
     "normalize_token_auth_method",
     "normalize_policy",
     "normalize_role",
     "normalize_scope_mode",
+    "parse_provider_list",
     "parse_domains",
     "parse_id_token_algs",
     "parse_scopes",
     "parse_bool",
+    "resolve_enabled_providers",
 ]

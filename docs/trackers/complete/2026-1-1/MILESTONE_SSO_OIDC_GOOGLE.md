@@ -107,7 +107,7 @@ Add production-grade, optional OIDC SSO with Google as the first provider, while
 
 ## Follow-up Milestone
 
-- 2026-01-01 — Created follow-up milestone for multi-provider console support: `docs/trackers/current_milestones/MILESTONE_SSO_OIDC_MULTI_PROVIDER_CONSOLE.md`.
+- 2026-01-01 — Created follow-up milestone for multi-provider console support: `docs/trackers/complete/2026-1-2/MILESTONE_SSO_OIDC_MULTI_PROVIDER_CONSOLE.md`.
 
 ---
 

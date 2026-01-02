@@ -73,7 +73,7 @@ Tenant relationships (canonical definitions in `docs/auth/roles.md`):
 - **Claims embedded:** When minting, include `iss`, `sub`, `tenant_id`, `scopes`, `token_use=refresh`, `jti`, `iat`, `exp`. Not exposed to clients except as opaque string.
 - **Revocation:** Admin logout, lockout, or password reset sets `revoked_at` and caches `jti` in Redis for TTL = remaining lifetime to short-circuit DB lookups.
 
-## 7. OIDC SSO (Optional, Google First)
+## 7. OIDC SSO (Optional, Multi-Provider)
 - **Flow:** OIDC Authorization Code with PKCE; state + nonce stored in Redis for `SSO_STATE_TTL_MINUTES` and treated as single-use.
 - **Endpoints:** `/api/v1/auth/sso/{provider}/start`, `/api/v1/auth/sso/{provider}/callback`, `/api/v1/auth/sso/providers`.
 - **Provider config:** Tenant-scoped rows in Postgres with a global fallback row (`tenant_id IS NULL`) when tenant config is absent.
@@ -81,7 +81,8 @@ Tenant relationships (canonical definitions in `docs/auth/roles.md`):
 - **Provisioning policy:** Default `invite_only`; `domain_allowlist` optional; `disabled` blocks auto-provisioning. Verified email required for provisioning and identity linking.
 - **MFA:** If the user has enrolled methods, SSO returns an MFA challenge (HTTP 202), same as password login.
 - **Secrets:** Client secrets are encrypted at rest using `SSO_CLIENT_SECRET_ENCRYPTION_KEY` (fallback: `AUTH_SESSION_ENCRYPTION_KEY` or `SECRET_KEY`).
-- **Ops:** `starter-console sso setup` + setup wizard can seed the provider config; env keys are `SSO_GOOGLE_*` for the initial Google preset.
+- **Ops:** `starter-console sso setup` + setup wizard can seed provider configs. Env keys use `SSO_<PROVIDER>_*` (e.g., `SSO_GOOGLE_*`, `SSO_AZURE_*`). Provider keys must match `[a-z0-9_]+` and the `custom` key is reserved for the preset selector. `SSO_PROVIDERS` is required and authoritative; use an empty value to disable all providers.
+- **Presets:** Console ships presets for Google, Azure (Entra ID), Okta, and Auth0 plus a custom OIDC path. Azure/Okta/Auth0 presets include issuer/discovery URL templates with `{placeholder}` tokens that must be replaced before seeding.
 - **Frontend/BFF:** The web app uses Next API routes (`/api/v1/auth/sso/*`) to broker start/callback and to set session cookies. The user-facing callback page is `/auth/sso/{provider}/callback`.
 - **Tenant selector required:** Frontend must send exactly one of `tenant_id` (UUID) or `tenant_slug`. Missing/both values return 400/409.
 - **Login hint:** When the email input is valid, the frontend forwards it as `login_hint`.

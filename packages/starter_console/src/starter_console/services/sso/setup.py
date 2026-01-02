@@ -13,14 +13,10 @@ from starter_console.services.infra.backend_scripts import (
     run_backend_script,
 )
 
-from .config import SsoProviderSeedConfig, env_key, parse_bool
-from .constants import (
-    DEFAULT_AUTO_PROVISION_POLICY,
-    DEFAULT_ROLE,
-    DEFAULT_SCOPES,
-    DEFAULT_TOKEN_AUTH_METHOD,
-    GOOGLE_DISCOVERY_URL,
-    GOOGLE_ISSUER_URL,
+from .config import (
+    SsoProviderSeedConfig,
+    env_key,
+    parse_bool,
 )
 
 
@@ -71,6 +67,15 @@ def update_backend_env(project_root: Path, config: SsoProviderSeedConfig) -> Non
     env.save()
 
 
+def update_backend_env_providers(project_root: Path, provider_keys: list[str]) -> None:
+    env_path = project_root / "apps" / "api-service" / ".env.local"
+    env_path.parent.mkdir(parents=True, exist_ok=True)
+    env = EnvFile(env_path)
+    providers_value = ",".join(provider_keys)
+    env.set("SSO_PROVIDERS", providers_value)
+    env.save()
+
+
 def run_sso_setup(
     ctx: CLIContext,
     *,
@@ -116,27 +121,6 @@ def run_sso_setup(
     )
 
 
-def resolve_default_config(provider_key: str) -> SsoProviderSeedConfig:
-    return SsoProviderSeedConfig(
-        provider_key=provider_key,
-        enabled=True,
-        tenant_scope="global",
-        tenant_id=None,
-        tenant_slug=None,
-        issuer_url=GOOGLE_ISSUER_URL,
-        client_id="",
-        client_secret="",
-        discovery_url=GOOGLE_DISCOVERY_URL,
-        scopes=list(DEFAULT_SCOPES),
-        pkce_required=True,
-        token_auth_method=DEFAULT_TOKEN_AUTH_METHOD,
-        allowed_id_token_algs=[],
-        auto_provision_policy=DEFAULT_AUTO_PROVISION_POLICY,
-        allowed_domains=[],
-        default_role=DEFAULT_ROLE,
-    )
-
-
 def resolve_enabled_flag(*, provided: bool | None, existing: str | None) -> bool:
     if provided is not None:
         return bool(provided)
@@ -148,8 +132,8 @@ def resolve_enabled_flag(*, provided: bool | None, existing: str | None) -> bool
 __all__ = [
     "SsoSetupResult",
     "load_env_values",
-    "resolve_default_config",
     "resolve_enabled_flag",
     "run_sso_setup",
     "update_backend_env",
+    "update_backend_env_providers",
 ]

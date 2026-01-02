@@ -5,24 +5,31 @@ import argparse
 from starter_console.core import CLIContext, CLIError
 from starter_console.services.sso import (
     AUTO_PROVISION_POLICIES,
+    CUSTOM_PRESET,
     DEFAULT_AUTO_PROVISION_POLICY,
     DEFAULT_ROLE,
     DEFAULT_SCOPE_MODE,
     DEFAULT_SCOPES,
     DEFAULT_TOKEN_AUTH_METHOD,
-    GOOGLE_DISCOVERY_URL,
-    GOOGLE_ISSUER_URL,
     GOOGLE_PROVIDER_KEY,
     ROLE_CHOICES,
     SCOPE_MODE_CHOICES,
     TOKEN_AUTH_METHOD_CHOICES,
     SsoProviderSeedConfig,
+    find_preset,
+    get_preset,
+    list_presets,
     load_env_values,
-    resolve_default_config,
+    normalize_provider_key,
+    parse_provider_list,
+    preset_defaults,
     resolve_enabled_flag,
     run_sso_setup,
+    update_backend_env_providers,
 )
 from starter_console.services.sso.config import (
+    contains_template_placeholders,
+    ensure_templates_filled,
     env_key,
     normalize_policy,
     normalize_role,
@@ -42,10 +49,21 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         "setup",
         help="Seed an OIDC SSO provider config.",
     )
+    preset_choices = [preset.key for preset in list_presets()]
+    setup_parser.add_argument(
+        "--preset",
+        choices=preset_choices,
+        default=None,
+        help="Preset defaults to prefill issuer/discovery/scopes.",
+    )
     setup_parser.add_argument(
         "--provider",
-        default=GOOGLE_PROVIDER_KEY,
-        choices=[GOOGLE_PROVIDER_KEY],
+        help="Provider key stored in config/env (default: preset key).",
+    )
+    setup_parser.add_argument(
+        "--list-presets",
+        action="store_true",
+        help="List available presets and exit.",
     )
     setup_parser.add_argument("--scope", choices=SCOPE_MODE_CHOICES)
     setup_parser.add_argument("--tenant-id")
@@ -91,14 +109,58 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     setup_parser.set_defaults(handler=handle_sso_setup)
 
 
+def _render_presets(ctx: CLIContext) -> None:
+    ctx.console.info("Available SSO provider presets:", topic="sso")
+    for preset in list_presets():
+        issuer = preset.issuer_url or "(required)"
+        discovery = preset.discovery_url or "(optional)"
+        needs_template = (
+            contains_template_placeholders(issuer)
+            or contains_template_placeholders(discovery)
+        )
+        template_note = " (replace template placeholders)" if needs_template else ""
+        ctx.console.info(
+            f"- {preset.key}: {preset.label} — {preset.description}{template_note}",
+            topic="sso",
+        )
+        ctx.console.info(f"  issuer: {issuer}", topic="sso")
+        ctx.console.info(f"  discovery: {discovery}", topic="sso")
+
+
 def handle_sso_setup(args: argparse.Namespace, ctx: CLIContext) -> int:
-    provider_key = (args.provider or GOOGLE_PROVIDER_KEY).strip().lower()
-    defaults = resolve_default_config(provider_key)
+    if args.list_presets:
+        _render_presets(ctx)
+        return 0
+
     env_values = load_env_values(ctx)
     if ctx.presenter is None:  # pragma: no cover - defensive
         raise CLIError("Presenter not initialized.")
     prompt = ctx.presenter.prompt
     allow_existing = bool(args.from_env or not args.non_interactive)
+
+    preset_key = args.preset
+    if preset_key is None and args.provider:
+        matched = find_preset(args.provider)
+        preset_key = matched.key if matched else CUSTOM_PRESET.key
+    preset = get_preset(preset_key or GOOGLE_PROVIDER_KEY)
+
+    if args.provider:
+        provider_key = normalize_provider_key(args.provider)
+    elif preset.key != "custom":
+        provider_key = preset.key
+    elif args.non_interactive:
+        raise CLIError("provider is required when using the custom preset.")
+    else:
+        provider_key = normalize_provider_key(
+            prompt.prompt_string(
+                key="SSO_PROVIDER_KEY",
+                prompt="Provider key (lowercase, use a-z/0-9/_)",
+                default=None,
+                required=True,
+            )
+        )
+
+    defaults = preset_defaults(preset)
 
     def _resolve_string(
         *,
@@ -141,7 +203,7 @@ def handle_sso_setup(args: argparse.Namespace, ctx: CLIContext) -> int:
         label="SSO config scope (global or tenant)",
         provided=args.scope,
         existing=env_values.get(env_key(provider_key, "SCOPE")),
-        fallback=DEFAULT_SCOPE_MODE,
+        fallback=defaults.get("scope_mode") or DEFAULT_SCOPE_MODE,
         required=True,
     )
     tenant_scope = normalize_scope_mode(scope_value)
@@ -185,16 +247,23 @@ def handle_sso_setup(args: argparse.Namespace, ctx: CLIContext) -> int:
         label="OIDC issuer URL",
         provided=args.issuer_url,
         existing=env_values.get(env_key(provider_key, "ISSUER_URL")),
-        fallback=GOOGLE_ISSUER_URL,
+        fallback=defaults.get("issuer_url"),
         required=True,
     )
+    ensure_templates_filled(issuer_url, label="Issuer URL", provider_key=provider_key)
+
     discovery_url = _resolve_string(
         key=env_key(provider_key, "DISCOVERY_URL"),
         label="OIDC discovery URL",
         provided=args.discovery_url,
         existing=env_values.get(env_key(provider_key, "DISCOVERY_URL")),
-        fallback=GOOGLE_DISCOVERY_URL,
+        fallback=defaults.get("discovery_url"),
         required=False,
+    )
+    ensure_templates_filled(
+        discovery_url,
+        label="Discovery URL",
+        provider_key=provider_key,
     )
     client_id = _resolve_string(
         key=env_key(provider_key, "CLIENT_ID"),
@@ -209,7 +278,7 @@ def handle_sso_setup(args: argparse.Namespace, ctx: CLIContext) -> int:
         label="Token endpoint auth method",
         provided=args.token_auth_method,
         existing=env_values.get(env_key(provider_key, "TOKEN_AUTH_METHOD")),
-        fallback=DEFAULT_TOKEN_AUTH_METHOD,
+        fallback=defaults.get("token_auth_method") or DEFAULT_TOKEN_AUTH_METHOD,
         required=True,
     )
     token_auth_method = normalize_token_auth_method(token_auth_method_raw)
@@ -233,15 +302,13 @@ def handle_sso_setup(args: argparse.Namespace, ctx: CLIContext) -> int:
         label="OIDC scopes (comma-separated)",
         provided=args.scopes,
         existing=env_values.get(env_key(provider_key, "SCOPES")),
-        fallback=",".join(DEFAULT_SCOPES),
+        fallback=defaults.get("scopes") or ",".join(DEFAULT_SCOPES),
         required=True,
     )
     scopes = parse_scopes(scopes_raw)
 
     pkce_required = (
-        args.pkce_required
-        if args.pkce_required is not None
-        else defaults.pkce_required
+        args.pkce_required if args.pkce_required is not None else preset.pkce_required
     )
     if token_auth_method == "none" and not pkce_required:
         raise CLIError("token_auth_method=none requires PKCE.")
@@ -263,7 +330,7 @@ def handle_sso_setup(args: argparse.Namespace, ctx: CLIContext) -> int:
         label="Auto-provision policy",
         provided=args.auto_provision_policy,
         existing=env_values.get(env_key(provider_key, "AUTO_PROVISION_POLICY")),
-        fallback=DEFAULT_AUTO_PROVISION_POLICY,
+        fallback=defaults.get("auto_provision_policy") or DEFAULT_AUTO_PROVISION_POLICY,
         required=True,
     )
     auto_policy = normalize_policy(auto_policy_raw)
@@ -285,7 +352,7 @@ def handle_sso_setup(args: argparse.Namespace, ctx: CLIContext) -> int:
         label="Default role for auto-provision",
         provided=args.default_role,
         existing=env_values.get(env_key(provider_key, "DEFAULT_ROLE")),
-        fallback=DEFAULT_ROLE,
+        fallback=defaults.get("default_role") or DEFAULT_ROLE,
         required=True,
     )
     default_role = normalize_role(default_role_raw)
@@ -310,6 +377,16 @@ def handle_sso_setup(args: argparse.Namespace, ctx: CLIContext) -> int:
     )
 
     run_sso_setup(ctx, config=config, update_env=True)
+    env_values = load_env_values(ctx)
+
+    provider_list = parse_provider_list(env_values.get("SSO_PROVIDERS"))
+    if config.enabled:
+        if provider_key not in provider_list:
+            provider_list.append(provider_key)
+    else:
+        provider_list = [item for item in provider_list if item != provider_key]
+    update_backend_env_providers(ctx.project_root, provider_list)
+    ctx.console.success("Updated SSO_PROVIDERS.", topic="sso")
     ctx.console.success("SSO setup complete.", topic="sso")
     return 0
 

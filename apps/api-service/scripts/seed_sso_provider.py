@@ -4,6 +4,7 @@ import argparse
 import asyncio
 import json
 import os
+import sys
 from dataclasses import dataclass
 from typing import Sequence
 from uuid import UUID
@@ -23,6 +24,8 @@ from app.infrastructure.persistence.auth.sso_repository import (
 from app.infrastructure.persistence.tenants.account_repository import (
     get_tenant_account_repository,
 )
+from app.services.sso.config import normalize_provider_key
+from app.services.sso.errors import SsoConfigurationError
 
 _DEFAULT_SCOPES = ("openid", "email", "profile")
 _ALLOWED_ID_TOKEN_ALGS = {
@@ -249,9 +252,17 @@ def _normalize_args(ns: argparse.Namespace) -> SeedSsoProviderArgs:
     enabled = True if ns.enabled is None else bool(ns.enabled)
     pkce_required = True if ns.pkce_required is None else bool(ns.pkce_required)
 
-    provider_key = str(ns.provider).strip().lower()
-    if not provider_key:
-        raise RuntimeError("provider is required.")
+    raw_provider = str(ns.provider or "").strip()
+    try:
+        provider_key = normalize_provider_key(raw_provider)
+    except SsoConfigurationError as exc:
+        raise RuntimeError(str(exc)) from exc
+    if provider_key == "custom":
+        print(
+            "WARN: provider_key 'custom' is reserved for console presets; "
+            "use a distinct provider key for backend seeding.",
+            file=sys.stderr,
+        )
 
     issuer_url = str(ns.issuer_url or "").strip()
     client_id = str(ns.client_id or "").strip()

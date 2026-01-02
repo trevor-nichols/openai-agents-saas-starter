@@ -6,12 +6,13 @@ from pathlib import Path
 
 import pytest
 from starter_console.commands import sso as sso_command
-from starter_console.core import CLIContext
+from starter_console.core import CLIContext, CLIError
 from starter_console.services.sso import SsoProviderSeedConfig, SsoSetupResult
 
 
 def _build_args(**overrides) -> argparse.Namespace:
     defaults = {
+        "preset": None,
         "provider": "google",
         "scope": None,
         "tenant_id": None,
@@ -30,6 +31,7 @@ def _build_args(**overrides) -> argparse.Namespace:
         "pkce_required": None,
         "from_env": False,
         "non_interactive": True,
+        "list_presets": False,
         "sso_command": "setup",
     }
     defaults.update(overrides)
@@ -69,3 +71,34 @@ def test_sso_setup_command_builds_config(
     assert config.auto_provision_policy == "invite_only"
     assert config.token_auth_method == "client_secret_post"
     assert config.allowed_id_token_algs == []
+
+
+def test_sso_setup_lists_presets(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    ctx = CLIContext(project_root=tmp_path, env_files=())
+    args = _build_args(list_presets=True, provider=None)
+    called = {"run": False}
+
+    def fake_run(*_args, **_kwargs):
+        called["run"] = True
+        return None
+
+    monkeypatch.setattr(sso_command, "run_sso_setup", fake_run)
+
+    exit_code = sso_command.handle_sso_setup(args, ctx)
+
+    assert exit_code == 0
+    assert called["run"] is False
+
+
+def test_sso_setup_unknown_provider_requires_issuer(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    ctx = CLIContext(project_root=tmp_path, env_files=())
+    args = _build_args(provider="acme", issuer_url=None, discovery_url=None)
+
+    monkeypatch.setattr(sso_command, "load_env_values", lambda _: {})
+
+    with pytest.raises(CLIError, match="OIDC issuer URL is required"):
+        sso_command.handle_sso_setup(args, ctx)

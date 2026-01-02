@@ -4,6 +4,20 @@ GOOGLE_PROVIDER_KEY = "google"
 GOOGLE_ISSUER_URL = "https://accounts.google.com"
 GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid-configuration"
 
+AZURE_PROVIDER_KEY = "azure"
+AZURE_ISSUER_TEMPLATE = "https://login.microsoftonline.com/{tenant_id}/v2.0"
+AZURE_DISCOVERY_TEMPLATE = (
+    "https://login.microsoftonline.com/{tenant_id}/v2.0/.well-known/openid-configuration"
+)
+
+OKTA_PROVIDER_KEY = "okta"
+OKTA_ISSUER_TEMPLATE = "https://{your_okta_domain}/oauth2/default"
+OKTA_DISCOVERY_TEMPLATE = "https://{your_okta_domain}/oauth2/default/.well-known/openid-configuration"
+
+AUTH0_PROVIDER_KEY = "auth0"
+AUTH0_ISSUER_TEMPLATE = "https://{your_auth0_domain}"
+AUTH0_DISCOVERY_TEMPLATE = "https://{your_auth0_domain}/.well-known/openid-configuration"
+
 DEFAULT_SCOPES = ("openid", "email", "profile")
 DEFAULT_AUTO_PROVISION_POLICY = "invite_only"
 DEFAULT_ROLE = "member"
@@ -37,9 +51,18 @@ __all__ = [
     "DEFAULT_SCOPES",
     "DEFAULT_SCOPE_MODE",
     "DEFAULT_TOKEN_AUTH_METHOD",
+    "AUTH0_DISCOVERY_TEMPLATE",
+    "AUTH0_ISSUER_TEMPLATE",
+    "AUTH0_PROVIDER_KEY",
+    "AZURE_DISCOVERY_TEMPLATE",
+    "AZURE_ISSUER_TEMPLATE",
+    "AZURE_PROVIDER_KEY",
     "GOOGLE_DISCOVERY_URL",
     "GOOGLE_ISSUER_URL",
     "GOOGLE_PROVIDER_KEY",
+    "OKTA_DISCOVERY_TEMPLATE",
+    "OKTA_ISSUER_TEMPLATE",
+    "OKTA_PROVIDER_KEY",
     "ID_TOKEN_ALG_CHOICES",
     "ROLE_CHOICES",
     "SCOPE_MODE_CHOICES",

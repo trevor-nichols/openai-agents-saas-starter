@@ -14,6 +14,16 @@ depends_on = None
 
 
 def upgrade() -> None:
+    tenant_role_enum = postgresql.ENUM(
+        "owner",
+        "admin",
+        "member",
+        "viewer",
+        name="tenant_role",
+        create_type=False,
+        _create_events=False,
+    )
+
     op.create_table(
         "sso_provider_configs",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
@@ -51,14 +61,7 @@ def upgrade() -> None:
         sa.Column("allowed_domains_json", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
         sa.Column(
             "default_role",
-            sa.Enum(
-                "owner",
-                "admin",
-                "member",
-                "viewer",
-                name="tenant_role",
-                create_type=False,
-            ),
+            tenant_role_enum,
             nullable=False,
         ),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),

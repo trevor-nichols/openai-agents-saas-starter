@@ -18,6 +18,8 @@ from app.infrastructure.persistence.auth.sso_repository import (
 from app.infrastructure.persistence.tenants.account_repository import (
     get_tenant_account_repository,
 )
+from app.services.sso.config import normalize_provider_key
+from app.services.sso.errors import SsoConfigurationError
 
 
 @dataclass(slots=True)
@@ -128,9 +130,17 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def _normalize_args(ns: argparse.Namespace) -> SsoStatusArgs:
-    provider_key = str(ns.provider or "").strip().lower()
-    if not provider_key:
-        raise RuntimeError("provider is required.")
+    raw_provider = str(ns.provider or "").strip()
+    try:
+        provider_key = normalize_provider_key(raw_provider)
+    except SsoConfigurationError as exc:
+        raise RuntimeError(str(exc)) from exc
+    if provider_key == "custom":
+        print(
+            "WARN: provider_key 'custom' is reserved for console presets; "
+            "use a distinct provider key for backend status checks.",
+            file=sys.stderr,
+        )
 
     return SsoStatusArgs(
         provider_key=provider_key,

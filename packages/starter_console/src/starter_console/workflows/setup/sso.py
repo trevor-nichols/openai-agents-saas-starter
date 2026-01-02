@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from starter_console.core import CLIError
 from starter_console.services.sso import (
-    DEFAULT_SCOPES,
-    GOOGLE_DISCOVERY_URL,
-    GOOGLE_ISSUER_URL,
-    GOOGLE_PROVIDER_KEY,
+    CUSTOM_PRESET,
     SsoProviderSeedConfig,
+    find_preset,
+    preset_defaults,
+    resolve_enabled_providers,
 )
 from starter_console.services.sso.config import build_config_from_env
 from starter_console.services.sso.setup import run_sso_setup
@@ -15,17 +15,26 @@ from ._wizard.context import WizardContext
 from .automation import AutomationPhase, AutomationStatus
 
 
-def _resolve_config(context: WizardContext) -> SsoProviderSeedConfig | None:
+def _resolve_configs(context: WizardContext) -> list[SsoProviderSeedConfig]:
     env_snapshot = context.backend_env.as_dict()
-    return build_config_from_env(
-        env_snapshot,
-        provider_key=GOOGLE_PROVIDER_KEY,
-        defaults={
-            "issuer_url": GOOGLE_ISSUER_URL,
-            "discovery_url": GOOGLE_DISCOVERY_URL,
-            "scopes": ",".join(DEFAULT_SCOPES),
-        },
-    )
+    provider_keys = resolve_enabled_providers(env_snapshot)
+    if not provider_keys:
+        return []
+
+    configs: list[SsoProviderSeedConfig] = []
+    for provider_key in provider_keys:
+        preset = find_preset(provider_key) or CUSTOM_PRESET
+        defaults = preset_defaults(preset)
+        config = build_config_from_env(
+            env_snapshot,
+            provider_key=provider_key,
+            defaults=defaults,
+            enabled_default=True,
+            enforce_enabled_flag=False,
+        )
+        if config is not None:
+            configs.append(config)
+    return configs
 
 
 def run_sso_automation(context: WizardContext) -> None:
@@ -55,7 +64,7 @@ def run_sso_automation(context: WizardContext) -> None:
         return
 
     try:
-        config = _resolve_config(context)
+        configs = _resolve_configs(context)
     except CLIError as exc:
         context.automation.update(
             AutomationPhase.SSO,
@@ -66,7 +75,7 @@ def run_sso_automation(context: WizardContext) -> None:
         context.console.error(f"SSO config invalid: {exc}", topic="sso")
         return
 
-    if config is None:
+    if not configs:
         context.automation.update(
             AutomationPhase.SSO,
             AutomationStatus.SKIPPED,
@@ -78,35 +87,37 @@ def run_sso_automation(context: WizardContext) -> None:
     context.automation.update(
         AutomationPhase.SSO,
         AutomationStatus.RUNNING,
-        "Seeding SSO provider config.",
+        f"Seeding {len(configs)} SSO provider config(s).",
     )
     context.refresh_automation_ui(AutomationPhase.SSO)
 
-    try:
-        run_sso_setup(context.cli_ctx, config=config, update_env=False)
-    except CLIError as exc:
-        context.automation.update(
-            AutomationPhase.SSO,
-            AutomationStatus.FAILED,
-            f"SSO seed failed: {exc}",
-        )
-        context.refresh_automation_ui(AutomationPhase.SSO)
-        context.console.error(f"SSO seed failed: {exc}", topic="sso")
-        return
+    for config in configs:
+        try:
+            run_sso_setup(context.cli_ctx, config=config, update_env=False)
+        except CLIError as exc:
+            context.automation.update(
+                AutomationPhase.SSO,
+                AutomationStatus.FAILED,
+                f"SSO seed failed: {exc}",
+            )
+            context.refresh_automation_ui(AutomationPhase.SSO)
+            context.console.error(f"SSO seed failed: {exc}", topic="sso")
+            return
+        else:
+            context.record_verification(
+                provider="sso",
+                identifier=config.provider_key,
+                status="passed",
+                detail="SSO provider config seeded.",
+                source="wizard",
+            )
 
     context.automation.update(
         AutomationPhase.SSO,
         AutomationStatus.SUCCEEDED,
-        "SSO provider seeded.",
+        "SSO provider(s) seeded.",
     )
     context.refresh_automation_ui(AutomationPhase.SSO)
-    context.record_verification(
-        provider="sso",
-        identifier=config.provider_key,
-        status="passed",
-        detail="SSO provider config seeded.",
-        source="wizard",
-    )
 
 
 __all__ = ["run_sso_automation"]

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from urllib.parse import urlencode
 
 from app.core.settings import Settings
@@ -11,6 +12,7 @@ from .errors import SsoConfigurationError
 from .oidc_client import OidcDiscoveryDocument
 
 _DEFAULT_SCOPES = ["openid", "email", "profile"]
+_PROVIDER_KEY_RE = re.compile(r"^[a-z0-9_]+$")
 _SAFE_ID_TOKEN_ALGS = {
     "RS256",
     "RS384",
@@ -30,6 +32,11 @@ def normalize_provider_key(value: str) -> str:
         raise SsoConfigurationError(
             "SSO provider key is required.",
             reason="provider_required",
+        )
+    if not _PROVIDER_KEY_RE.match(normalized):
+        raise SsoConfigurationError(
+            "SSO provider key must match [a-z0-9_]+.",
+            reason="provider_invalid",
         )
     return normalized
 
