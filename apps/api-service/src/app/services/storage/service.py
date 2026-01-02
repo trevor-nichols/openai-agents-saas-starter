@@ -3,25 +3,23 @@
 from __future__ import annotations
 
 import hashlib
-import re
 import time
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
 
 from app.core.settings import Settings
-from app.domain.storage import (
-    StorageObjectRef,
-    StoragePresignedUrl,
-    StorageProviderLiteral,
-    StorageProviderProtocol,
-)
+from app.domain.storage import StorageObjectRef, StoragePresignedUrl, StorageProviderProtocol
 from app.infrastructure.persistence.storage.postgres import StorageRepository
 from app.infrastructure.storage.registry import get_storage_provider
 from app.observability import metrics
 from app.services.activity import activity_service
-
-_SAFE_CHARS = re.compile(r"[^A-Za-z0-9._-]+")
+from app.services.storage.naming import (
+    bucket_name,
+    bucket_region,
+    safe_filename,
+    should_auto_create_bucket,
+)
 
 
 @dataclass(slots=True)
@@ -66,27 +64,27 @@ class StorageService:
         self._enforce_mime(mime_type, settings)
 
         provider = self._provider_resolver(settings)
-        bucket_name = self._bucket_name(settings, tenant_id)
+        bucket_name_value = bucket_name(settings, tenant_id)
         await provider.ensure_bucket(
-            bucket_name,
-            region=self._bucket_region(settings),
-            create_if_missing=self._should_auto_create_bucket(settings),
+            bucket_name_value,
+            region=bucket_region(settings),
+            create_if_missing=should_auto_create_bucket(settings),
         )
         bucket = await self._repository.get_or_create_bucket(
             tenant_id=tenant_id,
             provider=settings.storage_provider.value,
-            bucket_name=bucket_name,
-            region=self._bucket_region(settings),
+            bucket_name=bucket_name_value,
+            region=bucket_region(settings),
             prefix=settings.storage_bucket_prefix,
         )
 
         object_id = uuid.uuid4()
-        safe_name = self._safe_filename(filename)
+        safe_name = safe_filename(filename)
         object_key = f"{tenant_id}/{object_id}/{safe_name}"
 
         # Provider presign
         upload = await provider.get_presigned_upload(
-            bucket=bucket_name,
+            bucket=bucket_name_value,
             key=object_key,
             content_type=mime_type,
             expires_in=settings.storage_signed_url_ttl_seconds,
@@ -121,7 +119,7 @@ class StorageService:
                 object_type="storage_object",
                 object_id=str(object_id),
                 source="api",
-                metadata={"object_id": str(object_id), "bucket": bucket_name},
+                metadata={"object_id": str(object_id), "bucket": bucket_name_value},
             )
         except Exception:  # pragma: no cover - best effort
             pass
@@ -138,7 +136,7 @@ class StorageService:
             upload_url=upload.url,
             method=upload.method,
             headers=upload.headers,
-            bucket=bucket_name,
+            bucket=bucket_name_value,
             object_key=object_key,
         )
 
@@ -305,26 +303,26 @@ class StorageService:
         self._enforce_mime(mime_type, settings)
 
         provider = self._provider_resolver(settings)
-        bucket_name = self._bucket_name(settings, tenant_id)
+        bucket_name_value = bucket_name(settings, tenant_id)
         await provider.ensure_bucket(
-            bucket_name,
-            region=self._bucket_region(settings),
-            create_if_missing=self._should_auto_create_bucket(settings),
+            bucket_name_value,
+            region=bucket_region(settings),
+            create_if_missing=should_auto_create_bucket(settings),
         )
         bucket = await self._repository.get_or_create_bucket(
             tenant_id=tenant_id,
             provider=settings.storage_provider.value,
-            bucket_name=bucket_name,
-            region=self._bucket_region(settings),
+            bucket_name=bucket_name_value,
+            region=bucket_region(settings),
             prefix=settings.storage_bucket_prefix,
         )
 
         object_id = uuid.uuid4()
-        safe_name = self._safe_filename(filename)
+        safe_name = safe_filename(filename)
         object_key = f"{tenant_id}/{object_id}/{safe_name}"
 
         obj_ref = await provider.put_object(
-            bucket=bucket_name,
+            bucket=bucket_name_value,
             key=object_key,
             data=data,
             content_type=mime_type,
@@ -357,7 +355,7 @@ class StorageService:
 
         return StorageObjectRef(
             id=object_id,
-            bucket=bucket_name,
+            bucket=bucket_name_value,
             key=object_key,
             size_bytes=size_bytes,
             mime_type=mime_type,
@@ -383,34 +381,6 @@ class StorageService:
         if mime_type not in allowed:
             raise ValueError("MIME type is not allowed")
 
-    def _bucket_name(self, settings: Settings, tenant_id: uuid.UUID) -> str:
-        if settings.storage_provider == StorageProviderLiteral.GCS and settings.gcs_bucket:
-            return settings.gcs_bucket
-        if settings.storage_provider == StorageProviderLiteral.S3 and settings.s3_bucket:
-            return settings.s3_bucket
-        if (
-            settings.storage_provider == StorageProviderLiteral.AZURE_BLOB
-            and settings.azure_blob_container
-        ):
-            return settings.azure_blob_container
-        prefix = settings.storage_bucket_prefix or "agent-data"
-        tenant_token = str(tenant_id).replace("-", "")
-        return f"{prefix}-{tenant_token}"
-
-    def _bucket_region(self, settings: Settings) -> str | None:
-        if settings.storage_provider == StorageProviderLiteral.MINIO:
-            return settings.minio_region
-        if settings.storage_provider == StorageProviderLiteral.S3:
-            return settings.s3_region
-        return None
-
-    def _should_auto_create_bucket(self, settings: Settings) -> bool:
-        return settings.storage_provider not in {
-            StorageProviderLiteral.GCS,
-            StorageProviderLiteral.S3,
-            StorageProviderLiteral.AZURE_BLOB,
-        }
-
     def signed_url_ttl(self) -> int:
         return self._settings_provider().storage_signed_url_ttl_seconds
 
@@ -422,7 +392,3 @@ class StorageService:
             "status": health.status.value,
             **health.details,
         }
-
-    def _safe_filename(self, filename: str) -> str:
-        cleaned = _SAFE_CHARS.sub("-", filename).strip("-")
-        return cleaned or "file"
