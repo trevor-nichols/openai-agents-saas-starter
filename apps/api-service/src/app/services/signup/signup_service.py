@@ -50,11 +50,11 @@ class SignupService:
         self._email_verification_service = email_verification_service
         self._invite_service = invite_service
         self._tenant_account_service = tenant_account_service
-        self._billing = None
-        self._invite_policy = None
-        self._notifications = None
-        self._provisioning = None
-        self._telemetry = None
+        self._billing: SignupBillingService | None = None
+        self._invite_policy: SignupInvitePolicyService | None = None
+        self._notifications: SignupNotificationService | None = None
+        self._provisioning: SignupProvisioningService | None = None
+        self._telemetry: SignupTelemetry | None = None
 
     def _get_settings(self) -> Settings:
         return self._settings_factory()
