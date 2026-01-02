@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime, timedelta
+from urllib.parse import parse_qs
 
+import httpx
 import jwt
 import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -93,3 +95,56 @@ async def test_verify_id_token_requires_iat(monkeypatch: pytest.MonkeyPatch) -> 
         )
 
     await client.close()
+
+
+@pytest.mark.asyncio
+async def test_exchange_code_omits_client_id_for_basic_auth() -> None:
+    captured: dict[str, str | None] = {}
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        captured["body"] = (await request.aread()).decode()
+        captured["authorization"] = request.headers.get("authorization")
+        return httpx.Response(200, json={"id_token": "token"})
+
+    transport = httpx.MockTransport(handler)
+    async with httpx.AsyncClient(transport=transport) as http_client:
+        client = OidcClient(http_client)
+        await client.exchange_code_for_tokens(
+            token_endpoint="https://issuer.example.com/token",
+            client_id="client-id",
+            client_secret="secret",
+            code="code",
+            redirect_uri="https://app.example.com/callback",
+            code_verifier=None,
+            token_auth_method="client_secret_basic",
+        )
+
+    body = parse_qs(captured.get("body") or "")
+    assert "client_id" not in body
+    assert captured.get("authorization")
+
+
+@pytest.mark.asyncio
+async def test_exchange_code_includes_client_id_for_post_auth() -> None:
+    captured: dict[str, str | None] = {}
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        captured["body"] = (await request.aread()).decode()
+        return httpx.Response(200, json={"id_token": "token"})
+
+    transport = httpx.MockTransport(handler)
+    async with httpx.AsyncClient(transport=transport) as http_client:
+        client = OidcClient(http_client)
+        await client.exchange_code_for_tokens(
+            token_endpoint="https://issuer.example.com/token",
+            client_id="client-id",
+            client_secret="secret",
+            code="code",
+            redirect_uri="https://app.example.com/callback",
+            code_verifier=None,
+            token_auth_method="client_secret_post",
+        )
+
+    body = parse_qs(captured.get("body") or "")
+    assert body.get("client_id") == ["client-id"]
+    assert body.get("client_secret") == ["secret"]

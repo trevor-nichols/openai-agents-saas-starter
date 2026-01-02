@@ -50,6 +50,7 @@ class SeedSsoProviderArgs:
     issuer_url: str
     client_id: str
     client_secret: str | None
+    clear_client_secret: bool
     discovery_url: str | None
     scopes: list[str]
     pkce_required: bool
@@ -89,6 +90,18 @@ async def _seed_provider(args: SeedSsoProviderArgs) -> dict[str, object]:
         existing = await repo.fetch(tenant_id=tenant_id, provider_key=args.provider_key)
         result = "created" if existing is None else "updated"
 
+        if (
+            args.token_auth_method
+            in {
+                SsoTokenAuthMethod.CLIENT_SECRET_BASIC,
+                SsoTokenAuthMethod.CLIENT_SECRET_POST,
+            }
+            and not args.clear_client_secret
+            and args.client_secret is None
+            and (existing is None or not existing.client_secret)
+        ):
+            raise RuntimeError("client_secret is required for the selected token auth method.")
+
         payload = SsoProviderConfigUpsert(
             tenant_id=tenant_id,
             provider_key=args.provider_key,
@@ -96,6 +109,7 @@ async def _seed_provider(args: SeedSsoProviderArgs) -> dict[str, object]:
             issuer_url=args.issuer_url,
             client_id=args.client_id,
             client_secret=args.client_secret,
+            clear_client_secret=args.clear_client_secret,
             discovery_url=args.discovery_url,
             scopes=args.scopes,
             pkce_required=args.pkce_required,
@@ -213,7 +227,13 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--tenant-slug")
     parser.add_argument("--issuer-url", required=True)
     parser.add_argument("--client-id", required=True)
-    parser.add_argument("--client-secret")
+    secret_group = parser.add_mutually_exclusive_group()
+    secret_group.add_argument("--client-secret")
+    secret_group.add_argument(
+        "--clear-client-secret",
+        action="store_true",
+        help="Clear the stored client secret.",
+    )
     parser.add_argument("--discovery-url")
     parser.add_argument("--scopes", help="Comma-separated or JSON list of scopes")
     parser.add_argument(
@@ -251,6 +271,7 @@ def _build_parser() -> argparse.ArgumentParser:
 def _normalize_args(ns: argparse.Namespace) -> SeedSsoProviderArgs:
     enabled = True if ns.enabled is None else bool(ns.enabled)
     pkce_required = True if ns.pkce_required is None else bool(ns.pkce_required)
+    clear_client_secret = bool(getattr(ns, "clear_client_secret", False))
 
     raw_provider = str(ns.provider or "").strip()
     try:
@@ -274,11 +295,14 @@ def _normalize_args(ns: argparse.Namespace) -> SeedSsoProviderArgs:
         raise RuntimeError("issuer_url is required.")
     if not client_id:
         raise RuntimeError("client_id is required.")
-    if token_auth_method in {
+    if clear_client_secret and token_auth_method in {
         SsoTokenAuthMethod.CLIENT_SECRET_BASIC,
         SsoTokenAuthMethod.CLIENT_SECRET_POST,
-    } and not client_secret:
-        raise RuntimeError("client_secret is required for the selected token auth method.")
+    }:
+        raise RuntimeError(
+            "Cannot clear client_secret for the selected token auth method. "
+            "Provide a new secret or change token_auth_method."
+        )
     if not client_secret:
         client_secret = None
 
@@ -295,6 +319,7 @@ def _normalize_args(ns: argparse.Namespace) -> SeedSsoProviderArgs:
         issuer_url=issuer_url,
         client_id=client_id,
         client_secret=client_secret,
+        clear_client_secret=clear_client_secret,
         discovery_url=str(ns.discovery_url).strip() if ns.discovery_url else None,
         scopes=_parse_scopes(ns.scopes),
         pkce_required=pkce_required,

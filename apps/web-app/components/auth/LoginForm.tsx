@@ -14,6 +14,7 @@ import {
   FormField,
   FormItem,
   FormLabel,
+  FormDescription,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -22,20 +23,32 @@ import { useToast } from "@/components/ui/use-toast";
 import { useAuthForm } from "@/hooks/useAuthForm";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import type { MfaChallengeResponse } from "@/lib/api/client/types.gen";
-import { resolveSafeRedirect, resolveTenantSelector } from "@/lib/auth/sso";
+import { resolveSafeRedirect, resolveTenantSelection } from "@/lib/auth/sso";
 import { useSsoProvidersQuery, useStartSsoMutation } from "@/lib/queries/sso";
 
-const loginSchema = z.object({
-  email: z.string().trim().min(1, "Email is required.").email("Enter a valid email address."),
-  password: z.string().min(8, "Password must be at least 8 characters."),
-  tenantId: z.string().trim().optional().or(z.literal("")),
-});
+const loginSchema = z
+  .object({
+    email: z.string().trim().min(1, "Email is required.").email("Enter a valid email address."),
+    password: z.string().min(8, "Password must be at least 8 characters."),
+    tenantId: z.string().trim().optional().or(z.literal("")),
+    tenantSlug: z.string().trim().optional().or(z.literal("")),
+  })
+  .superRefine((values, ctx) => {
+    const tenantId = values.tenantId?.trim();
+    const tenantSlug = values.tenantSlug?.trim();
+    if (tenantId && tenantSlug) {
+      const message = "Provide either tenant ID or tenant slug, not both.";
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["tenantId"], message });
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["tenantSlug"], message });
+    }
+  });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 const defaultValues: LoginFormValues = {
   email: "",
   password: "",
   tenantId: "",
+  tenantSlug: "",
 };
 
 export function LoginForm({ redirectTo }: { redirectTo?: string }) {
@@ -75,18 +88,30 @@ export function LoginForm({ redirectTo }: { redirectTo?: string }) {
       },
     });
 
-  const tenantValue = form.watch("tenantId");
-  const normalizedTenantValue = tenantValue?.trim() ?? "";
-  const tenantSelector = useMemo(
-    () => resolveTenantSelector(normalizedTenantValue),
-    [normalizedTenantValue],
+  const tenantIdValue = form.watch("tenantId");
+  const tenantSlugValue = form.watch("tenantSlug");
+  const normalizedTenantId = tenantIdValue?.trim() ?? "";
+  const normalizedTenantSlug = tenantSlugValue?.trim() ?? "";
+  const { selector: tenantSelector, conflict: tenantConflict } = useMemo(
+    () =>
+      resolveTenantSelection({
+        tenantId: normalizedTenantId,
+        tenantSlug: normalizedTenantSlug,
+      }),
+    [normalizedTenantId, normalizedTenantSlug],
   );
-  const debouncedTenantValue = useDebouncedValue(normalizedTenantValue, 350);
-  const debouncedTenantSelector = useMemo(
-    () => resolveTenantSelector(debouncedTenantValue),
-    [debouncedTenantValue],
+  const debouncedTenantId = useDebouncedValue(normalizedTenantId, 350);
+  const debouncedTenantSlug = useDebouncedValue(normalizedTenantSlug, 350);
+  const { selector: debouncedTenantSelector, conflict: debouncedTenantConflict } = useMemo(
+    () =>
+      resolveTenantSelection({
+        tenantId: debouncedTenantId,
+        tenantSlug: debouncedTenantSlug,
+      }),
+    [debouncedTenantId, debouncedTenantSlug],
   );
-  const isTenantDebouncing = debouncedTenantValue !== normalizedTenantValue;
+  const isTenantDebouncing =
+    debouncedTenantId !== normalizedTenantId || debouncedTenantSlug !== normalizedTenantSlug;
   const emailValue = form.watch("email");
   const loginHint = useMemo(() => {
     const trimmed = emailValue?.trim();
@@ -94,14 +119,21 @@ export function LoginForm({ redirectTo }: { redirectTo?: string }) {
     return loginSchema.shape.email.safeParse(trimmed).success ? trimmed : null;
   }, [emailValue]);
 
-  const providersQuery = useSsoProvidersQuery(isTenantDebouncing ? null : debouncedTenantSelector);
+  const providersQuery = useSsoProvidersQuery(
+    isTenantDebouncing || debouncedTenantConflict ? null : debouncedTenantSelector,
+  );
   const startSso = useStartSsoMutation();
   const providersError =
     providersQuery.error instanceof Error ? providersQuery.error.message : null;
   const isProvidersLoading =
-    providersQuery.isLoading || (Boolean(normalizedTenantValue) && isTenantDebouncing);
+    providersQuery.isLoading ||
+    (Boolean(normalizedTenantId || normalizedTenantSlug) && isTenantDebouncing);
 
   const handleSsoStart = async (providerKey: string) => {
+    if (tenantConflict) {
+      setSsoError("Provide either tenant ID or tenant slug, not both.");
+      return;
+    }
     if (!tenantSelector) {
       setSsoError("Enter a tenant slug or ID to continue with SSO.");
       return;
@@ -173,13 +205,13 @@ export function LoginForm({ redirectTo }: { redirectTo?: string }) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    Tenant ID <span className="text-muted-foreground">(optional)</span>
+                    Tenant ID <span className="text-muted-foreground">(UUID, optional)</span>
                   </FormLabel>
                   <FormControl>
                     <Input
                       {...field}
                       value={field.value ?? ""}
-                      placeholder="UUID or slug (if required)"
+                      placeholder="11111111-2222-3333-4444-555555555555"
                       autoComplete="organization"
                       onChange={(event) => {
                         field.onChange(event);
@@ -189,6 +221,39 @@ export function LoginForm({ redirectTo }: { redirectTo?: string }) {
                       }}
                     />
                   </FormControl>
+                  <FormDescription>
+                    Password login uses tenant ID. Provide either tenant ID or tenant slug, not both.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="tenantSlug"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    Tenant slug <span className="text-muted-foreground">(SSO only)</span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      value={field.value ?? ""}
+                      placeholder="acme"
+                      autoComplete="organization"
+                      onChange={(event) => {
+                        field.onChange(event);
+                        if (ssoError) {
+                          setSsoError(null);
+                        }
+                      }}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Used to discover SSO providers. Leave blank if using tenant ID.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

@@ -1,6 +1,6 @@
 # OIDC SSO Runbook (Google preset)
 
-Last updated: January 1, 2026
+Last updated: January 2, 2026
 
 This runbook explains how to provision and operate Google OIDC SSO in api-service.
 
@@ -58,6 +58,7 @@ starter-console sso setup \
 Notes:
 - `token-auth-method=none` requires PKCE (`--pkce-required`).
 - `SSO_GOOGLE_*` env vars are optional and used as defaults in the console; the runtime reads provider configs from Postgres.
+- Use `--clear-client-secret` to explicitly remove a stored secret (only valid for `token-auth-method=none`).
 
 ## Runtime settings
 
@@ -85,6 +86,7 @@ These are runtime settings (not stored in the provider config row):
 - `redirectTo` is persisted in a short-lived HttpOnly cookie during the start request and validated as a relative path on callback before redirecting.
 - If MFA is required, the callback returns 202 with a challenge payload and the UI opens the MFA dialog before redirecting.
 - The UI enforces **exactly one** tenant selector (`tenant_id` or `tenant_slug`) before listing providers or starting SSO.
+- Tenant identifier rules follow `docs/auth/tenant-identifier-policy.md` (no inference).
 
 ## Monitoring
 

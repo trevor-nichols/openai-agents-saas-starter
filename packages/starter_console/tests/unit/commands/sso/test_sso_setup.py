@@ -21,6 +21,7 @@ def _build_args(**overrides) -> argparse.Namespace:
         "discovery_url": None,
         "client_id": "client-id",
         "client_secret": "client-secret",
+        "clear_client_secret": False,
         "scopes": None,
         "token_auth_method": None,
         "id_token_algs": None,
@@ -68,9 +69,43 @@ def test_sso_setup_command_builds_config(
     assert config.provider_key == "google"
     assert config.client_id == "client-id"
     assert config.client_secret == "client-secret"
+    assert config.clear_client_secret is False
     assert config.auto_provision_policy == "invite_only"
     assert config.token_auth_method == "client_secret_post"
     assert config.allowed_id_token_algs == []
+
+
+def test_sso_setup_allows_explicit_secret_clear(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    ctx = CLIContext(project_root=tmp_path, env_files=())
+    args = _build_args(
+        client_secret=None,
+        clear_client_secret=True,
+        token_auth_method="none",
+        pkce_required=True,
+    )
+    captured: dict[str, object] = {}
+
+    def fake_run(ctx_arg: CLIContext, *, config, update_env: bool):
+        captured["config"] = config
+        return SsoSetupResult(
+            result="updated",
+            provider_key=config.provider_key,
+            tenant_id=None,
+            tenant_slug=None,
+            config_id="config-id",
+        )
+
+    monkeypatch.setattr(sso_command, "run_sso_setup", fake_run)
+    monkeypatch.setattr(sso_command, "load_env_values", lambda _: {})
+
+    exit_code = sso_command.handle_sso_setup(args, ctx)
+
+    assert exit_code == 0
+    config = cast(SsoProviderSeedConfig, captured["config"])
+    assert config.client_secret is None
+    assert config.clear_client_secret is True
 
 
 def test_sso_setup_lists_presets(

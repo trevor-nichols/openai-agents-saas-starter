@@ -63,6 +63,7 @@ class SsoProviderConfigUpsert:
     auto_provision_policy: SsoAutoProvisionPolicy
     allowed_domains: list[str]
     default_role: TenantRole
+    clear_client_secret: bool = False
 
 
 class SsoProviderConfigRepository(Protocol):

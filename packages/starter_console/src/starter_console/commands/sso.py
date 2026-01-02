@@ -71,7 +71,13 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     setup_parser.add_argument("--issuer-url")
     setup_parser.add_argument("--discovery-url")
     setup_parser.add_argument("--client-id")
-    setup_parser.add_argument("--client-secret")
+    secret_group = setup_parser.add_mutually_exclusive_group()
+    secret_group.add_argument("--client-secret")
+    secret_group.add_argument(
+        "--clear-client-secret",
+        action="store_true",
+        help="Clear the stored client secret for this provider.",
+    )
     setup_parser.add_argument("--scopes")
     setup_parser.add_argument(
         "--token-auth-method",
@@ -283,19 +289,28 @@ def handle_sso_setup(args: argparse.Namespace, ctx: CLIContext) -> int:
     )
     token_auth_method = normalize_token_auth_method(token_auth_method_raw)
     secret_required = token_auth_method in {"client_secret_basic", "client_secret_post"}
-    client_secret: str | None = _resolve_string(
-        key=env_key(provider_key, "CLIENT_SECRET"),
-        label="OIDC client secret",
-        provided=args.client_secret,
-        existing=env_values.get(env_key(provider_key, "CLIENT_SECRET")),
-        fallback=None,
-        required=secret_required,
-        secret=True,
-    )
-    if secret_required and not client_secret:
-        raise CLIError("OIDC client secret is required for the selected auth method.")
-    if not client_secret:
+    clear_client_secret = bool(args.clear_client_secret)
+    if clear_client_secret and secret_required:
+        raise CLIError(
+            "Cannot clear the client secret for client_secret_basic/post. "
+            "Provide a new secret or change the token auth method."
+        )
+    if clear_client_secret:
         client_secret = None
+    else:
+        client_secret = _resolve_string(
+            key=env_key(provider_key, "CLIENT_SECRET"),
+            label="OIDC client secret",
+            provided=args.client_secret,
+            existing=env_values.get(env_key(provider_key, "CLIENT_SECRET")),
+            fallback=None,
+            required=secret_required,
+            secret=True,
+        )
+        if secret_required and not client_secret:
+            raise CLIError("OIDC client secret is required for the selected auth method.")
+        if not client_secret:
+            client_secret = None
 
     scopes_raw = _resolve_string(
         key=env_key(provider_key, "SCOPES"),
@@ -366,6 +381,7 @@ def handle_sso_setup(args: argparse.Namespace, ctx: CLIContext) -> int:
         issuer_url=issuer_url,
         client_id=client_id,
         client_secret=client_secret,
+        clear_client_secret=clear_client_secret,
         discovery_url=discovery_url or None,
         scopes=scopes,
         pkce_required=pkce_required,

@@ -49,7 +49,10 @@ def update_backend_env(project_root: Path, config: SsoProviderSeedConfig) -> Non
     _set(env_key(config.provider_key, "ISSUER_URL"), config.issuer_url)
     _set(env_key(config.provider_key, "DISCOVERY_URL"), config.discovery_url)
     _set(env_key(config.provider_key, "CLIENT_ID"), config.client_id)
-    _set(env_key(config.provider_key, "CLIENT_SECRET"), config.client_secret)
+    if config.clear_client_secret:
+        _set(env_key(config.provider_key, "CLIENT_SECRET"), "")
+    elif config.client_secret is not None:
+        _set(env_key(config.provider_key, "CLIENT_SECRET"), config.client_secret)
     _set(env_key(config.provider_key, "SCOPES"), ",".join(config.scopes))
     _set(
         env_key(config.provider_key, "PKCE_REQUIRED"),

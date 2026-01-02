@@ -1,7 +1,7 @@
 # Human Identity Provider Requirements
 
 **Status:** Active requirements (security review required)  
-**Last Updated:** 2025-11-07  
+**Last Updated:** 2026-01-02  
 **Owners:** Platform Security Guild · Backend Auth Pod
 
 ---
@@ -24,6 +24,7 @@ Tenant relationships (canonical definitions in `docs/auth/roles.md`):
 - Platform-level access is modeled separately via `platform_role` on the user record and is not part of tenant roles.
 - Tokens carry a single `tenant_id` claim; multi-tenant users choose the tenant context during login. Scoped tenant switching endpoints are not exposed in this release.
 - Removing the last tenant membership implicitly disables the account until a new tenant is assigned.
+- Tenant identifiers follow the policy in `docs/auth/tenant-identifier-policy.md` (canonical `tenant_id`, slug at boundaries only).
 
 ## 3. Credential Policy (Passwords + Secrets)
 - **Hashing:** bcrypt `$2b$` with cost `work_factor >= 13`, salted per bcrypt spec plus a global pepper `AUTH_PASSWORD_PEPPER` loaded from secret storage. Pepper rotation requires rehash on next successful login.
@@ -84,7 +85,7 @@ Tenant relationships (canonical definitions in `docs/auth/roles.md`):
 - **Ops:** `starter-console sso setup` + setup wizard can seed provider configs. Env keys use `SSO_<PROVIDER>_*` (e.g., `SSO_GOOGLE_*`, `SSO_AZURE_*`). Provider keys must match `[a-z0-9_]+` and the `custom` key is reserved for the preset selector. `SSO_PROVIDERS` is required and authoritative; use an empty value to disable all providers.
 - **Presets:** Console ships presets for Google, Azure (Entra ID), Okta, and Auth0 plus a custom OIDC path. Azure/Okta/Auth0 presets include issuer/discovery URL templates with `{placeholder}` tokens that must be replaced before seeding.
 - **Frontend/BFF:** The web app uses Next API routes (`/api/v1/auth/sso/*`) to broker start/callback and to set session cookies. The user-facing callback page is `/auth/sso/{provider}/callback`.
-- **Tenant selector required:** Frontend must send exactly one of `tenant_id` (UUID) or `tenant_slug`. Missing/both values return 400/409.
+- **Tenant selector required:** Frontend must send exactly one of `tenant_id` (UUID) or `tenant_slug`. Missing/both values return 400/409. See `docs/auth/tenant-identifier-policy.md` for the boundary contract.
 - **Login hint:** When the email input is valid, the frontend forwards it as `login_hint`.
 - **Redirect continuity:** `redirectTo` is stored in a short-lived HttpOnly cookie during SSO start; callback validates it as a relative path and redirects on success.
 - **Runbook:** See `docs/ops/sso-oidc-runbook.md` for provisioning, validation, and rotation guidance.

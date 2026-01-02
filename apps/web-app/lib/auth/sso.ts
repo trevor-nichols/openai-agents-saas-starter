@@ -1,21 +1,40 @@
 import type { MfaChallengeResponse, UserSessionResponse } from '@/lib/api/client/types.gen';
 
-const TENANT_UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
 export type TenantSelector =
   | { tenant_id: string; tenant_slug?: never }
   | { tenant_slug: string; tenant_id?: never };
 
-export function resolveTenantSelector(value?: string | null): TenantSelector | null {
-  const trimmed = value?.trim();
-  if (!trimmed) {
-    return null;
+export type TenantSelectionInput = {
+  tenantId?: string | null;
+  tenantSlug?: string | null;
+};
+
+export type TenantSelectionResult = {
+  selector: TenantSelector | null;
+  conflict: boolean;
+};
+
+export function resolveTenantSelection({
+  tenantId,
+  tenantSlug,
+}: TenantSelectionInput): TenantSelectionResult {
+  const normalizedTenantId = tenantId?.trim();
+  const normalizedTenantSlug = tenantSlug?.trim();
+  const conflict = Boolean(normalizedTenantId && normalizedTenantSlug);
+
+  if (conflict) {
+    return { selector: null, conflict };
   }
-  if (TENANT_UUID_REGEX.test(trimmed)) {
-    return { tenant_id: trimmed };
+
+  if (normalizedTenantId) {
+    return { selector: { tenant_id: normalizedTenantId }, conflict: false };
   }
-  return { tenant_slug: trimmed };
+
+  if (normalizedTenantSlug) {
+    return { selector: { tenant_slug: normalizedTenantSlug }, conflict: false };
+  }
+
+  return { selector: null, conflict: false };
 }
 
 export function resolveSafeRedirect(value?: string | null): string | null {

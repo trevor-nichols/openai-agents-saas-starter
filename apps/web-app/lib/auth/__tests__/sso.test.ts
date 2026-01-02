@@ -1,22 +1,49 @@
 import { describe, expect, it } from 'vitest';
 
-import { isMfaChallengeResponse, resolveSafeRedirect, resolveTenantSelector } from '@/lib/auth/sso';
+import {
+  isMfaChallengeResponse,
+  resolveSafeRedirect,
+  resolveTenantSelection,
+} from '@/lib/auth/sso';
 
-describe('resolveTenantSelector', () => {
+describe('resolveTenantSelection', () => {
   it('returns null for empty values', () => {
-    expect(resolveTenantSelector('')).toBeNull();
-    expect(resolveTenantSelector('   ')).toBeNull();
-    expect(resolveTenantSelector(undefined)).toBeNull();
+    expect(resolveTenantSelection({ tenantId: '', tenantSlug: '' })).toEqual({
+      selector: null,
+      conflict: false,
+    });
+    expect(resolveTenantSelection({ tenantId: '   ', tenantSlug: undefined })).toEqual({
+      selector: null,
+      conflict: false,
+    });
+    expect(resolveTenantSelection({ tenantId: undefined, tenantSlug: undefined })).toEqual({
+      selector: null,
+      conflict: false,
+    });
   });
 
-  it('returns tenant_id for UUID-like values', () => {
-    const selector = resolveTenantSelector('11111111-2222-3333-4444-555555555555');
-    expect(selector).toEqual({ tenant_id: '11111111-2222-3333-4444-555555555555' });
+  it('returns tenant_id when tenantId is provided', () => {
+    const selection = resolveTenantSelection({
+      tenantId: '11111111-2222-3333-4444-555555555555',
+      tenantSlug: '',
+    });
+    expect(selection).toEqual({
+      selector: { tenant_id: '11111111-2222-3333-4444-555555555555' },
+      conflict: false,
+    });
   });
 
-  it('returns tenant_slug for non-UUID values', () => {
-    const selector = resolveTenantSelector('acme');
-    expect(selector).toEqual({ tenant_slug: 'acme' });
+  it('returns tenant_slug when tenantSlug is provided', () => {
+    const selection = resolveTenantSelection({ tenantId: null, tenantSlug: 'acme' });
+    expect(selection).toEqual({ selector: { tenant_slug: 'acme' }, conflict: false });
+  });
+
+  it('flags conflicts when both tenantId and tenantSlug are provided', () => {
+    const selection = resolveTenantSelection({
+      tenantId: 'tenant-1',
+      tenantSlug: 'acme',
+    });
+    expect(selection).toEqual({ selector: null, conflict: true });
   });
 });
 

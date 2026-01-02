@@ -122,7 +122,6 @@ class OidcClient:
             "grant_type": "authorization_code",
             "code": code,
             "redirect_uri": redirect_uri,
-            "client_id": client_id,
         }
         if code_verifier:
             data["code_verifier"] = code_verifier
@@ -135,8 +134,10 @@ class OidcClient:
         elif method == "client_secret_post":
             if not client_secret:
                 raise OidcTokenExchangeError("client_secret is required for post auth.")
+            data["client_id"] = client_id
             data["client_secret"] = client_secret
         elif method == "none":
+            data["client_id"] = client_id
             auth = None
         else:
             raise OidcTokenExchangeError("Unsupported token auth method.")

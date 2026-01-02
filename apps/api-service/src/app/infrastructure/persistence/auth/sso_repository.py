@@ -104,10 +104,21 @@ class PostgresSsoProviderConfigRepository(SsoProviderConfigRepository):
                 stmt = stmt.where(SsoProviderConfigModel.tenant_id == payload.tenant_id)
             record = (await session.execute(stmt)).scalar_one_or_none()
 
-            encrypted_secret = encrypt_optional(self._cipher, payload.client_secret)
+            encrypted_secret = (
+                encrypt_optional(self._cipher, payload.client_secret)
+                if payload.client_secret is not None
+                else None
+            )
             now = datetime.now(UTC)
 
             if record is None:
+                resolved_secret = encrypted_secret
+                if _requires_client_secret(
+                    payload.token_endpoint_auth_method
+                ) and not resolved_secret:
+                    raise ValueError(
+                        "Client secret is required for the selected token auth method."
+                    )
                 record = SsoProviderConfigModel(
                     id=uuid.uuid4(),
                     tenant_id=payload.tenant_id,
@@ -115,7 +126,7 @@ class PostgresSsoProviderConfigRepository(SsoProviderConfigRepository):
                     enabled=payload.enabled,
                     issuer_url=payload.issuer_url,
                     client_id=payload.client_id,
-                    client_secret_encrypted=encrypted_secret,
+                    client_secret_encrypted=resolved_secret,
                     discovery_url=payload.discovery_url,
                     scopes_json=list(payload.scopes),
                     pkce_required=payload.pkce_required,
@@ -129,10 +140,22 @@ class PostgresSsoProviderConfigRepository(SsoProviderConfigRepository):
                 )
                 session.add(record)
             else:
+                if payload.clear_client_secret:
+                    resolved_secret = None
+                elif payload.client_secret is not None:
+                    resolved_secret = encrypted_secret
+                else:
+                    resolved_secret = record.client_secret_encrypted
+                if _requires_client_secret(
+                    payload.token_endpoint_auth_method
+                ) and not resolved_secret:
+                    raise ValueError(
+                        "Client secret is required for the selected token auth method."
+                    )
                 record.enabled = payload.enabled
                 record.issuer_url = payload.issuer_url
                 record.client_id = payload.client_id
-                record.client_secret_encrypted = encrypted_secret
+                record.client_secret_encrypted = resolved_secret
                 record.discovery_url = payload.discovery_url
                 record.scopes_json = list(payload.scopes)
                 record.pkce_required = payload.pkce_required
@@ -313,6 +336,13 @@ def _parse_token_auth_method(raw: str | None) -> SsoTokenAuthMethod:
         return SsoTokenAuthMethod(raw)
     except ValueError as exc:
         raise ValueError(f"Unsupported token auth method: {raw}") from exc
+
+
+def _requires_client_secret(method: SsoTokenAuthMethod) -> bool:
+    return method in {
+        SsoTokenAuthMethod.CLIENT_SECRET_BASIC,
+        SsoTokenAuthMethod.CLIENT_SECRET_POST,
+    }
 
 
 def get_sso_provider_config_repository(

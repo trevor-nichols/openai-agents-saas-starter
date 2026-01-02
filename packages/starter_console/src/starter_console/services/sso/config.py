@@ -81,6 +81,7 @@ class SsoProviderSeedConfig:
     auto_provision_policy: str
     allowed_domains: list[str]
     default_role: str
+    clear_client_secret: bool = False
 
     def to_script_args(self) -> list[str]:
         args = [
@@ -105,7 +106,9 @@ class SsoProviderSeedConfig:
             args.extend(["--tenant-id", self.tenant_id])
         if self.tenant_slug:
             args.extend(["--tenant-slug", self.tenant_slug])
-        if self.client_secret:
+        if self.clear_client_secret:
+            args.append("--clear-client-secret")
+        elif self.client_secret:
             args.extend(["--client-secret", self.client_secret])
         if self.allowed_domains:
             args.extend(["--allowed-domains", ",".join(self.allowed_domains)])
