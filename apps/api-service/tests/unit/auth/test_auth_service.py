@@ -24,6 +24,7 @@ from app.domain.auth import (
     UserSessionListResult,
     make_scope_key,
 )
+from app.services.auth.mfa_service import MfaService
 from app.services.auth_service import (
     AuthService,
     ServiceAccountRateLimitError,
@@ -105,12 +106,16 @@ class FakeRefreshRepo:
 def _make_service(
     repo: FakeRefreshRepo | None = None,
     session_repo: FakeSessionRepo | None = None,
+    user_service: UserService | None = None,
 ) -> AuthService:
     registry = load_service_account_registry()
+    resolved_user_service = user_service or _NoopUserService()
     return AuthService(
         registry,
         refresh_repository=repo,
         session_repository=session_repo,
+        user_service=cast(UserService, resolved_user_service),
+        mfa_service=cast(MfaService, _StubMfaService()),
     )
 
 
@@ -165,6 +170,25 @@ class _StubUserService:
         if self._exc is not None:
             raise self._exc
         raise AssertionError("authenticate should not be called without configured behavior")
+
+
+class _NoopUserService:
+    async def authenticate(self, **_: object):  # pragma: no cover - guardrail
+        raise AssertionError("UserService should not be used in this test.")
+
+    async def load_active_user(self, **_: object):  # pragma: no cover - guardrail
+        raise AssertionError("UserService should not be used in this test.")
+
+    async def record_login_success(self, **_: object):  # pragma: no cover - guardrail
+        raise AssertionError("UserService should not be used in this test.")
+
+
+class _StubMfaService:
+    async def list_methods(self, *_: object):  # pragma: no cover - guardrail
+        raise AssertionError("MfaService should not be used in this test.")
+
+    async def verify_totp(self, *_: object, **__: object):  # pragma: no cover - guardrail
+        raise AssertionError("MfaService should not be used in this test.")
 
 
 def _refresh_token(payload: Mapping[str, object]) -> str:
@@ -246,7 +270,7 @@ async def test_rate_limit_enforced_per_account(monkeypatch: pytest.MonkeyPatch) 
     tenant_id = "ffffffff-1111-2222-3333-444444444444"
 
     # Ensure we start with clean rate limit state by creating a fresh AuthService.
-    service = AuthService(load_service_account_registry())
+    service = _make_service()
 
     # Consume 5 successful requests.
     tasks = []
@@ -365,6 +389,7 @@ async def test_login_user_handles_membership_not_found() -> None:
         load_service_account_registry(),
         refresh_repository=None,
         user_service=cast(UserService, stub),
+        mfa_service=cast(MfaService, _StubMfaService()),
     )
 
     with pytest.raises(UserAuthenticationError):
