@@ -38,6 +38,7 @@ class _StubUserService:
     def __init__(self, auth_user: AuthenticatedUser) -> None:
         self._auth_user = auth_user
         self.login_success_called = False
+        self.login_success_reason: str | None = None
 
     async def authenticate(self, **_: object):  # pragma: no cover - guardrail
         raise AssertionError("UserService should not be used in this test.")
@@ -47,6 +48,8 @@ class _StubUserService:
 
     async def record_login_success(self, **_: object) -> None:
         self.login_success_called = True
+        reason = _.get("reason")
+        self.login_success_reason = reason if isinstance(reason, str) else None
 
 
 class _StubMfaService:
@@ -55,6 +58,14 @@ class _StubMfaService:
 
     async def verify_totp(self, *_: object, **__: object):  # pragma: no cover - guardrail
         raise AssertionError("MfaService should not be used in this test.")
+
+
+class _StubMfaVerifyService:
+    async def list_methods(self, *_: object):  # pragma: no cover - guardrail
+        return []
+
+    async def verify_totp(self, *_: object, **__: object) -> None:
+        return None
 
 
 @pytest.mark.asyncio
@@ -204,3 +215,76 @@ async def test_issue_tokens_for_user_uses_issuer_and_persists(monkeypatch: pytes
     assert user_service.login_success_called is True
     assert session_store.upsert_calls, "Expected session metadata to be persisted"
     assert refresh_tokens.saved, "Expected refresh token to be persisted"
+
+
+@pytest.mark.asyncio
+async def test_complete_mfa_challenge_records_login_success(monkeypatch: pytest.MonkeyPatch) -> None:
+    user_id = uuid4()
+    tenant_id = uuid4()
+    session_id = uuid4()
+    issued_at = datetime.now(UTC)
+    issued = IssuedSessionTokens(
+        access_token="access-token",
+        refresh_token="refresh-token",
+        access_expires_at=issued_at + timedelta(minutes=15),
+        refresh_expires_at=issued_at + timedelta(days=30),
+        access_kid="kid-access",
+        refresh_kid="kid-refresh",
+        access_jti="access-jti",
+        refresh_jti="refresh-jti",
+        session_id=session_id,
+        fingerprint="fp",
+        account=f"user:{user_id}",
+        issued_at=issued_at,
+    )
+
+    def _issue_stub(*_: object, **__: object) -> IssuedSessionTokens:
+        return issued
+
+    from app.services.auth import session_service as session_service_module
+
+    monkeypatch.setattr(session_service_module, "issue_session_tokens", _issue_stub)
+
+    auth_user = AuthenticatedUser(
+        user_id=user_id,
+        tenant_id=tenant_id,
+        email="user@example.com",
+        role=TenantRole.MEMBER,
+        scopes=["conversations:read"],
+        email_verified=True,
+    )
+    user_service = _StubUserService(auth_user)
+    session_store = _FakeSessionStore()
+    refresh_tokens = _FakeRefreshTokens()
+    payload = {
+        "token_use": "mfa_challenge",
+        "sub": f"user:{user_id}",
+        "tenant_id": str(tenant_id),
+        "sid": str(session_id),
+        "login_reason": "sso",
+    }
+
+    def _verifier(_: str, **__: object) -> dict[str, object]:
+        return payload
+
+    service = UserSessionService(
+        refresh_tokens=cast(RefreshTokenManager, refresh_tokens),
+        session_store=cast(SessionStore, session_store),
+        user_service=cast(UserService, user_service),
+        token_verifier=_verifier,
+        mfa_service=cast(MfaService, _StubMfaVerifyService()),
+    )
+
+    result = await service.complete_mfa_challenge(
+        challenge_token="challenge",
+        method_id=uuid4(),
+        code="123456",
+        ip_address="1.2.3.4",
+        user_agent="TestAgent",
+        ip_hash="ip-hash",
+        user_agent_hash="ua-hash",
+    )
+
+    assert result.access_token == issued.access_token
+    assert user_service.login_success_called is True
+    assert user_service.login_success_reason == "sso"

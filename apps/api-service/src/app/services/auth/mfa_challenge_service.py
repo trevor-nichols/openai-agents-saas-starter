@@ -69,11 +69,12 @@ class MfaChallengeService:
         *,
         ip_address: str | None,
         user_agent: str | None,
+        login_reason: str,
     ) -> MfaChallenge | None:
         needs_mfa, methods = await self._requires_mfa(self._mfa_service, auth_user.user_id)
         if not needs_mfa:
             return None
-        return self._issue_mfa_challenge(auth_user, methods)
+        return self._issue_mfa_challenge(auth_user, methods, login_reason=login_reason)
 
     def require_mfa_service(self) -> MfaService:
         return self._mfa_service
@@ -89,14 +90,18 @@ class MfaChallengeService:
         self,
         auth_user: AuthenticatedUser,
         methods: list[UserMfaMethod],
+        *,
+        login_reason: str,
     ) -> MfaChallenge:
         issued_at = datetime.now(UTC)
         expires = issued_at + timedelta(minutes=self._settings.mfa_challenge_ttl_minutes)
         session_uuid = uuid4()
+        normalized_reason = login_reason.strip() or "login"
         payload = {
             "sub": f"user:{auth_user.user_id}",
             "tenant_id": str(auth_user.tenant_id),
             "token_use": "mfa_challenge",
+            "login_reason": normalized_reason,
             "iss": self._settings.app_name,
             "aud": self._settings.auth_audience or [self._settings.app_name],
             "jti": str(uuid4()),

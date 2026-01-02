@@ -93,9 +93,17 @@ class UserSessionService:
             auth_user,
             ip_address=ip_address,
             user_agent=user_agent,
+            login_reason="login",
         )
         if challenge:
             raise MfaRequiredError(challenge.token, challenge.methods)
+        await service.record_login_success(
+            user_id=auth_user.user_id,
+            tenant_id=auth_user.tenant_id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            reason="login",
+        )
         return await self._issue_user_tokens(
             auth_user,
             ip_address=ip_address,
@@ -136,6 +144,7 @@ class UserSessionService:
                 auth_user,
                 ip_address=ip_address,
                 user_agent=user_agent,
+                login_reason=reason,
             )
             if challenge:
                 raise MfaRequiredError(challenge.token, challenge.methods)
@@ -336,6 +345,13 @@ class UserSessionService:
             ip_address=ip_address,
             user_agent=user_agent,
         )
+        await self._user_service.record_login_success(
+            user_id=auth_user.user_id,
+            tenant_id=auth_user.tenant_id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            reason=claims.login_reason,
+        )
         return await self._issue_user_tokens(
             auth_user,
             ip_address=ip_address,
@@ -447,11 +463,13 @@ class UserSessionService:
         *,
         ip_address: str | None,
         user_agent: str | None,
+        login_reason: str,
     ) -> MfaChallenge | None:
         return await self._mfa_challenges.maybe_issue_challenge(
             auth_user,
             ip_address=ip_address,
             user_agent=user_agent,
+            login_reason=login_reason,
         )
 
     def _user_account_key(self, user_id: UUID) -> str:

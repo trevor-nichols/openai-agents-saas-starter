@@ -195,13 +195,6 @@ class UserService:
 
         await self._repository.reset_lockout_counter(user.id)
         await self._repository.clear_user_lock(user.id)
-        await self._record_login_success(
-            user_id=user.id,
-            tenant_id=membership.tenant_id,
-            ip_address=ip_address,
-            user_agent=user_agent,
-            reason="login",
-        )
         return AuthenticatedUser(
             user_id=user.id,
             tenant_id=membership.tenant_id,

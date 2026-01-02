@@ -85,6 +85,7 @@ def test_parse_mfa_challenge_claims_success() -> None:
         "sub": _user_subject(user_id),
         "tenant_id": "tenant-123",
         "sid": str(session_id),
+        "login_reason": "sso",
     }
 
     claims = parse_mfa_challenge_claims(payload, error_cls=UserAuthenticationError)
@@ -93,6 +94,22 @@ def test_parse_mfa_challenge_claims_success() -> None:
     assert claims.user_id == user_id
     assert claims.tenant_id == "tenant-123"
     assert claims.session_id == session_id
+    assert claims.login_reason == "sso"
+
+
+def test_parse_mfa_challenge_claims_defaults_login_reason() -> None:
+    user_id = uuid4()
+    session_id = uuid4()
+    payload: dict[str, object] = {
+        "token_use": "mfa_challenge",
+        "sub": _user_subject(user_id),
+        "tenant_id": "tenant-123",
+        "sid": str(session_id),
+    }
+
+    claims = parse_mfa_challenge_claims(payload, error_cls=UserAuthenticationError)
+
+    assert claims.login_reason == "login"
 
 
 def test_parse_mfa_challenge_claims_rejects_invalid_subject() -> None:

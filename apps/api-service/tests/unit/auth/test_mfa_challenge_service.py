@@ -70,6 +70,7 @@ async def test_mfa_challenge_issued_for_verified_method() -> None:
         _build_user(user_id, tenant_id),
         ip_address=None,
         user_agent=None,
+        login_reason="login",
     )
 
     assert challenge is not None
@@ -84,6 +85,7 @@ async def test_mfa_challenge_issued_for_verified_method() -> None:
     assert claims["token_use"] == "mfa_challenge"
     assert claims["sub"] == f"user:{user_id}"
     assert claims["tenant_id"] == str(tenant_id)
+    assert claims["login_reason"] == "login"
     assert "sid" in claims
 
 
@@ -98,6 +100,7 @@ async def test_mfa_challenge_skips_unverified_methods() -> None:
         _build_user(user_id, tenant_id),
         ip_address=None,
         user_agent=None,
+        login_reason="login",
     )
 
     assert challenge is None
@@ -114,6 +117,7 @@ async def test_mfa_challenge_skips_revoked_methods() -> None:
         _build_user(user_id, tenant_id),
         ip_address=None,
         user_agent=None,
+        login_reason="login",
     )
 
     assert challenge is None

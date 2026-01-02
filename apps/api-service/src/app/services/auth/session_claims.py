@@ -21,6 +21,7 @@ class MfaChallengeClaims:
     user_id: UUID
     tenant_id: str
     session_id: UUID
+    login_reason: str
 
 
 def parse_refresh_claims(
@@ -89,7 +90,18 @@ def parse_mfa_challenge_claims(
     except ValueError as exc:  # pragma: no cover - defensive
         raise error_cls("Challenge token session id is invalid.") from exc
 
-    return MfaChallengeClaims(user_id=user_id, tenant_id=tenant_id, session_id=session_id)
+    login_reason_value = payload.get("login_reason")
+    if isinstance(login_reason_value, str) and login_reason_value.strip():
+        login_reason = login_reason_value.strip()
+    else:
+        login_reason = "login"
+
+    return MfaChallengeClaims(
+        user_id=user_id,
+        tenant_id=tenant_id,
+        session_id=session_id,
+        login_reason=login_reason,
+    )
 
 
 def _require_str(
