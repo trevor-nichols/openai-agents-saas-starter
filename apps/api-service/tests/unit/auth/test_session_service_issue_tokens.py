@@ -12,7 +12,7 @@ from app.domain.tenant_roles import TenantRole
 from app.domain.users import AuthenticatedUser
 from app.services.auth.mfa_service import MfaService
 from app.services.auth.refresh_token_manager import RefreshTokenManager
-from app.services.auth.session_service import UserSessionService
+from app.services.auth.session_service import TokenVerifierCallable, UserSessionService
 from app.services.auth.session_store import SessionStore
 from app.services.auth.session_token_issuer import IssuedSessionTokens
 from app.services.auth.errors import UserAuthenticationError, UserRefreshError
@@ -278,7 +278,7 @@ async def test_complete_mfa_challenge_records_login_success(monkeypatch: pytest.
         refresh_tokens=cast(RefreshTokenManager, refresh_tokens),
         session_store=cast(SessionStore, session_store),
         user_service=cast(UserService, user_service),
-        token_verifier=_verifier,
+        token_verifier=cast(TokenVerifierCallable, _verifier),
         mfa_service=cast(MfaService, _StubMfaVerifyService()),
     )
 
