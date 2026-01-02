@@ -15,6 +15,7 @@ from app.services.auth.refresh_token_manager import RefreshTokenManager
 from app.services.auth.session_service import UserSessionService
 from app.services.auth.session_store import SessionStore
 from app.services.auth.session_token_issuer import IssuedSessionTokens
+from app.services.auth.errors import UserAuthenticationError, UserRefreshError
 from app.services.users import UserService
 
 
@@ -256,7 +257,7 @@ async def test_complete_mfa_challenge_records_login_success(monkeypatch: pytest.
     user_service = _StubUserService(auth_user)
     session_store = _FakeSessionStore()
     refresh_tokens = _FakeRefreshTokens()
-    payload = {
+    payload: dict[str, object] = {
         "token_use": "mfa_challenge",
         "sub": f"user:{user_id}",
         "tenant_id": str(tenant_id),
@@ -264,7 +265,13 @@ async def test_complete_mfa_challenge_records_login_success(monkeypatch: pytest.
         "login_reason": "sso",
     }
 
-    def _verifier(_: str, **__: object) -> dict[str, object]:
+    def _verifier(
+        _: str,
+        *,
+        allow_expired: bool = False,
+        error_cls: type[UserAuthenticationError] = UserRefreshError,
+        error_message: str = "Refresh token verification failed.",
+    ) -> dict[str, object]:
         return payload
 
     service = UserSessionService(
