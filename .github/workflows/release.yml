@@ -89,7 +89,7 @@ jobs:
             frontend-sbom.json
 
       - name: Publish GitHub Release assets
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: |
             dist/*.whl
