@@ -44,7 +44,7 @@ to `false`, enable the APIs above manually before running `terraform apply`.
 - `APP_PUBLIC_URL`
 - `SECRETS_PROVIDER=gcp_sm`
 - `GCP_SM_SIGNING_SECRET_NAME` (secret name or full resource name)
-- `GCP_SM_PROJECT_ID` (required when secret names are not fully qualified)
+- `GCP_SM_PROJECT_ID` (optional; defaults to the infra `project_id` when secret names are not fully qualified)
 - `GCP_SM_CACHE_TTL_SECONDS` (optional; default 60s)
 - `AUTH_KEY_STORAGE_BACKEND=secret-manager`
 - `AUTH_KEY_STORAGE_PROVIDER` (defaults to `gcp_sm`)
@@ -67,7 +67,8 @@ For the full list, see `docs/trackers/CONSOLE_ENV_INVENTORY.md`.
 | Terraform input | Env var | Notes |
 | --- | --- | --- |
 | `region` | — | GCP region for Cloud Run and managed services. |
-| `project_id` | `GCP_SM_PROJECT_ID` | Used when secret names are not fully qualified. |
+| `project_id` | — | GCP project hosting the infrastructure. |
+| `gcp_sm_project_id` | `GCP_SM_PROJECT_ID` | Optional; defaults to `project_id` when secret names are not fully qualified. |
 | `api_base_url` | `API_BASE_URL` | Required for Cloud Run; use a custom domain or the service URL. |
 | `app_public_url` | `APP_PUBLIC_URL` | Required for Cloud Run; used for CORS + link generation. |
 | `secrets_provider` | `SECRETS_PROVIDER` | Defaults to `gcp_sm`. |

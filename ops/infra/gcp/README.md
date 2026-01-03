@@ -21,6 +21,7 @@ terraform apply \
   -var "project_name=agent-saas" \
   -var "environment=prod" \
   -var "project_id=<gcp-project-id>" \
+  -var "gcp_sm_project_id=<secrets-project-id>" \
   -var "region=us-central1" \
   -var "api_image=<api-image>" \
   -var "web_image=<web-image>" \
@@ -46,7 +47,7 @@ Cloud Run injects a base set of env vars aligned with the API/web defaults. Over
 - `APP_PUBLIC_URL` (required input)
 - `ALLOWED_HOSTS` / `ALLOWED_ORIGINS`
 - `SECRETS_PROVIDER=gcp_sm`
-- `GCP_SM_PROJECT_ID`, `GCP_SM_SIGNING_SECRET_NAME`
+- `GCP_SM_PROJECT_ID` (defaults to `project_id` when unset), `GCP_SM_SIGNING_SECRET_NAME`
 - `AUTH_KEY_STORAGE_BACKEND=secret-manager`
 - `AUTH_KEY_STORAGE_PROVIDER` (defaults to `secrets_provider`)
 - `AUTH_KEY_SECRET_NAME`

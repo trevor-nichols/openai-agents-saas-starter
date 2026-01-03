@@ -38,8 +38,16 @@ GCP_VARIABLES = (
         "GCP project ID hosting the resources.",
         category=TerraformVarCategory.CORE,
         required=True,
-        env_aliases=("GCP_SM_PROJECT_ID", "GCS_PROJECT_ID"),
+        env_aliases=("GCS_PROJECT_ID",),
         template_value=_REQUIRED_PLACEHOLDER,
+    ),
+    _var(
+        "gcp_sm_project_id",
+        "string",
+        "Optional Secret Manager project ID when secrets live outside project_id.",
+        category=TerraformVarCategory.SECRETS,
+        default="",
+        env_aliases=("GCP_SM_PROJECT_ID",),
     ),
     _var(
         "region",

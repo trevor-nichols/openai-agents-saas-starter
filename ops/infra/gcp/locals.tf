@@ -5,6 +5,7 @@ locals {
   web_container_port        = 3000
   secrets_provider          = trimspace(var.secrets_provider)
   auth_key_storage_provider = trimspace(var.auth_key_storage_provider) != "" ? var.auth_key_storage_provider : local.secrets_provider
+  gcp_sm_project_id         = trimspace(var.gcp_sm_project_id) != "" ? var.gcp_sm_project_id : var.project_id
 
   worker_enabled = var.enable_worker_service
   worker_image   = trimspace(var.worker_image) != "" ? var.worker_image : var.api_image
@@ -36,7 +37,7 @@ locals {
       ALLOWED_ORIGINS           = local.app_public_url
     },
     (local.secrets_provider == "gcp_sm" || local.auth_key_storage_provider == "gcp_sm") ? {
-      GCP_SM_PROJECT_ID = var.project_id
+      GCP_SM_PROJECT_ID = local.gcp_sm_project_id
     } : {},
     local.secrets_provider == "gcp_sm" ? {
       GCP_SM_SIGNING_SECRET_NAME = var.gcp_sm_signing_secret_name

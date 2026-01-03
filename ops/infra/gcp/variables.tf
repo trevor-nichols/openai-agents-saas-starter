@@ -13,6 +13,12 @@ variable "project_id" {
   description = "GCP project ID hosting the resources."
 }
 
+variable "gcp_sm_project_id" {
+  type        = string
+  description = "Optional GCP project ID hosting Secret Manager secrets when different from project_id."
+  default     = ""
+}
+
 variable "region" {
   type        = string
   description = "GCP region for Cloud Run and managed services."

@@ -4,9 +4,11 @@ import argparse
 import io
 import json
 
+import pytest
+
 from starter_console import app as cli_app
 from starter_console.commands import infra as infra_commands
-from starter_console.core import CLIContext
+from starter_console.core import CLIContext, CLIError
 from starter_console.ports.console import StdConsole
 from starter_console.services.infra import infra as infra_service
 
@@ -133,3 +135,76 @@ def test_infra_terraform_export_writes_file(tmp_path) -> None:
     assert output_path.exists()
     contents = output_path.read_text(encoding="utf-8")
     assert "project_name" in contents
+
+
+def _aws_answers_payload(*, include_typo: bool) -> dict[str, str]:
+    payload = {
+        "PROJECT_NAME": "starter",
+        "ENVIRONMENT": "prod",
+        "API_IMAGE": "example.com/api:latest",
+        "WEB_IMAGE": "example.com/web:latest",
+        "DB_PASSWORD": "super-secret",
+        "STORAGE_BUCKET_NAME": "starter-assets",
+        "API_SECRETS": json.dumps({"DATABASE_URL": "db-secret", "REDIS_URL": "redis-secret"}),
+        "ENABLE_HTTPS": "false",
+        "REDIS_REQUIRE_AUTH_TOKEN": "false",
+        "SECRETS_PROVIDER": "aws_sm",
+        "AWS_SM_SIGNING_SECRET_ARN": "arn:aws:secretsmanager:us-east-1:123:secret:sign",
+        "AUTH_KEY_SECRET_NAME": "auth-key",
+    }
+    if include_typo:
+        payload["STORAGE_BUKET_NAME"] = "typo-assets"
+    return payload
+
+
+def test_terraform_export_filled_rejects_suspicious_answers_key(tmp_path) -> None:
+    answers_path = tmp_path / "answers.json"
+    answers_path.write_text(
+        json.dumps(_aws_answers_payload(include_typo=True)),
+        encoding="utf-8",
+    )
+    ctx = CLIContext(project_root=tmp_path, console=StdConsole(stream=io.StringIO()))
+    args = argparse.Namespace(
+        provider="aws",
+        mode="filled",
+        format="hcl",
+        output=str(tmp_path / "terraform.tfvars"),
+        answers_file=[str(answers_path)],
+        var=None,
+        extra_var=None,
+        env_file=None,
+        include_advanced=False,
+        include_secrets=False,
+        include_defaults=False,
+    )
+
+    with pytest.raises(CLIError, match="Suspicious Terraform inputs detected in answers file"):
+        infra_commands.handle_terraform_export(args, ctx)
+
+
+def test_terraform_export_template_warns_on_suspicious_answers_key(tmp_path) -> None:
+    answers_path = tmp_path / "answers.json"
+    answers_path.write_text(
+        json.dumps(_aws_answers_payload(include_typo=True)),
+        encoding="utf-8",
+    )
+    buffer, console = _capture_console()
+    ctx = CLIContext(project_root=tmp_path, console=console)
+    args = argparse.Namespace(
+        provider="aws",
+        mode="template",
+        format="hcl",
+        output=str(tmp_path / "terraform.tfvars"),
+        answers_file=[str(answers_path)],
+        var=None,
+        extra_var=None,
+        env_file=None,
+        include_advanced=False,
+        include_secrets=False,
+        include_defaults=False,
+    )
+
+    result = infra_commands.handle_terraform_export(args, ctx)
+
+    assert result == 0
+    assert "Suspicious Terraform inputs detected in answers file" in buffer.getvalue()

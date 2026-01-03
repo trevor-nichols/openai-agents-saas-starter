@@ -51,6 +51,15 @@ Values are merged in the following order (last wins):
 2. `--answers-file` (JSON key/value pairs from the setup wizard)
 3. `.env.local` files (defaults to `apps/api-service/.env.local` and `apps/web-app/.env.local`)
 
+## Input validation (unknown keys)
+
+- The export schema is authoritative. Unknown keys with close matches are surfaced so typos
+  don’t get silently ignored.
+- In `filled` mode, suspicious keys in `--answers-file` cause a fast failure.
+- In `template` mode, suspicious keys emit warnings and the export continues.
+- Env files only prefill **env aliases** (e.g., `API_BASE_URL`, `SECRETS_PROVIDER`). Use
+  `--var` or answers files for Terraform variable names like `project_id`.
+
 ## Secrets
 
 By default, sensitive values are **redacted** in the export. Use
