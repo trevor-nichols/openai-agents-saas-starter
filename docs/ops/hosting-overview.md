@@ -18,6 +18,17 @@ This repo ships production-ready container images and a cloud-agnostic architect
 - **GCP (Cloud Run)** — `ops/infra/gcp/` + `docs/ops/hosting-gcp.md`
 - **Release runbook** — `docs/ops/runbook-release.md`
 
+### Terraform tfvars export
+
+Use the Starter Console to generate tfvars templates without hardcoding secrets:
+
+```bash
+starter-console infra terraform export --provider aws
+```
+
+By default, exports land in `var/infra/<provider>/terraform.tfvars` (gitignored) and redact
+sensitive values. See `docs/ops/terraform-export.md` for the full workflow.
+
 ## Planned Targets (in progress)
 
 - **Kubernetes (Helm)** — `ops/charts/starter/` + `docs/ops/hosting-kubernetes.md`

@@ -107,3 +107,29 @@ def test_infra_deps_detects_missing_compose(monkeypatch) -> None:
     monkeypatch.setattr(infra_service.shutil, "which", fake_which)
     statuses = {status.name: status for status in infra_service.collect_dependency_statuses()}
     assert statuses["Docker Compose"].status == "missing"
+
+
+def test_infra_terraform_export_writes_file(tmp_path) -> None:
+    output_path = tmp_path / "terraform.tfvars"
+    buffer, console = _capture_console()
+    ctx = CLIContext(project_root=tmp_path, console=console)
+    args = argparse.Namespace(
+        provider="aws",
+        mode="template",
+        format="hcl",
+        output=str(output_path),
+        answers_file=None,
+        var=None,
+        extra_var=None,
+        env_file=None,
+        include_advanced=False,
+        include_secrets=False,
+        include_defaults=False,
+    )
+
+    result = infra_commands.handle_terraform_export(args, ctx)
+
+    assert result == 0
+    assert output_path.exists()
+    contents = output_path.read_text(encoding="utf-8")
+    assert "project_name" in contents
