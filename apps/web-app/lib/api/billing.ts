@@ -20,6 +20,7 @@ export async function connectBillingStream(
   signal: AbortSignal
 ): Promise<void> {
   try {
+    onStatusChange('connecting');
     const response = await fetch(apiV1Path('/billing/stream'), {
       cache: 'no-store',
       signal,

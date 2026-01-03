@@ -1,9 +1,9 @@
 import { notFound } from 'next/navigation';
 
-import { billingEnabled } from '@/lib/config/features';
+import { isBillingEnabled } from '@/lib/server/features';
 
-export default function BillingLayout({ children }: { children: React.ReactNode }) {
-  if (!billingEnabled) {
+export default async function BillingLayout({ children }: { children: React.ReactNode }) {
+  if (!(await isBillingEnabled())) {
     notFound();
   }
 

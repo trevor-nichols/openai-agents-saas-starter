@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const backendBase =
-  process.env.NEXT_PUBLIC_API_URL ||
-  process.env.API_URL ||
-  process.env.BACKEND_API_URL ||
-  'http://localhost:8000';
+import { API_BASE_URL } from '@/lib/config/server';
 
 export async function POST(req: NextRequest) {
   if (process.env.NODE_ENV === 'production') {
@@ -12,7 +8,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.text();
-  const response = await fetch(`${backendBase}/api/v1/test-fixtures/apply`, {
+  const response = await fetch(`${API_BASE_URL}/api/v1/test-fixtures/apply`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

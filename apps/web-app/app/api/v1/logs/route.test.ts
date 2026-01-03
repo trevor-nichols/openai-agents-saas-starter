@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 
-import { API_BASE_URL } from '@/lib/config';
+import { API_BASE_URL } from '@/lib/config/server';
 import { server } from '@/test-utils/msw/server';
 
 async function loadHandler() {

@@ -52,7 +52,7 @@ Cloud Run injects a base set of env vars aligned with the API/web defaults. Over
 - `AUTH_KEY_STORAGE_PROVIDER` (defaults to `secrets_provider`)
 - `AUTH_KEY_SECRET_NAME`
 - `STORAGE_PROVIDER=gcs`
-- `GCS_BUCKET`, `GCS_PROJECT_ID`
+- `GCS_BUCKET`, `GCP_PROJECT_ID`
 
 ### Web base env
 - `PORT=3000`

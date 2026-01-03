@@ -14,7 +14,6 @@
 | `AGENT_MODEL_TRIAGE` | Override model for triage agent | `app/core/settings/ai.py` | No | `None` | String | Config |
 | `ALLOW_ANON_FRONTEND_LOGS` | Allow anonymous frontend log ingestion | `app/core/settings/observability.py` | No | `False` | Bool | Config |
 | `ALLOW_OPENAI_CONVERSATION_UUID_FALLBACK` | Policy flag for agent runtime conversation ID handling | `app/services/agents/policy.py` (via `os.getenv`) | No | `False` | Bool | Config |
-| `ALLOW_PUBLIC_SIGNUP` | Enable public registration (overridden by `SIGNUP_ACCESS_POLICY` logic) | `app/core/settings/signup.py` | No | `True` | Bool | Config |
 | `ALLOW_SIGNUP_TRIAL_OVERRIDE` | Allow callers to request specific trial periods during signup | `app/core/settings/signup.py` | No | `False` | Bool | Config |
 | `ALLOWED_HEADERS` | CORS allowed headers | `app/core/settings/application.py` | No | `*` | String (CSV) | Config |
 | `ALLOWED_HOSTS` | Trusted hosts for middleware | `app/core/settings/application.py` | No | `localhost,...` | String (CSV) | Config |
@@ -112,11 +111,11 @@
 | `GCS_BUCKET` | Google Cloud Storage bucket | `app/core/settings/storage.py` | Conditional | `None` | String | Config |
 | `GCS_CREDENTIALS_JSON` | GCS Credentials JSON content | `app/core/settings/storage.py` | No | `None` | JSON | Secret |
 | `GCS_CREDENTIALS_PATH` | Path to GCS credentials file | `app/core/settings/storage.py` | No | `None` | Path | Config |
-| `GCS_PROJECT_ID` | GCP Project ID | `app/core/settings/storage.py` | Conditional | `None` | String | Config |
+| `GCP_PROJECT_ID` | GCP Project ID | `app/core/settings/storage.py` | Conditional | `None` | String | Config |
 | `GCS_SIGNING_EMAIL` | GCS Service Account Email for signing | `app/core/settings/storage.py` | No | `None` | String | Config |
-| `GCS_SM_CACHE_TTL_SECONDS` | Cache TTL for GCP Secret Manager | `app/core/settings/providers.py` | No | 60 | Integer | Config |
-| `GCS_SM_PROJECT_ID` | GCP Project ID for Secret Manager | `app/core/settings/providers.py` | Conditional | `None` | String | Config |
-| `GCS_SM_SIGNING_SECRET_NAME` | Name of signing secret in GCP Secret Manager | `app/core/settings/providers.py` | Conditional | `None` | String | Config |
+| `GCP_SM_CACHE_TTL_SECONDS` | Cache TTL for GCP Secret Manager | `app/core/settings/providers.py` | No | 60 | Integer | Config |
+| `GCP_SM_PROJECT_ID` | GCP Project ID for Secret Manager | `app/core/settings/providers.py` | Conditional | `None` | String | Config |
+| `GCP_SM_SIGNING_SECRET_NAME` | Name of signing secret in GCP Secret Manager | `app/core/settings/providers.py` | Conditional | `None` | String | Config |
 | `GCS_UNIFORM_ACCESS` | Use uniform bucket-level access | `app/core/settings/storage.py` | No | `True` | Bool | Config |
 | `GEMINI_API_KEY` | Google Gemini API key | `app/core/settings/ai.py` | No | `None` | String | Secret |
 | `GEOIP_CACHE_MAX_ENTRIES` | Max entries in GeoIP cache | `app/core/settings/observability.py` | No | 4096 | Integer | Config |
@@ -255,7 +254,6 @@
 
 | Name | Purpose | Used in (File:Line) | Required? | Default | Format | Sensitivity |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| `ALLOW_PUBLIC_SIGNUP` | Configures public signup availability for the smoke test environment. | `smoke_http.sh`:15 | Optional | `true` | boolean (string) | Config |
 | `AUTH_CACHE_REDIS_URL` | Redis connection string for auth caching. | `smoke_http.sh`:11 | Optional | `$REDIS_URL` | URL | Secret |
 | `AUTH_KEY_STORAGE_PATH` | File path for authentication key storage during tests. | `smoke_http.sh`:50 | Optional | `.../test_keyset.json` | File path | Config |
 | `AUTO_RUN_MIGRATIONS` | Controls whether migrations run automatically during smoke tests. | `smoke_http.sh`:5 | Optional | `true` | boolean (string) | Config |
@@ -265,13 +263,14 @@
 | `ENABLE_BILLING` | Toggles billing features. | `smoke_http.sh`:13<br>`export_openapi.py`:57 | Optional | `false` | boolean (string) | Config |
 | `ENABLE_BILLING_RETRY_WORKER` | Toggles the billing retry worker. | `smoke_http.sh`:14 | Optional | `false` | boolean (string) | Config |
 | `ENABLE_FRONTEND_LOG_INGEST` | Toggles frontend log ingestion. | `smoke_http.sh`:16 | Optional | `true` | boolean (string) | Config |
-| `ENABLE_RESEND_EMAIL_DELIVERY` | Toggles email delivery via Resend. | `smoke_http.sh`:15 | Optional | `false` | boolean (string) | Config |
+| `RESEND_EMAIL_ENABLED` | Toggles email delivery via Resend. | `smoke_http.sh`:15 | Optional | `false` | boolean (string) | Config |
 | `OPENAI_API_KEY` | API key for OpenAI services. | `smoke_http.sh`:17 | Optional | `dummy-smoke-key` | String | Key |
 | `POSTGRES_DB` | Used to validate that the `DATABASE_URL` matches the expected Postgres database name. | `check_alembic_version.py`:61 | Optional | `""` | String | Config |
 | `RATE_LIMIT_REDIS_URL` | Redis connection string for rate limiting. | `smoke_http.sh`:10 | Optional | `$REDIS_URL` | URL | Secret |
 | `REDIS_URL` | Primary Redis connection string. | `smoke_http.sh`:9 | Optional | `redis://localhost:6379/0` | URL | Secret |
 | `SECURITY_TOKEN_REDIS_URL` | Redis connection string for security tokens. | `smoke_http.sh`:12 | Optional | `$REDIS_URL` | URL | Secret |
 | `SHELL` | Specifies the shell executable to use within the virtual environment. | `enter.sh`:30 | Optional | `/bin/bash` | File path | Config |
+| `SIGNUP_ACCESS_POLICY` | Controls public signup availability for the smoke test environment. | `smoke_http.sh`:15 | Optional | `public` | string | Config |
 | `SMOKE_BASE_URL` | Base URL for the API service during smoke tests. | `smoke_http.sh`:20 | Optional | `http://localhost:8000` | URL | Config |
 | `SMOKE_ENABLE_AI` | Toggles AI features specifically for smoke tests. | `smoke_http.sh`:22 | Optional | `0` | int/bool | Config |
 | `SMOKE_ENABLE_BILLING` | Toggles billing features specifically for smoke tests. | `smoke_http.sh`:21 | Optional | `0` | int/bool | Config |

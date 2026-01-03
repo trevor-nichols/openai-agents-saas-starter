@@ -66,6 +66,10 @@ export const queryKeys = {
     all: ['status'] as const,
     snapshot: () => [...queryKeys.status.all, 'snapshot'] as const,
   },
+  features: {
+    all: ['features'] as const,
+    flags: () => [...queryKeys.features.all, 'flags'] as const,
+  },
   statusOps: {
     all: ['status-ops'] as const,
     subscriptions: (filters?: Record<string, unknown>) =>

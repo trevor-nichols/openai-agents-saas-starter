@@ -13,7 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { BillingEvent, BillingStreamStatus } from '@/types/billing';
 import { readClientSessionMeta } from '@/lib/auth/clientMeta';
 import { connectBillingStream } from '@/lib/api/billing';
-import { billingEnabled } from '@/lib/config/features';
+import { useFeatureFlags } from '@/lib/queries/featureFlags';
 
 const MAX_EVENTS = 20;
 
@@ -32,20 +32,22 @@ interface UseBillingStreamReturn {
  * - Status tracking
  */
 export function useBillingStream(): UseBillingStreamReturn {
+  const { flags, isLoading } = useFeatureFlags();
+  const billingEnabled = Boolean(flags?.billingEnabled);
+  const billingStreamEnabled = Boolean(flags?.billingStreamEnabled);
+  const meta = readClientSessionMeta();
+  const canStream = Boolean(
+    !isLoading && billingEnabled && billingStreamEnabled && meta?.tenantId
+  );
   const [events, setEvents] = useState<BillingEvent[]>([]);
-  const [status, setStatus] = useState<BillingStreamStatus>(() => {
-    if (!billingEnabled) return 'disabled';
-    const meta = readClientSessionMeta();
-    if (!meta?.tenantId) return 'disabled';
-    return 'connecting';
-  });
+  const [streamStatus, setStreamStatus] = useState<
+    Exclude<BillingStreamStatus, 'disabled'>
+  >('connecting');
   const abortRef = useRef<AbortController | null>(null);
+  const status: BillingStreamStatus = canStream ? streamStatus : 'disabled';
 
   useEffect(() => {
-    if (status === 'disabled') return undefined;
-
-    const meta = readClientSessionMeta();
-    if (!meta?.tenantId) return undefined;
+    if (!canStream) return undefined;
 
     // Create abort controller for cleanup
     const controller = new AbortController();
@@ -58,17 +60,17 @@ export function useBillingStream(): UseBillingStreamReturn {
 
     // Handle status changes
     const handleStatusChange = (newStatus: 'connecting' | 'open' | 'error') => {
-      setStatus(newStatus);
+      setStreamStatus(newStatus);
     };
 
     // Connect to stream
-    connectBillingStream(handleEvent, handleStatusChange, controller.signal);
+    void connectBillingStream(handleEvent, handleStatusChange, controller.signal);
 
     // Cleanup on unmount
     return () => {
       controller.abort();
     };
-  }, [status]);
+  }, [canStream]);
 
   return { events, status };
 }

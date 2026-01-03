@@ -2980,6 +2980,26 @@ export type GuardrailSummary = {
 };
 
 /**
+ * HealthFeaturesResponse
+ *
+ * Feature flag snapshot returned by health endpoints.
+ */
+export type HealthFeaturesResponse = {
+  /**
+   * Billing Enabled
+   *
+   * Whether billing-related APIs and UI flows should be enabled.
+   */
+  billing_enabled: boolean;
+  /**
+   * Billing Stream Enabled
+   *
+   * Whether billing event streaming endpoints are enabled.
+   */
+  billing_stream_enabled: boolean;
+};
+
+/**
  * HealthResponse
  *
  * Health check response payload.
@@ -8986,6 +9006,73 @@ export type HealthCheckHealthGetResponses = {
 
 export type HealthCheckHealthGetResponse =
   HealthCheckHealthGetResponses[keyof HealthCheckHealthGetResponses];
+
+export type FeatureFlagsHealthFeaturesGetData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/health/features";
+};
+
+export type FeatureFlagsHealthFeaturesGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type FeatureFlagsHealthFeaturesGetError =
+  FeatureFlagsHealthFeaturesGetErrors[keyof FeatureFlagsHealthFeaturesGetErrors];
+
+export type FeatureFlagsHealthFeaturesGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: HealthFeaturesResponse;
+};
+
+export type FeatureFlagsHealthFeaturesGetResponse =
+  FeatureFlagsHealthFeaturesGetResponses[keyof FeatureFlagsHealthFeaturesGetResponses];
 
 export type ReadinessCheckHealthReadyGetData = {
   body?: never;

@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
-import { billingEnabled } from '@/lib/config/features';
+import { isBillingEnabled } from '@/lib/server/features';
 import {
   getTenantSubscription,
   startTenantSubscription,
@@ -15,7 +15,7 @@ import {
 } from '../../_utils';
 
 export async function GET(request: NextRequest, context: BillingTenantRouteContext) {
-  if (!billingEnabled) {
+  if (!(await isBillingEnabled())) {
     return NextResponse.json({ success: false, error: 'Billing is disabled.' }, { status: 404 });
   }
   const tenantId = await resolveTenantId(context);
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest, context: BillingTenantRouteConte
 }
 
 export async function POST(request: NextRequest, context: BillingTenantRouteContext) {
-  if (!billingEnabled) {
+  if (!(await isBillingEnabled())) {
     return NextResponse.json({ success: false, error: 'Billing is disabled.' }, { status: 404 });
   }
   const tenantId = await resolveTenantId(context);
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest, context: BillingTenantRouteCont
 }
 
 export async function PATCH(request: NextRequest, context: BillingTenantRouteContext) {
-  if (!billingEnabled) {
+  if (!(await isBillingEnabled())) {
     return NextResponse.json({ success: false, error: 'Billing is disabled.' }, { status: 404 });
   }
   const tenantId = await resolveTenantId(context);

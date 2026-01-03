@@ -15,10 +15,10 @@
 | **DATABASE_URL** | Connection string for the database. Referenced in validation rules to ensure it is passed via secrets, not plain env vars. | `src/starter_contracts/infra/terraform_spec/common.py` (L96, L107) | Required | `__REQUIRED__` (Template) | Connection String | Secret |
 | **ENABLE_BILLING** | Feature flag to enable billing logic. | `src/starter_contracts/provider_validation.py` (L98) | Optional | `false` (implied) | Boolean string (`true`/`false`) | Non-secret |
 | **ENVIRONMENT** | Deployment environment name (e.g., dev, staging, prod). | `src/starter_contracts/infra/terraform_spec/common.py` (L59) | Required | N/A | String | Non-secret |
-| **GCP_SM_PROJECT_ID** | GCP project ID hosting the resources. | `src/starter_contracts/infra/terraform_spec/gcp.py` (L43) | Required | `__REQUIRED__` (Template) | String | Non-secret |
+| **GCP_PROJECT_ID** | GCP project ID hosting the resources. | `src/starter_contracts/infra/terraform_spec/gcp.py` (L43) | Required | `__REQUIRED__` (Template) | String | Non-secret |
+| **GCP_SM_PROJECT_ID** | Optional Secret Manager project ID when secrets live outside `GCP_PROJECT_ID`. | `src/starter_contracts/infra/terraform_spec/gcp.py` (L53) | Optional | `""` (Empty string) | String | Non-secret |
 | **GCP_SM_SIGNING_SECRET_NAME** | GCP Secret Manager secret name containing the signing secret. | `src/starter_contracts/infra/terraform_spec/gcp.py` (L176) | Required (if provider is `gcp_sm`) | `""` (Empty string) | String | Non-secret (Pointer) |
 | **GCS_BUCKET** | GCS bucket name for object storage. | `src/starter_contracts/infra/terraform_spec/gcp.py` (L189) | Optional | `assets` | String | Non-secret |
-| **GCS_PROJECT_ID** | GCP project ID (Alias for `GCP_SM_PROJECT_ID`). | `src/starter_contracts/infra/terraform_spec/gcp.py` (L43) | Required | `__REQUIRED__` (Template) | String | Non-secret |
 | **LOGGING_DATADOG_API_KEY** | Datadog API key for log ingestion. | `src/starter_contracts/observability/logging/sinks/datadog.py` (L53) | Required (if sink includes `datadog`) | N/A | String | Secret |
 | **LOGGING_OTLP_ENDPOINT** | HTTP endpoint for OTLP log export. | `src/starter_contracts/observability/logging/sinks/otlp.py` (L54) | Required (if sink includes `otlp`) | N/A | URL String | Non-secret |
 | **LOGGING_OTLP_HEADERS** | Additional headers for OTLP export (e.g., auth tokens). | `src/starter_contracts/observability/logging/sinks/otlp.py` (L79) | Optional | N/A | JSON String | Secret |

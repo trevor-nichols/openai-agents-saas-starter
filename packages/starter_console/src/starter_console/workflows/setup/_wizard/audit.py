@@ -336,7 +336,6 @@ def _signup_worker_section(settings, env_snapshot: dict[str, str]) -> SectionRes
     section.checks.extend(
         [
             _env_presence("SIGNUP_ACCESS_POLICY", env_snapshot),
-            _env_presence("ALLOW_PUBLIC_SIGNUP", env_snapshot),
             _env_presence("SIGNUP_RATE_LIMIT_PER_HOUR", env_snapshot),
             _env_presence("SIGNUP_RATE_LIMIT_PER_IP_DAY", env_snapshot),
             _env_presence("SIGNUP_RATE_LIMIT_PER_EMAIL_DAY", env_snapshot),

@@ -29,7 +29,7 @@ Groups self-serve onboarding flows: invites, signup requests, signup orchestrati
 - `POST /api/v1/auth/signup-requests/{id}/approve|reject`: Operator decisions; approval issues an invite linked to the request.
 
 ## Configuration (env / settings)
-- `SIGNUP_ACCESS_POLICY` (`public` | `invite_only` | `approval`) and `ALLOW_PUBLIC_SIGNUP` derive exposure.
+- `SIGNUP_ACCESS_POLICY` (`public` | `invite_only` | `approval`) sets the signup exposure posture.
 - Rate limits: `SIGNUP_RATE_LIMIT_PER_HOUR`, `SIGNUP_RATE_LIMIT_PER_IP_DAY`, `SIGNUP_RATE_LIMIT_PER_EMAIL_DAY`, `SIGNUP_RATE_LIMIT_PER_DOMAIN_DAY`; enforced via Redis-backed `RateLimitService`.
 - Requests quota: `SIGNUP_CONCURRENT_REQUESTS_LIMIT` caps pending access requests per IP.
 - Billing: `ENABLE_BILLING`, `SIGNUP_DEFAULT_PLAN_CODE`, `SIGNUP_DEFAULT_TRIAL_DAYS`, `ALLOW_SIGNUP_TRIAL_OVERRIDE`; signup skips billing when disabled.

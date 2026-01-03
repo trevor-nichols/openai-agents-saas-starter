@@ -173,7 +173,6 @@ def test_signup_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     """Public signup toggles expose sensible defaults for starter deployments."""
 
     monkeypatch.delenv("SIGNUP_ACCESS_POLICY", raising=False)
-    monkeypatch.delenv("ALLOW_PUBLIC_SIGNUP", raising=False)
 
     settings = make_settings()
 
@@ -192,24 +191,11 @@ def test_signup_policy_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
     """SIGNUP_ACCESS_POLICY controls allow_public_signup."""
 
     monkeypatch.setenv("SIGNUP_ACCESS_POLICY", "public")
-    monkeypatch.delenv("ALLOW_PUBLIC_SIGNUP", raising=False)
 
     settings = make_settings()
 
     assert settings.signup_access_policy == "public"
     assert settings.allow_public_signup is True
-
-
-def test_signup_policy_backwards_compatibility(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Legacy ALLOW_PUBLIC_SIGNUP envs still map to a policy."""
-
-    monkeypatch.delenv("SIGNUP_ACCESS_POLICY", raising=False)
-    monkeypatch.setenv("ALLOW_PUBLIC_SIGNUP", "false")
-
-    settings = make_settings()
-
-    assert settings.signup_access_policy == "invite_only"
-    assert settings.allow_public_signup is False
 
 
 def test_signup_rate_limit_requires_positive_values(

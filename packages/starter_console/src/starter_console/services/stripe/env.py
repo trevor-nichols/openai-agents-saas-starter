@@ -27,15 +27,4 @@ def update_backend_env(
     env_local.save()
 
 
-def update_frontend_env(project_root: Path) -> bool:
-    frontend_path = project_root / "apps" / "web-app" / ".env.local"
-    if not frontend_path.parent.exists():
-        return False
-
-    env_frontend = EnvFile(frontend_path)
-    env_frontend.set("NEXT_PUBLIC_ENABLE_BILLING", "true")
-    env_frontend.save()
-    return True
-
-
-__all__ = ["load_backend_env_files", "update_backend_env", "update_frontend_env"]
+__all__ = ["load_backend_env_files", "update_backend_env"]

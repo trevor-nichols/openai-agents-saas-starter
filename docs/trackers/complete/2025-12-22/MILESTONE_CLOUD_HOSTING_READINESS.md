@@ -157,7 +157,7 @@ Make the starter production-ready for AWS and Azure hosting with a clean, cloud-
 | --- | --- | --- |
 | No container build artifacts currently | High | Add Dockerfiles early (Phase P1). |
 | Storage provider gaps for S3/Azure Blob | High | Implement providers + tests before infra docs. |
-| Secrets in local templates | High | Audit and scrub sensitive defaults; update `.env.local.example`. |
+| Secrets in local templates | High | Audit and scrub sensitive defaults; update `.env.example`. |
 | Cloud blueprint complexity | Med | Prefer managed services + minimal modules; keep infra separate. |
 | Billing worker topology confusion | Med | Explicit docs + sample configs for single vs multi‑replica. |
 

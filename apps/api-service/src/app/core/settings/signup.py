@@ -1,11 +1,9 @@
 """Tenant signup and onboarding policies."""
 from __future__ import annotations
 
-import os
-
 from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_validator
 
-from .base import SignupAccessPolicyLiteral, signup_policy_logger
+from .base import SignupAccessPolicyLiteral
 
 
 class SignupSettingsMixin(BaseModel):
@@ -15,12 +13,11 @@ class SignupSettingsMixin(BaseModel):
         alias="SIGNUP_ACCESS_POLICY",
     )
     allow_public_signup: bool = Field(
-        default=True,
+        default=False,
         description=(
             "Allow unauthenticated tenants to self-register via /auth/register. Derived from "
             "SIGNUP_ACCESS_POLICY."
         ),
-        alias="ALLOW_PUBLIC_SIGNUP",
     )
     allow_signup_trial_override: bool = Field(
         default=False,
@@ -78,30 +75,7 @@ class SignupSettingsMixin(BaseModel):
 
     @model_validator(mode="after")
     def _synchronize_signup_policy(self) -> SignupSettingsMixin:
-        env_policy = os.getenv("SIGNUP_ACCESS_POLICY")
-        env_allow = os.getenv("ALLOW_PUBLIC_SIGNUP")
-
-        if env_policy:
-            normalized = env_policy.strip().lower()
-            if normalized in {"public", "invite_only", "approval"}:
-                self.signup_access_policy = normalized  # type: ignore[assignment]
-        elif env_allow is not None:
-            allow_bool = env_allow.strip().lower() in {"1", "true", "yes", "y"}
-            self.signup_access_policy = "public" if allow_bool else "invite_only"
-
-        derived_allow = self.signup_access_policy == "public"
-
-        if env_policy and env_allow is not None:
-            env_allow_bool = env_allow.strip().lower() in {"1", "true", "yes", "y"}
-            if env_allow_bool != derived_allow:
-                signup_policy_logger.warning(
-                    "ALLOW_PUBLIC_SIGNUP (%s) conflicts with SIGNUP_ACCESS_POLICY=%s; "
-                    "using policy to derive final value.",
-                    env_allow,
-                    self.signup_access_policy,
-                )
-
-        self.allow_public_signup = derived_allow
+        self.allow_public_signup = self.signup_access_policy == "public"
         return self
 
     @field_validator(

@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { previewUpcomingInvoice } from '@/lib/api/billingUpcomingInvoice';
 import type { UpcomingInvoicePreview } from '@/lib/types/billing';
-import { billingEnabled } from '@/lib/config/features';
+import { useFeatureFlags } from '@/lib/queries/featureFlags';
 import { queryKeys } from './keys';
 
 interface UpcomingInvoiceOptions {
@@ -20,6 +20,8 @@ interface UpcomingInvoiceResult {
 }
 
 export function useUpcomingInvoicePreview(options: UpcomingInvoiceOptions): UpcomingInvoiceResult {
+  const { flags } = useFeatureFlags();
+  const billingEnabled = Boolean(flags?.billingEnabled);
   const { tenantId, seatCount = null, tenantRole = null, enabled } = options;
   const isEnabled = (enabled ?? true) && billingEnabled && Boolean(tenantId);
 

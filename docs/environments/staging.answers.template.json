@@ -83,7 +83,7 @@
   "BILLING_RETRY_DEPLOYMENT_MODE": "dedicated",
   "ENABLE_BILLING_STREAM_REPLAY": "false",
   "PLAYWRIGHT_BASE_URL": "https://staging.agents.example.com",
-  "AGENT_API_MOCK": "false",
+  "NEXT_PUBLIC_AGENT_API_MOCK": "false",
   "AGENT_FORCE_SECURE_COOKIES": "true",
   "AGENT_ALLOW_INSECURE_COOKIES": "false"
 }

@@ -23,7 +23,6 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | ALLOWED_METHODS | str | GET,POST,PUT,DELETE,OPTIONS |  | ✅ | CORS allowed methods (comma-separated) |
 | ALLOWED_ORIGINS | str | http://localhost:3000,http://localhost:8000 |  | ✅ | CORS allowed origins (comma-separated) |
 | ALLOW_ANON_FRONTEND_LOGS | bool | False |  |  | Allow anonymous frontend log ingest when signature is valid. |
-| ALLOW_PUBLIC_SIGNUP | bool | True |  | ✅ | Allow unauthenticated tenants to self-register via /auth/register. Derived from SIGNUP_ACCESS_POLICY. |
 | ALLOW_SIGNUP_TRIAL_OVERRIDE | bool | False |  | ✅ | Permit /auth/register callers to request trial periods up to the plan/default cap. |
 | ANTHROPIC_API_KEY | str \| NoneType | — |  | ✅ | Anthropic API key |
 | APP_DESCRIPTION | str | api-service FastAPI microservice |  | ✅ | Application description |
@@ -118,7 +117,7 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | GCS_BUCKET | str \| NoneType | — |  | ✅ | Default bucket name when using GCS provider. |
 | GCS_CREDENTIALS_JSON | str \| NoneType | — |  | ✅ | Inline JSON credentials for GCS (service account). Optional if using ADC or credentials path. |
 | GCS_CREDENTIALS_PATH | str \| NoneType | — |  | ✅ | Path to GCS credentials JSON file. |
-| GCS_PROJECT_ID | str \| NoneType | — |  | ✅ | GCP project ID for GCS operations. |
+| GCP_PROJECT_ID | str \| NoneType | — |  | ✅ | GCP project ID for GCS operations. |
 | GCS_SIGNING_EMAIL | str \| NoneType | — |  | ✅ | Service account email used for V4 signed URLs (GCS). |
 | GCS_UNIFORM_ACCESS | bool | True |  | ✅ | Assume uniform bucket-level access (UBLA) is enabled. |
 | GEMINI_API_KEY | str \| NoneType | — |  | ✅ | Google Gemini API key |

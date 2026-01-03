@@ -50,7 +50,7 @@ to `false`, enable the APIs above manually before running `terraform apply`.
 - `AUTH_KEY_STORAGE_PROVIDER` (defaults to `gcp_sm`)
 - `AUTH_KEY_SECRET_NAME`
 - `STORAGE_PROVIDER=gcs`
-- `GCS_BUCKET`, `GCS_PROJECT_ID`
+- `GCS_BUCKET`, `GCP_PROJECT_ID`
 - `ALLOWED_HOSTS`, `ALLOWED_ORIGINS`
 
 ### Web (minimal)

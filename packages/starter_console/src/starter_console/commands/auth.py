@@ -93,7 +93,7 @@ def _register_tokens_command(subparsers: ParserSubparsers) -> None:
     issue_parser.add_argument(
         "--base-url",
         default=None,
-        help="AuthService base URL (defaults to AUTH_CLI_BASE_URL or http://127.0.0.1:8000).",
+        help="AuthService base URL (defaults to API_BASE_URL or http://127.0.0.1:8000).",
     )
     issue_parser.set_defaults(handler=handle_issue_service_account)
 

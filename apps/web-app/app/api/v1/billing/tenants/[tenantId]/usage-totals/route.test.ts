@@ -4,9 +4,13 @@ import type { UsageTotalResponse } from '@/lib/api/client/types.gen';
 import type { NextRequest } from 'next/server';
 
 const listTenantUsageTotals = vi.hoisted(() => vi.fn());
+const isBillingEnabled = vi.hoisted(() => vi.fn());
 
 vi.mock('@/lib/server/services/billing', () => ({
   listTenantUsageTotals,
+}));
+vi.mock('@/lib/server/features', () => ({
+  isBillingEnabled,
 }));
 
 async function loadHandler() {
@@ -27,13 +31,13 @@ const context = (tenantId?: string): Parameters<
 });
 
 beforeEach(() => {
-  delete process.env.NEXT_PUBLIC_ENABLE_BILLING;
   listTenantUsageTotals.mockReset();
+  isBillingEnabled.mockReset();
 });
 
 describe('GET /api/v1/billing/tenants/[tenantId]/usage-totals', () => {
   it('returns 404 when billing is disabled', async () => {
-    process.env.NEXT_PUBLIC_ENABLE_BILLING = 'false';
+    isBillingEnabled.mockResolvedValueOnce(false);
     const { GET } = await loadHandler();
 
     const response = await GET(mockRequest('http://localhost/api/v1/billing/tenants/t1/usage-totals'), context('t1'));
@@ -42,7 +46,7 @@ describe('GET /api/v1/billing/tenants/[tenantId]/usage-totals', () => {
   });
 
   it('returns usage totals payload', async () => {
-    process.env.NEXT_PUBLIC_ENABLE_BILLING = 'true';
+    isBillingEnabled.mockResolvedValueOnce(true);
     const { GET } = await loadHandler();
 
     const totals: UsageTotalResponse[] = [

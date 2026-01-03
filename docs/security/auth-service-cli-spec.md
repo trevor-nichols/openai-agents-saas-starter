@@ -60,7 +60,7 @@ Operator / CI Job
 
 ### 3.3 Environment Variables
 
-- `AUTH_CLI_BASE_URL` — AuthService base URL (default `http://localhost:8000`).  
+- `API_BASE_URL` — AuthService base URL (default `http://localhost:8000`).  
 - `AUTH_CLI_VAULT_ADDR` — Vault endpoint (inherited from environment).  
 - `AUTH_CLI_VAULT_ROLE_ID` / `AUTH_CLI_VAULT_SECRET_ID` — AppRole credentials (recommended to source from CI secrets).  
 - `AUTH_CLI_MTLS_CERT` / `AUTH_CLI_MTLS_KEY` — Optional mTLS client cert/key if Vault proxies require it.  

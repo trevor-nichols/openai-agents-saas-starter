@@ -133,6 +133,9 @@ import type {
   DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetData,
   DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetErrors,
   DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetResponses,
+  FeatureFlagsHealthFeaturesGetData,
+  FeatureFlagsHealthFeaturesGetErrors,
+  FeatureFlagsHealthFeaturesGetResponses,
   GetAgentStatusApiV1AgentsAgentNameStatusGetData,
   GetAgentStatusApiV1AgentsAgentNameStatusGetErrors,
   GetAgentStatusApiV1AgentsAgentNameStatusGetResponses,
@@ -538,6 +541,26 @@ export const healthCheckHealthGet = <ThrowOnError extends boolean = false>(
     ThrowOnError
   >({
     url: "/health",
+    ...options,
+  });
+};
+
+/**
+ * Feature Flags
+ *
+ * Expose backend feature flags for downstream clients.
+ */
+export const featureFlagsHealthFeaturesGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<FeatureFlagsHealthFeaturesGetData, ThrowOnError>,
+) => {
+  return (options?.client ?? client).get<
+    FeatureFlagsHealthFeaturesGetResponses,
+    FeatureFlagsHealthFeaturesGetErrors,
+    ThrowOnError
+  >({
+    url: "/health/features",
     ...options,
   });
 };

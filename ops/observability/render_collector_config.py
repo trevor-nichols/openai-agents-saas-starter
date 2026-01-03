@@ -66,12 +66,12 @@ def _build_config(env: dict[str, str]) -> dict:
         exporters[exporter_name] = exporter
         pipeline_exporters.append(exporter_name)
 
-    datadog_key = env.get("OTEL_EXPORTER_DATADOG_API_KEY", "").strip()
+    datadog_key = env.get("LOGGING_DATADOG_API_KEY", "").strip()
     if datadog_key:
         exporter_name = "datadog"
         exporters[exporter_name] = {
             "api": {
-                "site": env.get("OTEL_EXPORTER_DATADOG_SITE", "datadoghq.com"),
+                "site": env.get("LOGGING_DATADOG_SITE", "datadoghq.com"),
                 "key": datadog_key,
             },
             "metrics": {"flush_interval": "15s"},

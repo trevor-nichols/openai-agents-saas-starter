@@ -42,7 +42,7 @@ Inventory highlights
 - Ops: compose files live at `ops/compose/*.yml`; observability generator at `ops/observability/render_collector_config.py` used by just recipes.
 
 Env + gitignore posture
-- Env files: `apps/api-service/.env.local`, `apps/api-service/.env.local.example`, `.env.compose`, `.env.compose.example`; all gitignored alongside generic `.env*` variants.
+- Env files: `apps/api-service/.env.local`, `apps/api-service/.env.example`, `.env.compose`, `.env.compose.example`; all gitignored alongside generic `.env*` variants.
 - `var/` is globally ignored; caches (`.ruff_cache`, `.mypy_cache`, `.pytest_cache`, `.next`) are already covered. Keeping env + var at root is compatible with the target layout; future `apps/*` and `packages/*` need no gitignore changes unless we add new build dirs.
 
 Path-sensitive tooling (must update in Phases 2–3)

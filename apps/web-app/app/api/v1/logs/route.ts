@@ -1,8 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createHmac } from 'node:crypto';
 
-import { API_BASE_URL } from '@/lib/config';
 import { ACCESS_TOKEN_COOKIE } from '@/lib/config';
+import { API_BASE_URL } from '@/lib/config/server';
 
 const BACKEND_LOG_ENDPOINT = `${API_BASE_URL}/api/v1/logs`;
 

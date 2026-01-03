@@ -79,7 +79,7 @@ def _build_runtime_config(ctx: CLIContext) -> LoggingRuntimeConfig:
     environment = _pick("ENVIRONMENT", default="development")
     log_level = _pick("CONSOLE_LOG_LEVEL", "LOG_LEVEL", default="INFO")
     logging_sinks = _pick("CONSOLE_LOGGING_SINKS", default="file")
-    log_root = _pick("CONSOLE_LOG_ROOT", "LOG_ROOT")
+    log_root = _pick("LOG_ROOT")
 
     logging_file_path = _pick(
         "CONSOLE_LOGGING_FILE_PATH", default="var/log/starter-console.log"
@@ -98,12 +98,8 @@ def _build_runtime_config(ctx: CLIContext) -> LoggingRuntimeConfig:
         False,
     )
 
-    logging_datadog_api_key = _pick(
-        "CONSOLE_LOGGING_DATADOG_API_KEY", "LOGGING_DATADOG_API_KEY"
-    )
-    logging_datadog_site = _pick(
-        "CONSOLE_LOGGING_DATADOG_SITE", "LOGGING_DATADOG_SITE", default="datadoghq.com"
-    )
+    logging_datadog_api_key = _pick("LOGGING_DATADOG_API_KEY")
+    logging_datadog_site = _pick("LOGGING_DATADOG_SITE", default="datadoghq.com")
     logging_otlp_endpoint = _pick(
         "CONSOLE_LOGGING_OTLP_ENDPOINT", "LOGGING_OTLP_ENDPOINT"
     )

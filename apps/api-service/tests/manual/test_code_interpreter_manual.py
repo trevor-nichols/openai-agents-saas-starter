@@ -13,7 +13,7 @@ Assertions:
 - Assistant text is non-empty and references the computed result
 
 Auth flow & base URL mirror the web search manual test: token if provided, otherwise prompt
-for the dev password; NEXT_PUBLIC_API_URL/PORT for base URL.
+for the dev password; API_BASE_URL/PORT for base URL.
 """
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ from tests.utils.stream_assertions import (
 
 
 def _default_base_url() -> str:
-    api_env = os.getenv("NEXT_PUBLIC_API_URL")
+    api_env = os.getenv("API_BASE_URL")
     if api_env:
         return api_env
     port = os.getenv("PORT", "8000")

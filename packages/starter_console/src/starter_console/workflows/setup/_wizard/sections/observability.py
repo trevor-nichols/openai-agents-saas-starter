@@ -260,13 +260,10 @@ def _clear_collector_exporters(context: WizardContext) -> None:
     context.unset_backend("OTEL_EXPORTER_SENTRY_ENDPOINT")
     context.unset_backend("OTEL_EXPORTER_SENTRY_AUTH_HEADER")
     context.unset_backend("OTEL_EXPORTER_SENTRY_HEADERS")
-    context.unset_backend("OTEL_EXPORTER_DATADOG_API_KEY")
-    context.unset_backend("OTEL_EXPORTER_DATADOG_SITE")
 
 
 def _configure_collector_exporters(context: WizardContext, provider: InputProvider) -> None:
     _configure_sentry_exporter(context, provider)
-    _configure_datadog_exporter(context, provider)
 
 
 def _configure_sentry_exporter(context: WizardContext, provider: InputProvider) -> None:
@@ -306,33 +303,6 @@ def _configure_sentry_exporter(context: WizardContext, provider: InputProvider) 
         context.set_backend("OTEL_EXPORTER_SENTRY_HEADERS", headers)
     else:
         context.unset_backend("OTEL_EXPORTER_SENTRY_HEADERS")
-
-
-def _configure_datadog_exporter(context: WizardContext, provider: InputProvider) -> None:
-    default_enabled = bool(context.current("OTEL_EXPORTER_DATADOG_API_KEY"))
-    enabled = provider.prompt_bool(
-        key="OTEL_EXPORTER_DATADOG_ENABLED",
-        prompt="Forward logs to Datadog from the bundled collector?",
-        default=default_enabled,
-    )
-    if not enabled:
-        context.unset_backend("OTEL_EXPORTER_DATADOG_API_KEY")
-        context.unset_backend("OTEL_EXPORTER_DATADOG_SITE")
-        return
-    api_key = provider.prompt_secret(
-        key="OTEL_EXPORTER_DATADOG_API_KEY",
-        prompt="Datadog API key",
-        existing=context.current("OTEL_EXPORTER_DATADOG_API_KEY"),
-        required=True,
-    )
-    site = provider.prompt_string(
-        key="OTEL_EXPORTER_DATADOG_SITE",
-        prompt="Datadog site (datadoghq.com/datadoghq.eu/etc.)",
-        default=context.current("OTEL_EXPORTER_DATADOG_SITE") or "datadoghq.com",
-        required=True,
-    )
-    context.set_backend("OTEL_EXPORTER_DATADOG_API_KEY", api_key, mask=True)
-    context.set_backend("OTEL_EXPORTER_DATADOG_SITE", site)
 
 
 def _maybe_download_maxmind_db(

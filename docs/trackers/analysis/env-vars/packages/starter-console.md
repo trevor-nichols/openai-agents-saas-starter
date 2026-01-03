@@ -4,13 +4,12 @@
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Access token lifetime in minutes. | `src/starter_console/workflows/setup/_wizard/sections/security.py` | Optional | 30 | Integer | Config |
 | `AGENT_ALLOW_INSECURE_COOKIES` | Allow insecure cookies in Next.js (dev/demo). | `src/starter_console/workflows/setup/_wizard/sections/frontend.py` | Optional | false | Boolean | Config |
-| `AGENT_API_MOCK` | Use mock API responses in Next.js. | `src/starter_console/workflows/setup/_wizard/sections/frontend.py` | Optional | false | Boolean | Config |
 | `AGENT_FORCE_SECURE_COOKIES` | Force secure cookies in Next.js. | `src/starter_console/workflows/setup/_wizard/sections/frontend.py` | Optional | true | Boolean | Config |
+| `NEXT_PUBLIC_AGENT_API_MOCK` | Client + server flag to enable mock API mode. | `src/starter_console/workflows/setup/_wizard/sections/frontend.py` | Optional | false | Boolean | Config |
 | `ALLOWED_HEADERS` | Comma-separated list of allowed HTTP headers. | `src/starter_console/workflows/setup/_wizard/sections/core.py` | Optional | * | String (CSV) | Config |
 | `ALLOWED_HOSTS` | Comma-separated list of allowed hostnames. | `src/starter_console/workflows/setup/_wizard/sections/core.py` | Required | localhost... | String (CSV) | Config |
 | `ALLOWED_METHODS` | Comma-separated list of allowed HTTP methods. | `src/starter_console/workflows/setup/_wizard/sections/core.py` | Optional | GET,POST... | String (CSV) | Config |
 | `ALLOWED_ORIGINS` | Comma-separated list of allowed CORS origins. | `src/starter_console/workflows/setup/_wizard/sections/core.py` | Required | http://localhost... | String (CSV) | Config |
-| `ALLOW_PUBLIC_SIGNUP` | Enable public self-registration. | `src/starter_console/workflows/setup/_wizard/sections/signup.py` | Required | - | Boolean | Config |
 | `ALLOW_SIGNUP_TRIAL_OVERRIDE` | Allow clients to request custom trial lengths. | `src/starter_console/workflows/setup/_wizard/sections/signup.py` | Optional | false | Boolean | Config |
 | `ANTHROPIC_API_KEY` | API key for Anthropic models. | `src/starter_console/workflows/setup/_wizard/sections/providers/ai.py` | Optional | - | String | Secret |
 | `API_BASE_URL` | Base URL of the backend API. | `src/starter_console/workflows/setup/_wizard/sections/core.py` | Required | http://127.0.0.1:8000 | URL | Config |
@@ -20,7 +19,6 @@
 | `APP_VERSION` | Application version string. | `src/starter_console/workflows/setup/_wizard/sections/core.py` | Optional | 1.0.0 | String | Config |
 | `AUTH_AUDIENCE` | JWT audience(s). | `src/starter_console/workflows/setup/_wizard/sections/core.py` | Required | agent-api... | CSV or JSON array | Config |
 | `AUTH_CACHE_REDIS_URL` | Redis URL for auth/session caching. | `src/starter_console/workflows/setup/_wizard/sections/providers/redis.py` | Optional | - | Redis URL | Secret |
-| `AUTH_CLI_BASE_URL` | Auth service base URL for CLI operations. | `src/starter_console/services/auth/tokens.py` | Optional | http://127.0.0.1:8000 | URL | Config |
 | `AUTH_CLI_DEV_AUTH_MODE` | Development auth mode override (e.g. `demo`). | `src/starter_console/services/auth/security/signing.py` | Optional | vault | String | Config |
 | `AUTH_CLI_OUTPUT` | Default output format for auth CLI commands. | `src/starter_console/services/auth/tokens.py` | Optional | json | json/text/env | Config |
 | `AUTH_EMAIL_VERIFICATION_TOKEN_PEPPER` | Pepper for email verification tokens. | `src/starter_console/workflows/setup/_wizard/sections/secrets.py` | Required | - | String | Secret |
@@ -58,7 +56,6 @@
 | `AZURE_BLOB_CONTAINER` | Azure Blob Storage container name. | `src/starter_console/workflows/setup/_wizard/sections/storage.py` | Required | - | String | Config |
 | `AZURE_CLIENT_ID` | Azure Client ID. | `src/starter_console/workflows/secrets/providers/azure.py` | Optional | - | String | Config |
 | `AZURE_CLIENT_SECRET` | Azure Client Secret. | `src/starter_console/workflows/secrets/providers/azure.py` | Optional | - | String | Secret |
-| `AZURE_KEY_VAULT_NAME` | Azure Key Vault Name (legacy/fallback). | `src/starter_console/workflows/home/probes/secrets.py` | Optional | - | String | Config |
 | `AZURE_KEY_VAULT_URL` | Azure Key Vault URL. | `src/starter_console/workflows/secrets/providers/azure.py` | Required | - | URL | Config |
 | `AZURE_KV_CACHE_TTL_SECONDS` | Cache TTL for Azure Key Vault secrets. | `src/starter_console/core/inventory.py` | Optional | - | Integer | Config |
 | `AZURE_KV_SIGNING_SECRET_NAME` | Name of the signing secret in Key Vault. | `src/starter_console/workflows/secrets/providers/azure.py` | Required | auth-signing-secret | String | Config |
@@ -73,8 +70,6 @@
 | `CHAT_STREAM_RATE_LIMIT_PER_MINUTE` | Rate limit for chat streams per minute. | `src/starter_console/workflows/setup/_wizard/sections/security.py` | Optional | 30 | Integer | Config |
 | `COMPOSE_FILE` | Path to docker-compose file. | `src/starter_console/services/infra/stack_ops.py` | Optional | - | Path | Config |
 | `COMPOSE_PROJECT_NAME` | Docker compose project name. | `tests/unit/commands/stop/test_stop_command.py` | Optional | - | String | Config |
-| `CONSOLE_LOGGING_DATADOG_API_KEY` | Datadog API key for console logs. | `src/starter_console/observability/logging.py` | Optional | - | String | Secret |
-| `CONSOLE_LOGGING_DATADOG_SITE` | Datadog site for console logs. | `src/starter_console/observability/logging.py` | Optional | datadoghq.com | String | Config |
 | `CONSOLE_LOGGING_DUPLEX_ERROR_FILE` | Enable duplex error logging for console. | `src/starter_console/observability/logging.py` | Optional | false | Boolean | Config |
 | `CONSOLE_LOGGING_FILE_BACKUPS` | Number of console log backups to keep. | `src/starter_console/observability/logging.py` | Optional | 5 | Integer | Config |
 | `CONSOLE_LOGGING_FILE_MAX_MB` | Max size of console log file in MB. | `src/starter_console/observability/logging.py` | Optional | 10 | Integer | Config |
@@ -84,7 +79,6 @@
 | `CONSOLE_LOGGING_OTLP_HEADERS` | OTLP headers for console logs. | `src/starter_console/observability/logging.py` | Optional | - | JSON | Secret |
 | `CONSOLE_LOGGING_SINKS` | Logging sinks for console (`file`, `stdout`, etc). | `src/starter_console/observability/logging.py` | Optional | file | CSV | Config |
 | `CONSOLE_LOG_LEVEL` | Logging level for console. | `src/starter_console/observability/logging.py` | Optional | INFO | String | Config |
-| `CONSOLE_LOG_ROOT` | Root directory for console logs. | `src/starter_console/observability/logging.py` | Optional | - | Path | Config |
 | `CONSOLE_SERVICE_NAME` | Service name for console telemetry. | `src/starter_console/observability/logging.py` | Optional | starter-console | String | Config |
 | `CONSOLE_TEXTUAL_LOG_LEVEL` | Log level for Textual framework logs. | `src/starter_console/observability/logging.py` | Optional | - | String | Config |
 | `DATABASE_ECHO` | Enable SQLAlchemy echo logging. | `src/starter_console/workflows/setup/_wizard/sections/core.py` | Optional | false | Boolean | Config |
@@ -98,20 +92,17 @@
 | `EMAIL_VERIFICATION_EMAIL_RATE_LIMIT_PER_HOUR` | Verification emails per account per hour. | `src/starter_console/workflows/setup/_wizard/sections/security.py` | Optional | 3 | Integer | Config |
 | `EMAIL_VERIFICATION_IP_RATE_LIMIT_PER_HOUR` | Verification emails per IP per hour. | `src/starter_console/workflows/setup/_wizard/sections/security.py` | Optional | 10 | Integer | Config |
 | `EMAIL_VERIFICATION_TOKEN_TTL_MINUTES` | Email verification token lifetime. | `src/starter_console/workflows/setup/_wizard/sections/security.py` | Optional | 60 | Integer | Config |
-| `ENABLE_ANTHROPIC_API_KEY` | Enable Anthropic API key configuration. | `src/starter_console/workflows/setup/_wizard/sections/providers/ai.py` | Optional | - | Boolean | Config |
 | `ENABLE_BILLING` | Enable billing features. | `src/starter_console/workflows/setup/_wizard/sections/providers/billing.py` | Optional | false | Boolean | Config |
 | `ENABLE_BILLING_RETRY_WORKER` | Enable billing retry worker. | `src/starter_console/workflows/setup/_wizard/sections/signup.py` | Optional | - | Boolean | Config |
 | `ENABLE_BILLING_STREAM` | Enable billing stream via Redis. | `src/starter_console/workflows/setup/_wizard/sections/providers/billing.py` | Optional | false | Boolean | Config |
 | `ENABLE_BILLING_STREAM_REPLAY` | Replay billing stream events on startup. | `src/starter_console/workflows/setup/_wizard/sections/signup.py` | Optional | true | Boolean | Config |
 | `ENABLE_FRONTEND_LOG_INGEST` | Enable frontend log ingestion endpoint. | `src/starter_console/workflows/setup/_wizard/sections/observability.py` | Optional | - | Boolean | Config |
-| `ENABLE_GEMINI_API_KEY` | Enable Google Gemini API key configuration. | `src/starter_console/workflows/setup/_wizard/sections/providers/ai.py` | Optional | - | Boolean | Config |
 | `ENABLE_OTEL_COLLECTOR` | Enable bundled OpenTelemetry Collector. | `src/starter_console/workflows/setup/_wizard/sections/observability.py` | Optional | - | Boolean | Config |
 | `ENABLE_SECRETS_PROVIDER_TELEMETRY` | Enable telemetry for secrets provider. | `src/starter_console/workflows/setup/_wizard/sections/secrets.py` | Optional | false | Boolean | Config |
 | `ENABLE_SLACK_STATUS_NOTIFICATIONS` | Enable Slack notifications for status incidents. | `src/starter_console/workflows/setup/_wizard/sections/integrations.py` | Optional | false | Boolean | Config |
 | `ENABLE_USAGE_GUARDRAILS` | Enable usage guardrails. | `src/starter_console/workflows/setup/_wizard/sections/usage.py` | Optional | false | Boolean | Config |
 | `ENABLE_VECTOR_LIMIT_ENTITLEMENTS` | Add vector storage limits to entitlements. | `src/starter_console/workflows/setup/_wizard/sections/usage.py` | Optional | true | Boolean | Config |
 | `ENABLE_VECTOR_STORE_SYNC_WORKER` | Enable vector store sync worker (tests). | `tests/conftest.py` | Optional | false | Boolean | Config |
-| `ENABLE_XAI_API_KEY` | Enable xAI API key configuration. | `src/starter_console/workflows/setup/_wizard/sections/providers/ai.py` | Optional | - | Boolean | Config |
 | `ENVIRONMENT` | Deployment environment label. | `src/starter_console/workflows/setup/_wizard/sections/core.py` | Required | development | String | Config |
 | `EXPECT_API_DOWN` | Suppress API probe failure in doctor. | `src/starter_console/workflows/home/doctor.py` | Optional | - | Boolean | Config |
 | `EXPECT_DB_DOWN` | Suppress Database probe failure in doctor. | `src/starter_console/workflows/home/doctor.py` | Optional | - | Boolean | Config |
@@ -123,7 +114,7 @@
 | `GCS_BUCKET` | Google Cloud Storage bucket name. | `src/starter_console/workflows/setup/_wizard/sections/storage.py` | Required | - | String | Config |
 | `GCS_CREDENTIALS_JSON` | Inline GCS credentials JSON. | `src/starter_console/workflows/setup/_wizard/sections/storage.py` | Optional | - | JSON | Secret |
 | `GCS_CREDENTIALS_PATH` | Path to GCS credentials JSON file. | `src/starter_console/workflows/setup/_wizard/sections/storage.py` | Optional | - | Path | Config |
-| `GCS_PROJECT_ID` | GCS Project ID. | `src/starter_console/workflows/setup/_wizard/sections/storage.py` | Required | - | String | Config |
+| `GCP_PROJECT_ID` | GCP project ID for GCS operations. | `src/starter_console/workflows/setup/_wizard/sections/storage.py` | Required | - | String | Config |
 | `GCS_SIGNING_EMAIL` | Service account email for signed URLs. | `src/starter_console/workflows/setup/_wizard/sections/storage.py` | Optional | - | Email | Config |
 | `GCS_UNIFORM_ACCESS` | Use Uniform Bucket Level Access for GCS. | `src/starter_console/workflows/setup/_wizard/sections/storage.py` | Optional | true | Boolean | Config |
 | `GEMINI_API_KEY` | API key for Google Gemini. | `src/starter_console/workflows/setup/_wizard/sections/providers/ai.py` | Optional | - | String | Secret |
@@ -169,14 +160,10 @@
 | `MINIO_REGION` | MinIO region. | `src/starter_console/workflows/setup/_wizard/sections/storage.py` | Optional | - | String | Config |
 | `MINIO_SECRET_KEY` | MinIO secret key. | `src/starter_console/workflows/setup/_wizard/sections/storage.py` | Required | - | String | Secret |
 | `MINIO_SECURE` | Use HTTPS for MinIO. | `src/starter_console/workflows/setup/_wizard/sections/storage.py` | Optional | - | Boolean | Config |
-| `NEXT_PUBLIC_API_URL` | API base URL for frontend. | `src/starter_console/workflows/setup/_wizard/sections/frontend.py` | Required | - | URL | Config |
-| `NEXT_PUBLIC_ENABLE_BILLING` | Enable billing features in frontend. | `src/starter_console/workflows/setup/_wizard/sections/providers/billing.py` | Optional | - | Boolean | Config |
 | `NEXT_PUBLIC_LOG_LEVEL` | Frontend log level. | `src/starter_console/workflows/setup/_wizard/sections/frontend.py` | Required | info | String | Config |
 | `NEXT_PUBLIC_LOG_SINK` | Frontend log sink. | `src/starter_console/workflows/setup/_wizard/sections/frontend.py` | Required | console | String | Config |
 | `OPENAI_AGENTS_DISABLE_TRACING` | Disable OpenAI agents tracing (tests). | `tests/conftest.py` | Optional | true | Boolean | Config |
 | `OPENAI_API_KEY` | OpenAI API key. | `src/starter_console/workflows/setup/_wizard/sections/providers/ai.py` | Required | - | String | Secret |
-| `OTEL_EXPORTER_DATADOG_API_KEY` | Datadog API key for OTel exporter. | `src/starter_console/workflows/setup/_wizard/sections/observability.py` | Optional | - | String | Secret |
-| `OTEL_EXPORTER_DATADOG_SITE` | Datadog site for OTel exporter. | `src/starter_console/workflows/setup/_wizard/sections/observability.py` | Optional | datadoghq.com | String | Config |
 | `OTEL_EXPORTER_SENTRY_AUTH_HEADER` | Auth header for Sentry OTel exporter. | `src/starter_console/workflows/setup/_wizard/sections/observability.py` | Optional | - | String | Secret |
 | `OTEL_EXPORTER_SENTRY_ENDPOINT` | Sentry OTLP endpoint. | `src/starter_console/workflows/setup/_wizard/sections/observability.py` | Optional | - | URL | Config |
 | `OTEL_EXPORTER_SENTRY_HEADERS` | Extra headers for Sentry OTel exporter. | `src/starter_console/workflows/setup/_wizard/sections/observability.py` | Optional | - | JSON | Secret |
@@ -242,7 +229,6 @@
 | `STARTER_CONSOLE_SKIP_VAULT_PROBE` | Skip Vault probe in CLI verification. | `src/starter_console/workflows/setup/validators.py` | Optional | false | Boolean | Config |
 | `STARTER_CONSOLE_TELEMETRY_OPT_IN` | Opt-in for CLI telemetry. | `src/starter_console/core/constants.py` | Optional | - | Boolean | Config |
 | `STARTER_LOCAL_DATABASE_MODE` | Database mode for local development (`compose`/`external`). | `src/starter_console/workflows/home/probes/db_config.py` | Optional | compose | String | Config |
-| `STATUS_API_BASE_URL` | Base URL for Status API. | `src/starter_console/services/auth/status_ops.py` | Optional | http://127.0.0.1:8000 | URL | Config |
 | `STATUS_API_TOKEN` | Auth token for Status API. | `src/starter_console/services/auth/status_ops.py` | Required | - | String | Secret |
 | `STATUS_SUBSCRIPTION_EMAIL_RATE_LIMIT_PER_HOUR` | Status subscription emails per hour. | `src/starter_console/workflows/setup/_wizard/sections/security.py` | Optional | 5 | Integer | Config |
 | `STATUS_SUBSCRIPTION_ENCRYPTION_KEY` | Key for encrypting status subscription data. | `src/starter_console/workflows/setup/_wizard/sections/security.py` | Required | - | String | Secret |

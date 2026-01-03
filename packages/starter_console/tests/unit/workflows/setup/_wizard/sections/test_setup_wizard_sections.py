@@ -214,11 +214,12 @@ def test_frontend_section_writes_env_values(cli_ctx: CLIContext, tmp_path: Path)
         frontend_env=frontend_env,
         frontend_path=frontend_env_path,
     )
+    context.backend_env.set("APP_PUBLIC_URL", "https://public.example")
     context.api_base_url = "http://internal.example"
     provider = StubProvider(
         strings={"PLAYWRIGHT_BASE_URL": "http://ui.example"},
         bools={
-            "AGENT_API_MOCK": False,
+            "NEXT_PUBLIC_AGENT_API_MOCK": False,
             "AGENT_FORCE_SECURE_COOKIES": True,
             "AGENT_ALLOW_INSECURE_COOKIES": False,
         },
@@ -226,7 +227,8 @@ def test_frontend_section_writes_env_values(cli_ctx: CLIContext, tmp_path: Path)
 
     frontend.configure(context, provider)
 
-    assert frontend_env.get("NEXT_PUBLIC_API_URL") == "http://internal.example"
+    assert frontend_env.get("API_BASE_URL") == "http://internal.example"
+    assert frontend_env.get("APP_PUBLIC_URL") == "https://public.example"
     assert frontend_env.get("PLAYWRIGHT_BASE_URL") == "http://ui.example"
     assert frontend_env.get("AGENT_FORCE_SECURE_COOKIES") == "true"
     assert frontend_env.get("AGENT_ALLOW_INSECURE_COOKIES") == "false"

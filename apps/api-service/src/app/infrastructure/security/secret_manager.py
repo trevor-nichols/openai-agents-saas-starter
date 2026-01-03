@@ -115,7 +115,8 @@ class GCPSecretManagerKeyStorageClient(SecretManagerClient):
         secret_name = settings.auth_key_secret_name or ""
         if not config.project_id and not secret_name.startswith("projects/"):
             raise KeyStorageError(
-                "GCP_SM_PROJECT_ID must be set when auth_key_secret_name is not fully qualified."
+                "GCP_SM_PROJECT_ID or GCP_PROJECT_ID must be set when "
+                "auth_key_secret_name is not fully qualified."
             )
         try:
             self._client = GCPSecretManagerClient(project_id=config.project_id or None)

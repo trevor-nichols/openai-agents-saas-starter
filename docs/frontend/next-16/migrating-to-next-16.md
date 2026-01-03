@@ -1096,15 +1096,15 @@ export default async function Page() {
 For client-accessible values, use the `NEXT_PUBLIC_` prefix:
 
 ```bash filename=".env.local"
-NEXT_PUBLIC_API_URL="/api"
+NEXT_PUBLIC_AGENT_API_MOCK="true"
 ```
 
 ```tsx filename="app/components/client-component.tsx"
 'use client'
 
 export default function ClientComponent() {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL
-  return <p>API URL: {apiUrl}</p>
+  const useMock = process.env.NEXT_PUBLIC_AGENT_API_MOCK === 'true'
+  return <p>Mock API: {String(useMock)}</p>
 }
 ```
 

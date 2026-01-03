@@ -62,28 +62,28 @@ Notes:
 ## API quickstart (tenant-scoped)
 1) Create store
    ```bash
-   curl -X POST "$API_URL/api/v1/vector-stores" \
+   curl -X POST "$API_BASE_URL/api/v1/vector-stores" \
      -H "Authorization: Bearer $TOKEN" \
      -H "Content-Type: application/json" \
      -d '{"name":"primary"}'
    ```
 2) Attach a file (after uploading via Files API and obtaining file_id)
    ```bash
-   curl -X POST "$API_URL/api/v1/vector-stores/$STORE_ID/files" \
+   curl -X POST "$API_BASE_URL/api/v1/vector-stores/$STORE_ID/files" \
      -H "Authorization: Bearer $TOKEN" \
      -H "Content-Type: application/json" \
      -d '{"file_id":"$FILE_ID","poll":true}'
    ```
 2b) Attach a file from storage (upload to storage first, then promote)
    ```bash
-   curl -X POST "$API_URL/api/v1/vector-stores/$STORE_ID/files/upload" \
+   curl -X POST "$API_BASE_URL/api/v1/vector-stores/$STORE_ID/files/upload" \
      -H "Authorization: Bearer $TOKEN" \
      -H "Content-Type: application/json" \
      -d '{"object_id":"$OBJECT_ID","agent_key":"$AGENT_KEY","poll":true}'
    ```
 3) Search
    ```bash
-   curl -X POST "$API_URL/api/v1/vector-stores/$STORE_ID/search" \
+   curl -X POST "$API_BASE_URL/api/v1/vector-stores/$STORE_ID/search" \
      -H "Authorization: Bearer $TOKEN" \
      -H "Content-Type: application/json" \
      -d '{"query":"how do refunds work?","max_num_results":5}'

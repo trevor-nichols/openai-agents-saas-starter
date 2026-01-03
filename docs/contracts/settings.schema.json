@@ -1645,12 +1645,6 @@
       "title": "Signup Access Policy",
       "type": "string"
     },
-    "ALLOW_PUBLIC_SIGNUP": {
-      "default": true,
-      "description": "Allow unauthenticated tenants to self-register via /auth/register. Derived from SIGNUP_ACCESS_POLICY.",
-      "title": "Allow Public Signup",
-      "type": "boolean"
-    },
     "allow_signup_trial_override": {
       "default": false,
       "description": "Permit /auth/register callers to request trial periods up to the plan/default cap.",

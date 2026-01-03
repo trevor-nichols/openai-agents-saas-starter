@@ -14,7 +14,7 @@ afterEach(() => {
 
 describe('sitemap route', () => {
   it('emits absolute URLs for public marketing paths', () => {
-    process.env.SITE_URL = 'https://example.com';
+    process.env.APP_PUBLIC_URL = 'https://example.com';
     process.env.VERCEL_GIT_COMMIT_TIMESTAMP = '2024-01-01T00:00:00.000Z';
 
     const entries = sitemap();

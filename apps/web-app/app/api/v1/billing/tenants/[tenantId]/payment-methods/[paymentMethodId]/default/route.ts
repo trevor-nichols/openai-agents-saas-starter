@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
-import { billingEnabled } from '@/lib/config/features';
+import { isBillingEnabled } from '@/lib/server/features';
 import { setTenantDefaultPaymentMethod } from '@/lib/server/services/billing';
 import {
   mapBillingErrorToStatus,
@@ -23,7 +23,7 @@ async function resolvePaymentMethodId(context: RouteContext): Promise<string | n
 }
 
 export async function POST(request: NextRequest, context: RouteContext) {
-  if (!billingEnabled) {
+  if (!(await isBillingEnabled())) {
     return NextResponse.json({ success: false, error: 'Billing is disabled.' }, { status: 404 });
   }
   const tenantId = await resolveTenantId(context);

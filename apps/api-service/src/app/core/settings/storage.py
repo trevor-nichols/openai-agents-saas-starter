@@ -91,6 +91,7 @@ class StorageSettingsMixin(BaseModel):
     gcs_project_id: str | None = Field(
         default=None,
         description="GCP project ID for GCS operations.",
+        alias="GCP_PROJECT_ID",
     )
     gcs_bucket: str | None = Field(
         default=None,

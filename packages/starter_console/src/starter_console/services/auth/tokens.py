@@ -42,7 +42,7 @@ def resolve_output_format() -> str:
 
 
 def resolve_base_url() -> str:
-    return os.getenv("AUTH_CLI_BASE_URL", DEFAULT_BASE_URL)
+    return os.getenv("API_BASE_URL", DEFAULT_BASE_URL)
 
 
 def issue_service_account(

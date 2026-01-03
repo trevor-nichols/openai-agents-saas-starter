@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-import { API_BASE_URL } from '@/lib/config';
+import { API_BASE_URL } from '@/lib/config/server';
 import { getAccessTokenFromCookies } from '@/lib/auth/cookies';
 
 export async function POST() {

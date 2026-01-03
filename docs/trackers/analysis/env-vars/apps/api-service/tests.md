@@ -3,7 +3,6 @@
 | Name | Purpose | Location | Required | Default | Format | Sensitivity |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | `ALLOW_ANON_FRONTEND_LOGS` | Toggles anonymous frontend log ingestion. | `unit/api/test_frontend_logs_route.py` | Optional | `False` | Bool | Config |
-| `ALLOW_PUBLIC_SIGNUP` | **Legacy** toggle for public registration (replaced by `SIGNUP_ACCESS_POLICY`). | `unit/config/test_config.py` | Optional | `False` | Bool | Config |
 | `ALLOWED_HOSTS` | Trusted hosts for the application. | `unit/config/test_config.py` | Optional | `localhost`, `127.0.0.1` | CSV String | Config |
 | `ALLOWED_ORIGINS` | CORS allowed origins. | `unit/config/test_config.py` | Optional | `http://localhost:3000`... | CSV String | Config |
 | `AUTH_AUDIENCE` | Expected audience claim in JWTs. | `unit/config/test_config.py` | Optional | List of services | JSON/CSV | Config |
@@ -83,7 +82,7 @@ These variables are used exclusively within the `smoke/`, `manual/`, and `integr
 | `MANUAL_RECORD_STREAM_TO` | File path to record manual test SSE stream output. | `manual/test_code_interpreter_manual.py` | None |
 | `MANUAL_TENANT_ID` | Pre-supplied tenant ID for manual tests. | `manual/test_code_interpreter_manual.py` | None |
 | `MANUAL_TIMEOUT` | HTTP timeout for manual tests (seconds). | `manual/test_code_interpreter_manual.py` | `60` |
-| `NEXT_PUBLIC_API_URL` | Base API URL for manual tests. | `manual/test_code_interpreter_manual.py` | `http://localhost:8000` |
+| `API_BASE_URL` | Base API URL for manual tests. | `manual/test_code_interpreter_manual.py` | `http://localhost:8000` |
 | `PORT` | Fallback port if API URL is unset. | `manual/test_code_interpreter_manual.py` | `8000` |
 | `SMOKE_BASE_URL` | Base URL for smoke tests. | `smoke/http/config.py` | `http://localhost:8000` |
 | `SMOKE_CONVERSATION_KEY` | Key for smoke test seed conversation. | `smoke/http/config.py` | `seeded-smoke-convo` |

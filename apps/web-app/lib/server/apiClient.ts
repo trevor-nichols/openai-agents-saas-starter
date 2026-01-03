@@ -1,5 +1,5 @@
 import { createClient, createConfig, type Client } from '@/lib/api/client/client';
-import { API_BASE_URL } from '@/lib/config';
+import { API_BASE_URL } from '@/lib/config/server';
 import { getAccessTokenFromCookies } from '@/lib/auth/cookies';
 
 /**

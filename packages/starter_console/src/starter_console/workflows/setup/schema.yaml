@@ -110,21 +110,6 @@ prompts:
     when:
       - key: LOGGING_SINK_HAS_OTLP
         truthy: true
-  OTEL_EXPORTER_DATADOG_ENABLED:
-    section: observability
-    when:
-      - key: LOGGING_SINK_HAS_OTLP
-        truthy: true
-  OTEL_EXPORTER_DATADOG_API_KEY:
-    section: observability
-    when:
-      - key: LOGGING_SINK_HAS_OTLP
-        truthy: true
-  OTEL_EXPORTER_DATADOG_SITE:
-    section: observability
-    when:
-      - key: LOGGING_SINK_HAS_OTLP
-        truthy: true
   GEOIP_IPINFO_TOKEN:
     section: observability
     when:

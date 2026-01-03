@@ -130,10 +130,7 @@ def load_status_api_config() -> StatusApiConfig:
     token = os.getenv("STATUS_API_TOKEN")
     if not token:
         raise CLIError("STATUS_API_TOKEN is required to call status APIs.")
-    base_url = os.getenv(
-        "STATUS_API_BASE_URL",
-        os.getenv("AUTH_CLI_BASE_URL", DEFAULT_STATUS_BASE_URL),
-    )
+    base_url = os.getenv("API_BASE_URL", DEFAULT_STATUS_BASE_URL)
     return StatusApiConfig(base_url=base_url, token=token, timeout=DEFAULT_STATUS_TIMEOUT)
 
 

@@ -5,7 +5,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, status
 
-from app.api.models.common import HealthResponse
+from app.api.models.common import HealthFeaturesResponse, HealthResponse
 from app.bootstrap.container import get_container, wire_storage_service
 from app.core.settings import get_settings
 from app.infrastructure.db import verify_database_connection
@@ -24,6 +24,19 @@ async def health_check() -> HealthResponse:
         timestamp=datetime.utcnow().isoformat(),
         version=settings.app_version,
         uptime=round(time.time() - _start_time, 2),
+    )
+
+
+@router.get("/health/features", response_model=HealthFeaturesResponse)
+async def feature_flags() -> HealthFeaturesResponse:
+    """Expose backend feature flags for downstream clients."""
+
+    settings = get_settings()
+    billing_enabled = settings.enable_billing
+    billing_stream_enabled = bool(settings.enable_billing_stream and billing_enabled)
+    return HealthFeaturesResponse(
+        billing_enabled=billing_enabled,
+        billing_stream_enabled=billing_stream_enabled,
     )
 
 

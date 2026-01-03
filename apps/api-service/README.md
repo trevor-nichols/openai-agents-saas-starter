@@ -28,7 +28,7 @@ just api                     # starts FastAPI with env files loaded
 Manual path:
 
 ```bash
-cp apps/api-service/.env.local.example apps/api-service/.env.local
+cp apps/api-service/.env.example apps/api-service/.env.local
 just dev-up                  # docker compose: Postgres + Redis (+ optional OTel collector)
 just migrate                 # Alembic upgrade heads
 just api

@@ -4,9 +4,13 @@ import type { SubscriptionInvoiceListResponse } from '@/lib/api/client/types.gen
 import type { NextRequest } from 'next/server';
 
 const listTenantInvoices = vi.hoisted(() => vi.fn());
+const isBillingEnabled = vi.hoisted(() => vi.fn());
 
 vi.mock('@/lib/server/services/billing', () => ({
   listTenantInvoices,
+}));
+vi.mock('@/lib/server/features', () => ({
+  isBillingEnabled,
 }));
 
 async function loadHandler() {
@@ -27,13 +31,13 @@ const context = (tenantId?: string): Parameters<
 });
 
 beforeEach(() => {
-  delete process.env.NEXT_PUBLIC_ENABLE_BILLING;
   listTenantInvoices.mockReset();
+  isBillingEnabled.mockReset();
 });
 
 describe('GET /api/v1/billing/tenants/[tenantId]/invoices', () => {
   it('returns 404 when billing is disabled', async () => {
-    process.env.NEXT_PUBLIC_ENABLE_BILLING = 'false';
+    isBillingEnabled.mockResolvedValueOnce(false);
     const { GET } = await loadHandler();
 
     const response = await GET(
@@ -45,7 +49,7 @@ describe('GET /api/v1/billing/tenants/[tenantId]/invoices', () => {
   });
 
   it('rejects invalid offset', async () => {
-    process.env.NEXT_PUBLIC_ENABLE_BILLING = 'true';
+    isBillingEnabled.mockResolvedValueOnce(true);
     const { GET } = await loadHandler();
 
     const response = await GET(
@@ -57,7 +61,7 @@ describe('GET /api/v1/billing/tenants/[tenantId]/invoices', () => {
   });
 
   it('returns invoice list payload', async () => {
-    process.env.NEXT_PUBLIC_ENABLE_BILLING = 'true';
+    isBillingEnabled.mockResolvedValueOnce(true);
     const { GET } = await loadHandler();
 
     const payload: SubscriptionInvoiceListResponse = {

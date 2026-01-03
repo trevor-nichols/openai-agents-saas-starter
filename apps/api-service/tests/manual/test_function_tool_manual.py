@@ -29,7 +29,7 @@ from tests.utils.stream_assertions import (
 
 
 def _default_base_url() -> str:
-    api_env = os.getenv("NEXT_PUBLIC_API_URL")
+    api_env = os.getenv("API_BASE_URL")
     if api_env:
         return api_env
     port = os.getenv("PORT", "8000")

@@ -122,8 +122,6 @@ WIZARD_PROMPTED_ENV_VARS: Final[frozenset[str]] = frozenset(
         "OTEL_EXPORTER_SENTRY_ENDPOINT",
         "OTEL_EXPORTER_SENTRY_AUTH_HEADER",
         "OTEL_EXPORTER_SENTRY_HEADERS",
-        "OTEL_EXPORTER_DATADOG_API_KEY",
-        "OTEL_EXPORTER_DATADOG_SITE",
         "GEOIP_PROVIDER",
         "GEOIP_MAXMIND_LICENSE_KEY",
         "GEOIP_IP2LOCATION_API_KEY",
@@ -159,7 +157,6 @@ WIZARD_PROMPTED_ENV_VARS: Final[frozenset[str]] = frozenset(
         "BILLING_STREAM_CONCURRENT_LIMIT",
         "RATE_LIMIT_KEY_PREFIX",
         "SIGNUP_ACCESS_POLICY",
-        "ALLOW_PUBLIC_SIGNUP",
         "ALLOW_SIGNUP_TRIAL_OVERRIDE",
         "SIGNUP_RATE_LIMIT_PER_HOUR",
         "SIGNUP_RATE_LIMIT_PER_IP_DAY",
@@ -189,7 +186,7 @@ WIZARD_PROMPTED_ENV_VARS: Final[frozenset[str]] = frozenset(
         "MINIO_SECRET_KEY",
         "MINIO_REGION",
         "MINIO_SECURE",
-        "GCS_PROJECT_ID",
+        "GCP_PROJECT_ID",
         "GCS_BUCKET",
         "GCS_CREDENTIALS_PATH",
         "GCS_CREDENTIALS_JSON",
@@ -217,9 +214,10 @@ WIZARD_PROMPTED_ENV_VARS: Final[frozenset[str]] = frozenset(
 # frontend workspace exists locally.
 FRONTEND_ENV_VARS: Final[frozenset[str]] = frozenset(
     {
-        "NEXT_PUBLIC_API_URL",
+        "API_BASE_URL",
+        "APP_PUBLIC_URL",
         "PLAYWRIGHT_BASE_URL",
-        "AGENT_API_MOCK",
+        "NEXT_PUBLIC_AGENT_API_MOCK",
         "AGENT_FORCE_SECURE_COOKIES",
         "AGENT_ALLOW_INSECURE_COOKIES",
     }

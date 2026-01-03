@@ -24,3 +24,11 @@ async def test_storage_health(http_client: httpx.AsyncClient) -> None:
     assert health.status_code == 200
     body = health.json()
     assert body.get("status") == "healthy"
+
+
+async def test_feature_flags(http_client: httpx.AsyncClient) -> None:
+    response = await http_client.get("/health/features")
+    assert response.status_code == 200
+    body = response.json()
+    assert "billing_enabled" in body
+    assert "billing_stream_enabled" in body

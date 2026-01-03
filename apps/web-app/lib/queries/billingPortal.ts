@@ -2,7 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 
 import { createBillingPortalSession } from '@/lib/api/billingPortal';
 import type { BillingPortalSession, BillingPortalSessionPayload } from '@/lib/types/billing';
-import { billingEnabled } from '@/lib/config/features';
+import { useFeatureFlags } from '@/lib/queries/featureFlags';
 
 interface PortalOptions {
   tenantId: string | null;
@@ -10,6 +10,8 @@ interface PortalOptions {
 }
 
 export function useCreatePortalSessionMutation(options: PortalOptions) {
+  const { flags } = useFeatureFlags();
+  const billingEnabled = Boolean(flags?.billingEnabled);
   const { tenantId, tenantRole = null } = options;
 
   return useMutation<BillingPortalSession, Error, BillingPortalSessionPayload>({
