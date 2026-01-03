@@ -32,7 +32,7 @@ resource "google_sql_database_instance" "main" {
     }
   }
 
-  depends_on = var.enable_private_service_access ? [google_service_networking_connection.private_services[0]] : []
+  depends_on = [google_service_networking_connection.private_services]
 }
 
 resource "google_sql_database" "main" {
