@@ -11,7 +11,7 @@ resource "google_compute_network" "main" {
   routing_mode            = "REGIONAL"
   description             = "VPC network for ${local.name_prefix}."
 
-  depends_on = [for svc in google_project_service.required : svc]
+  depends_on = [google_project_service.required]
 }
 
 resource "google_compute_subnetwork" "main" {
@@ -22,7 +22,7 @@ resource "google_compute_subnetwork" "main" {
   private_ip_google_access = true
   description              = "Primary subnet for ${local.name_prefix}."
 
-  depends_on = [for svc in google_project_service.required : svc]
+  depends_on = [google_project_service.required]
 }
 
 resource "google_vpc_access_connector" "main" {
@@ -31,7 +31,7 @@ resource "google_vpc_access_connector" "main" {
   network       = google_compute_network.main.name
   ip_cidr_range = var.vpc_connector_cidr
 
-  depends_on = [for svc in google_project_service.required : svc]
+  depends_on = [google_project_service.required]
 }
 
 resource "google_compute_global_address" "private_services_range" {
@@ -44,7 +44,7 @@ resource "google_compute_global_address" "private_services_range" {
   network       = google_compute_network.main.id
   description   = "Private Service Access range for ${local.name_prefix}."
 
-  depends_on = [for svc in google_project_service.required : svc]
+  depends_on = [google_project_service.required]
 }
 
 resource "google_service_networking_connection" "private_services" {
@@ -54,5 +54,5 @@ resource "google_service_networking_connection" "private_services" {
   service                 = "servicenetworking.googleapis.com"
   reserved_peering_ranges = [google_compute_global_address.private_services_range[0].name]
 
-  depends_on = [for svc in google_project_service.required : svc]
+  depends_on = [google_project_service.required]
 }

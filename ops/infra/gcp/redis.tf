@@ -10,5 +10,5 @@ resource "google_redis_instance" "main" {
   auth_enabled            = var.redis_auth_enabled
   transit_encryption_mode = upper(var.redis_transit_encryption_mode)
 
-  depends_on = var.enable_private_service_access ? [google_service_networking_connection.private_services[0]] : []
+  depends_on = [google_service_networking_connection.private_services]
 }

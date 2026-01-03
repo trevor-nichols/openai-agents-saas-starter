@@ -119,7 +119,8 @@ class GCPSecretManagerClient:
         parts = secret_name.split("/")
         if len(parts) < 4 or parts[0] != "projects" or parts[2] != "secrets":
             raise GCPSecretManagerError(
-                f"Invalid secret resource name: {secret_name}. Expected projects/<id>/secrets/<name>."
+                f"Invalid secret resource name: {secret_name}. "
+                "Expected projects/<id>/secrets/<name>."
             )
         return parts[1], parts[3]
 
