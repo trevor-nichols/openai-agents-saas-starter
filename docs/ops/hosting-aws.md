@@ -132,8 +132,8 @@ Use custom domains like `api.example.com` and `app.example.com`. ACM certificate
 ## Billing Worker Topology
 
 When running more than one API replica, move billing retries into a dedicated service:
-- API: `ENABLE_BILLING_RETRY_WORKER=false`
-- Worker: `ENABLE_BILLING_RETRY_WORKER=true`, `BILLING_RETRY_DEPLOYMENT_MODE=dedicated`
+- API: `ENABLE_BILLING_RETRY_WORKER=false`, `ENABLE_BILLING_STREAM_REPLAY=false`
+- Worker: `ENABLE_BILLING_RETRY_WORKER=true`, `ENABLE_BILLING_STREAM_REPLAY=true`, `BILLING_RETRY_DEPLOYMENT_MODE=dedicated`
 
 ## Migrations
 

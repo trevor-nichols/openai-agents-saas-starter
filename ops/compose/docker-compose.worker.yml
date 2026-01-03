@@ -2,6 +2,7 @@ services:
   api:
     environment:
       ENABLE_BILLING_RETRY_WORKER: "false"
+      ENABLE_BILLING_STREAM_REPLAY: "false"
 
   worker:
     profiles: ["worker"]

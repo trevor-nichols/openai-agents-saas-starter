@@ -7,7 +7,7 @@
 
   @api path /api* /api/* /api
   handle @api {
-    reverse_proxy api:8000
+    reverse_proxy web:3000
   }
 
   handle {
@@ -15,7 +15,7 @@
   }
 }
 
-# Optional: separate API host
+# Optional: separate API host (server-to-server only; browser traffic should use the web app BFF)
 # {$API_HOST} {
 #   encode zstd gzip
 #   reverse_proxy api:8000

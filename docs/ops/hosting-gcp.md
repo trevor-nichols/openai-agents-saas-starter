@@ -22,6 +22,9 @@ Terraform blueprint will live in `ops/infra/gcp/` and provision:
 - **Secret Manager** for signing + runtime secrets
 - **Cloud DNS** (optional, for custom domains)
 
+If `enable_project_services=true` (default), Terraform will enable the required APIs. If you set it
+to `false`, enable the APIs above manually before running `terraform apply`.
+
 ## Quickstart (non-technical)
 
 1. **Build + publish images** using `.github/workflows/build-images.yml`.
@@ -93,8 +96,8 @@ Cloud Run provides HTTPS by default. For custom domains:
 ## Billing Worker Topology
 
 When running more than one API replica, move billing retries into a dedicated worker:
-- API: `ENABLE_BILLING_RETRY_WORKER=false`
-- Worker: `ENABLE_BILLING_RETRY_WORKER=true`, `BILLING_RETRY_DEPLOYMENT_MODE=dedicated`
+- API: `ENABLE_BILLING_RETRY_WORKER=false`, `ENABLE_BILLING_STREAM_REPLAY=false`
+- Worker: `ENABLE_BILLING_RETRY_WORKER=true`, `ENABLE_BILLING_STREAM_REPLAY=true`, `BILLING_RETRY_DEPLOYMENT_MODE=dedicated`
 
 In the GCP Terraform blueprint, set `enable_worker_service=true` (and optionally `worker_image`)
 to deploy the dedicated worker. The blueprint sets the billing env vars automatically.

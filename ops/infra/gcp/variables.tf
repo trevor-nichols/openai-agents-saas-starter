@@ -21,7 +21,7 @@ variable "region" {
 
 variable "enable_project_services" {
   type        = bool
-  description = "Enable required GCP APIs (compute, vpcaccess, servicenetworking)."
+  description = "Enable required GCP APIs (Cloud Run, Cloud SQL, Secret Manager, Memorystore, Storage, IAM, VPC access, Service Networking)."
   default     = true
 }
 

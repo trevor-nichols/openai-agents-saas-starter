@@ -49,9 +49,12 @@ ingress:
     - secretName: app-tls
       hosts:
         - app.example.com
+  apiHosts: []
+  apiTls: []
 ingressPaths:
   api: /api
   web: /
+  apiHost: /
 externalSecrets:
   enabled: true
   secretStoreRef:
@@ -140,15 +143,17 @@ Optional path:
 ## Ingress + TLS
 
 - Use cert-manager to request and renew certificates.
-- Ingress should route `ingressPaths.web` (default `/`) to web and `ingressPaths.api` (default `/api`) to API.
+- Ingress should route `ingressPaths.web` (default `/`) to web and `ingressPaths.api` (default `/api`) to the web app BFF.
+- If you want a separate API hostname, set `ingress.apiHosts` (and optionally `ingress.apiTls`) to
+  route `ingressPaths.apiHost` (default `/`) directly to the API service.
 
 ## Billing Worker Topology
 
 When running more than one API replica, move billing retries into a dedicated worker:
-- API: `ENABLE_BILLING_RETRY_WORKER=false`
-- Worker: `ENABLE_BILLING_RETRY_WORKER=true`, `BILLING_RETRY_DEPLOYMENT_MODE=dedicated`
-The Helm chart auto-disables API retries when `worker.enabled=true` unless you explicitly set
-`ENABLE_BILLING_RETRY_WORKER` in `api.env`.
+- API: `ENABLE_BILLING_RETRY_WORKER=false`, `ENABLE_BILLING_STREAM_REPLAY=false`
+- Worker: `ENABLE_BILLING_RETRY_WORKER=true`, `ENABLE_BILLING_STREAM_REPLAY=true`, `BILLING_RETRY_DEPLOYMENT_MODE=dedicated`
+The Helm chart auto-disables API retries and stream replay when `worker.enabled=true` unless you
+explicitly set `ENABLE_BILLING_RETRY_WORKER` or `ENABLE_BILLING_STREAM_REPLAY` in `api.env`.
 
 ## Migrations
 

@@ -76,10 +76,13 @@ ingress:
   annotations: {}
   hosts: []
   tls: []
+  apiHosts: []
+  apiTls: []
 
 ingressPaths:
   api: /api
   web: /
+  apiHost: /
 
 autoscaling:
   enabled: false

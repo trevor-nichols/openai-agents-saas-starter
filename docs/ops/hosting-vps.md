@@ -14,7 +14,7 @@ The production compose file will live in `ops/compose/docker-compose.prod.yml`.
 
 - Linux VPS with public IP
 - Docker Engine + Compose plugin
-- Domain names for web and API (or a single domain with `/api` path)
+- Domain name for the web app (optional separate API hostname for server-to-server traffic)
 - Ports 80/443 open on the firewall
 
 ## Quickstart (non-technical)
@@ -52,7 +52,8 @@ Enable optional services with `--profile local-db` and/or `--profile worker`.
 - `CADDY_EMAIL` (recommended for ACME)
 
 Optional:
-- `API_HOST` (if you want a separate API domain; uncomment the block in `ops/compose/caddy/Caddyfile`).
+- `API_HOST` (for a separate API domain used by server-to-server callers; uncomment the block in
+  `ops/compose/caddy/Caddyfile`).
 
 ### Local DB profile notes
 
@@ -104,15 +105,16 @@ Web:
 
 ## TLS / Reverse Proxy
 
-- Caddy terminates TLS and proxies `/` to the web app and `/api` to the API service.
+- Caddy terminates TLS and proxies `/` and `/api` to the web app (Next.js BFF).
+- If you need direct API access, use `API_HOST` and the optional Caddy block (server-to-server only).
 - Ensure `APP_PUBLIC_URL` and `API_BASE_URL` use HTTPS.
 
 ## Billing Worker Topology
 
 When running more than one API replica (rare on a single VPS), move billing retries into a dedicated worker:
-- API: `ENABLE_BILLING_RETRY_WORKER=false`
-- Worker: `ENABLE_BILLING_RETRY_WORKER=true`, `BILLING_RETRY_DEPLOYMENT_MODE=dedicated`
-Use the worker override file to disable retries in the API container:
+- API: `ENABLE_BILLING_RETRY_WORKER=false`, `ENABLE_BILLING_STREAM_REPLAY=false`
+- Worker: `ENABLE_BILLING_RETRY_WORKER=true`, `ENABLE_BILLING_STREAM_REPLAY=true`, `BILLING_RETRY_DEPLOYMENT_MODE=dedicated`
+Use the worker override file to disable retries and stream replay in the API container:
 ```bash
 docker compose -f ops/compose/docker-compose.prod.yml -f ops/compose/docker-compose.worker.yml --profile worker up -d
 ```

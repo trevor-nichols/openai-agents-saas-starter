@@ -1,24 +1,24 @@
 locals {
   name_prefix = "${var.project_name}-${var.environment}"
 
-  api_container_port = 8000
-  web_container_port = 3000
-  secrets_provider   = trimspace(var.secrets_provider)
+  api_container_port        = 8000
+  web_container_port        = 3000
+  secrets_provider          = trimspace(var.secrets_provider)
   auth_key_storage_provider = trimspace(var.auth_key_storage_provider) != "" ? var.auth_key_storage_provider : local.secrets_provider
 
   worker_enabled = var.enable_worker_service
   worker_image   = trimspace(var.worker_image) != "" ? var.worker_image : var.api_image
 
-  network_name              = "${local.name_prefix}-vpc"
-  subnet_name               = "${local.name_prefix}-subnet"
-  vpc_connector_name        = "${local.name_prefix}-vpc-connector"
+  network_name               = "${local.name_prefix}-vpc"
+  subnet_name                = "${local.name_prefix}-subnet"
+  vpc_connector_name         = "${local.name_prefix}-vpc-connector"
   private_service_range_name = "${local.name_prefix}-svc-range"
-  redis_instance_name       = "${local.name_prefix}-redis"
-  storage_location          = trimspace(var.storage_location) != "" ? var.storage_location : var.region
+  redis_instance_name        = "${local.name_prefix}-redis"
+  storage_location           = trimspace(var.storage_location) != "" ? var.storage_location : var.region
 
-  api_base_url     = trimspace(var.api_base_url)
-  app_public_url   = trimspace(var.app_public_url)
-  api_base_host    = element(split("/", replace(replace(local.api_base_url, "https://", ""), "http://", "")), 0)
+  api_base_url      = trimspace(var.api_base_url)
+  app_public_url    = trimspace(var.app_public_url)
+  api_base_host     = element(split("/", replace(replace(local.api_base_url, "https://", ""), "http://", "")), 0)
   api_allowed_hosts = join(",", compact([local.api_base_host, "127.0.0.1", "localhost"]))
 
   api_env_base = merge(
@@ -43,7 +43,8 @@ locals {
     } : {},
     trimspace(var.auth_key_secret_name) != "" ? { AUTH_KEY_SECRET_NAME = var.auth_key_secret_name } : {},
     local.worker_enabled ? {
-      ENABLE_BILLING_RETRY_WORKER = "false"
+      ENABLE_BILLING_RETRY_WORKER   = "false"
+      ENABLE_BILLING_STREAM_REPLAY  = "false"
       BILLING_RETRY_DEPLOYMENT_MODE = "dedicated"
     } : {}
   )
@@ -51,7 +52,8 @@ locals {
   worker_env_base = merge(
     local.api_env_base,
     {
-      ENABLE_BILLING_RETRY_WORKER  = "true"
+      ENABLE_BILLING_RETRY_WORKER   = "true"
+      ENABLE_BILLING_STREAM_REPLAY  = "true"
       BILLING_RETRY_DEPLOYMENT_MODE = "dedicated"
     }
   )
@@ -65,8 +67,8 @@ locals {
   web_env_combined    = merge(local.web_env_base, var.web_env)
   worker_env_combined = local.worker_env_base
 
-  api_env_list = [for key, value in local.api_env_combined : { name = key, value = value }]
-  web_env_list = [for key, value in local.web_env_combined : { name = key, value = value }]
+  api_env_list    = [for key, value in local.api_env_combined : { name = key, value = value }]
+  web_env_list    = [for key, value in local.web_env_combined : { name = key, value = value }]
   worker_env_list = [for key, value in local.worker_env_combined : { name = key, value = value }]
 
   api_secret_refs = {
@@ -107,7 +109,13 @@ locals {
 
   required_project_services = toset([
     "compute.googleapis.com",
-    "vpcaccess.googleapis.com",
+    "iam.googleapis.com",
+    "redis.googleapis.com",
+    "run.googleapis.com",
+    "secretmanager.googleapis.com",
     "servicenetworking.googleapis.com",
+    "sqladmin.googleapis.com",
+    "storage.googleapis.com",
+    "vpcaccess.googleapis.com",
   ])
 }

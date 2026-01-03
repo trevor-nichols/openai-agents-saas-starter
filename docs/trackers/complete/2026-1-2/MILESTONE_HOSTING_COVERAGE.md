@@ -2,7 +2,7 @@
 # Milestone: Hosting Coverage Expansion
 
 _Last updated: 2026-01-02_  
-**Status:** In Progress  
+**Status:** Completed  
 **Owner:** Platform Foundations  
 **Domain:** Infra  
 **ID / Links:** [TBD], [docs/ops/hosting-overview.md], [docs/ops/hosting-aws.md], [docs/ops/hosting-azure.md], [docs/ops/container-deployments.md], [docs/ops/setup-wizard-presets.md], [docs/security/secrets-providers.md], [ops/infra/aws], [ops/infra/azure], [.github/workflows/build-images.yml]

@@ -65,6 +65,8 @@ so values are never stored in plain Terraform variables.
   ensure CORS/host validation is correct.
 - Set `enable_worker_service=true` to deploy a dedicated billing retry worker (uses `worker_image`
   when provided, otherwise `api_image`).
+- `enable_project_services=true` (default) enables Cloud Run, Cloud SQL, Secret Manager, Memorystore,
+  Storage, IAM, VPC Access, and Service Networking APIs for the project.
 - Cloud Run uses the shared runtime service account; IAM roles are scoped to Secret Manager, Cloud SQL,
   and Storage.
 

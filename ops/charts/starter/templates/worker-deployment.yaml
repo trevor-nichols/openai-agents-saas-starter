@@ -46,6 +46,8 @@ spec:
               value: "8000"
             - name: ENABLE_BILLING_RETRY_WORKER
               value: "true"
+            - name: ENABLE_BILLING_STREAM_REPLAY
+              value: "true"
             - name: BILLING_RETRY_DEPLOYMENT_MODE
               value: "dedicated"
 {{- range $key, $value := .Values.worker.env }}

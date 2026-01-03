@@ -19,6 +19,7 @@ helm upgrade --install starter ops/charts/starter \
 - `api.secrets`, `web.secrets`, `worker.secrets` map **env var name → secret value** (static secrets only)
 - `externalSecrets.*.data` map **env var name → provider secret key** (default)
 - `ingress.*` and `ingressPaths.*` for Ingress config
+- `ingress.apiHosts` / `ingress.apiTls` for an optional API hostname (server-to-server)
 - `autoscaling.*` for HPA (CPU) on API + web
 
 ## Secrets strategy

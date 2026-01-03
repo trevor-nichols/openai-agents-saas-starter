@@ -52,6 +52,10 @@ spec:
             - name: ENABLE_BILLING_RETRY_WORKER
               value: "false"
 {{- end }}
+{{- if and .Values.worker.enabled (not (hasKey $apiEnv "ENABLE_BILLING_STREAM_REPLAY")) }}
+            - name: ENABLE_BILLING_STREAM_REPLAY
+              value: "false"
+{{- end }}
 {{- $apiSecretName := default (printf "%s-api" (include "starter.fullname" .)) .Values.api.secretName -}}
 {{- $apiSecretKeys := .Values.api.secrets -}}
 {{- if .Values.externalSecrets.enabled }}

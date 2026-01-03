@@ -5,7 +5,7 @@ This repo ships production-ready container images and a cloud-agnostic architect
 ## What Runs Where
 
 - **API service**: FastAPI app (ASGI) plus optional background workers (billing retries, stream fan-out). Runs as a stateless container.
-- **Web app**: Next.js 16 server (App Router) with server-rendered routes and BFF API handlers. Runs as a stateless container.
+- **Web app**: Next.js 16 server (App Router) with server-rendered routes and BFF API handlers. Proxies should route browser `/api` traffic to this service. Runs as a stateless container.
 - **Postgres**: Durable system of record.
 - **Redis**: Rate limiting, refresh tokens, billing streams.
 - **Object storage**: Tenant-scoped assets + attachments (S3, Azure Blob, GCS, MinIO).
@@ -61,7 +61,7 @@ For custom domains and certificate validation, follow the per-cloud guides:
 ## Deployment Topologies
 
 - **Single-process**: API + billing retry worker in the same service (default).
-- **Split worker**: Run the billing retry worker as a separate service when scaling API replicas to avoid duplicate retries. Configure `ENABLE_BILLING_RETRY_WORKER=false` on the API service and enable the worker deployment with `BILLING_RETRY_DEPLOYMENT_MODE=dedicated`.
+- **Split worker**: Run the billing retry worker as a separate service when scaling API replicas to avoid duplicate retries. Configure `ENABLE_BILLING_RETRY_WORKER=false` and `ENABLE_BILLING_STREAM_REPLAY=false` on the API service, and enable the worker deployment with `ENABLE_BILLING_STREAM_REPLAY=true` and `BILLING_RETRY_DEPLOYMENT_MODE=dedicated`.
 
 ## Observability
 
