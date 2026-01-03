@@ -17,6 +17,7 @@ class SecretsProviderLiteral(StrEnum):
     INFISICAL_SELF_HOST = "infisical_self_host"
     AWS_SM = "aws_sm"
     AZURE_KV = "azure_kv"
+    GCP_SM = "gcp_sm"
 
 
 class SecretScope(StrEnum):
@@ -112,6 +113,15 @@ class AzureKeyVaultConfig:
     cache_ttl_seconds: int
 
 
+@dataclass(slots=True)
+class GCPSecretManagerConfig:
+    """Resolved GCP Secret Manager configuration."""
+
+    project_id: str
+    signing_secret_name: str
+    cache_ttl_seconds: int
+
+
 @runtime_checkable
 class SecretProviderProtocol(Protocol):
     """Async contract every secrets provider must satisfy."""
@@ -134,6 +144,7 @@ class SecretProviderProtocol(Protocol):
 __all__ = [
     "AWSSecretsManagerConfig",
     "AzureKeyVaultConfig",
+    "GCPSecretManagerConfig",
     "InfisicalProviderConfig",
     "SecretProviderHealth",
     "SecretProviderProtocol",

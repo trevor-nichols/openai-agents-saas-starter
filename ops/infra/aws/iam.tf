@@ -64,8 +64,8 @@ resource "aws_iam_role_policy" "task_s3" {
         Effect = "Allow"
         Action = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:ListBucket"]
         Resource = [
-          "arn:aws:s3:::${var.s3_bucket_name}",
-          "arn:aws:s3:::${var.s3_bucket_name}/*"
+          "arn:aws:s3:::${var.storage_bucket_name}",
+          "arn:aws:s3:::${var.storage_bucket_name}/*"
         ]
       }
     ]

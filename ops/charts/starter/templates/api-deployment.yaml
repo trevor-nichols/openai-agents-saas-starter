@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "starter.fullname" . }}-api
+  labels:
+{{ include "starter.labels" . | indent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  replicas: {{ .Values.api.replicaCount }}
+  selector:
+    matchLabels:
+{{ include "starter.selectorLabels" . | indent 6 }}
+      app.kubernetes.io/component: api
+  template:
+    metadata:
+      labels:
+{{ include "starter.selectorLabels" . | indent 8 }}
+        app.kubernetes.io/component: api
+{{- with .Values.api.podLabels }}
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.api.podAnnotations }}
+      annotations:
+{{ toYaml . | indent 8 }}
+{{- end }}
+    spec:
+      serviceAccountName: {{ include "starter.serviceAccountName" . }}
+{{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.podSecurityContext }}
+      securityContext:
+{{ toYaml . | indent 8 }}
+{{- end }}
+      containers:
+        - name: api
+          image: {{ required "api.image is required" .Values.api.image }}
+          imagePullPolicy: {{ .Values.api.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.api.service.port }}
+          env:
+            - name: PORT
+              value: {{ .Values.api.service.port | quote }}
+{{- $apiEnv := .Values.api.env -}}
+{{- range $key, $value := $apiEnv }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+{{- end }}
+{{- if and .Values.worker.enabled (not (hasKey $apiEnv "ENABLE_BILLING_RETRY_WORKER")) }}
+            - name: ENABLE_BILLING_RETRY_WORKER
+              value: "false"
+{{- end }}
+{{- $apiSecretName := default (printf "%s-api" (include "starter.fullname" .)) .Values.api.secretName -}}
+{{- $apiSecretKeys := .Values.api.secrets -}}
+{{- if .Values.externalSecrets.enabled }}
+  {{- $apiSecretKeys = .Values.externalSecrets.api.data -}}
+{{- end }}
+{{- range $key, $_ := $apiSecretKeys }}
+            - name: {{ $key }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $apiSecretName }}
+                  key: {{ $key }}
+{{- end }}
+{{- with .Values.securityContext }}
+          securityContext:
+{{ toYaml . | indent 12 }}
+{{- end }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.api.service.port }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.api.service.port }}
+          startupProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.api.service.port }}
+          resources:
+{{ toYaml .Values.api.resources | indent 12 }}

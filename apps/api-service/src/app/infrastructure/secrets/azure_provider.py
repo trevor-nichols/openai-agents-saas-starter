@@ -77,10 +77,10 @@ class AzureKeyVaultProvider(SecretProviderProtocol):
             )
         return SecretProviderHealth(status=SecretProviderStatus.HEALTHY, details={})
 
-    async def _get_or_fetch(self, secret_name: str) -> str:
+    async def _get_or_fetch(self, secret_name: str, *, force_refresh: bool = False) -> str:
         cached = self._cache.get(secret_name)
         now = time.time()
-        if cached and cached.expires_at >= now:
+        if not force_refresh and cached and cached.expires_at >= now:
             return cached.value
 
         value = await to_thread.run_sync(self.client.get_secret, secret_name)
@@ -96,7 +96,7 @@ class AzureKeyVaultProvider(SecretProviderProtocol):
             cached = self._cache.get(cache_key)
             if cached and cached.expires_at >= time.time():
                 return cached.value.encode("utf-8")
-        value = await self._get_or_fetch(self.signing_secret_name)
+        value = await self._get_or_fetch(self.signing_secret_name, force_refresh=force_refresh)
         self._cache[cache_key] = _CacheEntry(
             value=value,
             expires_at=time.time() + max(1, self.cache_ttl_seconds),

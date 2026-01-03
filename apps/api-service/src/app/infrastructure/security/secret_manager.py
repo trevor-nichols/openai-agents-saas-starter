@@ -15,6 +15,7 @@ from app.core.settings import Settings
 from app.domain.secrets import SecretsProviderLiteral
 from app.infrastructure.secrets.aws_client import AWSSecretsManagerClient, AWSSecretsManagerError
 from app.infrastructure.secrets.azure_client import AzureKeyVaultClient, AzureKeyVaultError
+from app.infrastructure.secrets.gcp_client import GCPSecretManagerClient, GCPSecretManagerError
 from app.infrastructure.secrets.infisical_client import InfisicalAPIClient, InfisicalAPIError
 from app.infrastructure.security.vault_kv import configure_vault_secret_manager
 
@@ -108,6 +109,32 @@ class InfisicalSecretManagerKeyStorageClient(SecretManagerClient):
             raise KeyStorageError(str(exc)) from exc
 
 
+class GCPSecretManagerKeyStorageClient(SecretManagerClient):
+    def __init__(self, settings: Settings) -> None:
+        config = settings.gcp_settings
+        secret_name = settings.auth_key_secret_name or ""
+        if not config.project_id and not secret_name.startswith("projects/"):
+            raise KeyStorageError(
+                "GCP_SM_PROJECT_ID must be set when auth_key_secret_name is not fully qualified."
+            )
+        try:
+            self._client = GCPSecretManagerClient(project_id=config.project_id or None)
+        except GCPSecretManagerError as exc:
+            raise KeyStorageError(str(exc)) from exc
+
+    def read_secret(self, name: str) -> str | None:
+        try:
+            return self._client.get_secret_value_optional(name)
+        except GCPSecretManagerError as exc:
+            raise KeyStorageError(str(exc)) from exc
+
+    def write_secret(self, name: str, value: str) -> None:
+        try:
+            self._client.put_secret_value(name, value)
+        except GCPSecretManagerError as exc:
+            raise KeyStorageError(str(exc)) from exc
+
+
 def configure_secret_manager_client(settings: Settings) -> None:
     """Register a SecretManagerClient for keyset storage based on AUTH_KEY_STORAGE_PROVIDER."""
 
@@ -129,6 +156,11 @@ def configure_secret_manager_client(settings: Settings) -> None:
         logger.info("Registered Azure Key Vault key storage client.")
         return
 
+    if provider == SecretsProviderLiteral.GCP_SM:
+        register_secret_manager_client(lambda: GCPSecretManagerKeyStorageClient(settings))
+        logger.info("Registered GCP Secret Manager key storage client.")
+        return
+
     if provider in {
         SecretsProviderLiteral.INFISICAL_CLOUD,
         SecretsProviderLiteral.INFISICAL_SELF_HOST,
@@ -139,7 +171,7 @@ def configure_secret_manager_client(settings: Settings) -> None:
 
     raise KeyStorageError(
         "Secret-manager key storage is only supported for Vault, Infisical, AWS Secrets Manager, "
-        f"or Azure Key Vault (current provider: {provider.value})."
+        f"Azure Key Vault, or GCP Secret Manager (current provider: {provider.value})."
     )
 
 

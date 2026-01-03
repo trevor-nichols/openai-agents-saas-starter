@@ -16,6 +16,7 @@ SUPPORTED_PROVIDERS = {
     SecretsProviderLiteral.INFISICAL_SELF_HOST,
     SecretsProviderLiteral.AWS_SM,
     SecretsProviderLiteral.AZURE_KV,
+    SecretsProviderLiteral.GCP_SM,
 }
 
 
@@ -44,6 +45,9 @@ def secrets_probe(ctx: ProbeContext) -> ProbeResult:
 
     if provider is SecretsProviderLiteral.AZURE_KV:
         return _azure_kv_probe(ctx, provider_raw)
+
+    if provider is SecretsProviderLiteral.GCP_SM:
+        return _gcp_sm_probe(ctx, provider_raw)
 
     return ProbeResult(
         name="secrets",
@@ -123,6 +127,26 @@ def _azure_kv_probe(ctx: ProbeContext, provider_raw: str | None) -> ProbeResult:
         success=True,
         detail="azure key vault configured",
         metadata={"provider": provider_raw, "vault": vault_url, "auth": auth_mode},
+    )
+
+
+def _gcp_sm_probe(ctx: ProbeContext, provider_raw: str | None) -> ProbeResult:
+    secret_name = ctx.env.get("GCP_SM_SIGNING_SECRET_NAME")
+    project_id = ctx.env.get("GCP_SM_PROJECT_ID")
+    missing = []
+    if not secret_name:
+        missing.append("GCP_SM_SIGNING_SECRET_NAME")
+    if secret_name and not secret_name.startswith("projects/") and not project_id:
+        missing.append("GCP_SM_PROJECT_ID")
+
+    if missing:
+        return _missing_env_result(provider_raw, missing, ctx.warn_only)
+
+    return simple_result(
+        name="secrets",
+        success=True,
+        detail="gcp secret manager configured",
+        metadata={"provider": provider_raw, "project": project_id or "auto"},
     )
 
 

@@ -29,8 +29,11 @@ Defaults applied:
 Cloud provider mapping:
 - `aws` -> `SECRETS_PROVIDER=aws_sm`, `STORAGE_PROVIDER=s3`
 - `azure` -> `SECRETS_PROVIDER=azure_kv`, `STORAGE_PROVIDER=azure_blob`
-- `gcp` -> `SECRETS_PROVIDER=infisical_cloud`, `STORAGE_PROVIDER=gcs`
+- `gcp` -> `SECRETS_PROVIDER=gcp_sm`, `STORAGE_PROVIDER=gcs`
 - `other` -> defaults to AWS mapping unless overridden
+
+Notes:
+- The `gcp` preset assumes Cloud Run + Secret Manager and requires the `gcp_sm` secrets provider.
 
 Required follow-ups:
 - Provide hosted `DATABASE_URL`

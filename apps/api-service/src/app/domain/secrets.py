@@ -3,6 +3,7 @@
 from starter_contracts.secrets.models import (
     AWSSecretsManagerConfig,
     AzureKeyVaultConfig,
+    GCPSecretManagerConfig,
     InfisicalProviderConfig,
     SecretProviderHealth,
     SecretProviderProtocol,
@@ -26,4 +27,5 @@ __all__ = [
     "VaultProviderConfig",
     "AWSSecretsManagerConfig",
     "AzureKeyVaultConfig",
+    "GCPSecretManagerConfig",
 ]

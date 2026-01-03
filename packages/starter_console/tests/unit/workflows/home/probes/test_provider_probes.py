@@ -107,6 +107,19 @@ def test_secrets_probe_azure_missing_creds_warns():
     assert "missing env" in (result.detail or "")
 
 
+def test_secrets_probe_gcp_ok():
+    from starter_console.workflows.home.probes import secrets as secrets_mod
+
+    env = {
+        "SECRETS_PROVIDER": "gcp_sm",
+        "GCP_SM_PROJECT_ID": "demo-project",
+        "GCP_SM_SIGNING_SECRET_NAME": "auth-signing-secret",
+    }
+    result = secrets_mod.secrets_probe(_ctx(env))
+    assert result.state == ProbeState.OK
+    assert "gcp" in (result.detail or "")
+
+
 def test_billing_probe_skips_when_disabled():
     from starter_console.workflows.home.probes import billing as billing_mod
 

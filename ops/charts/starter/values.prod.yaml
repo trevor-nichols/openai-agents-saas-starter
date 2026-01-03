@@ -1,0 +1,17 @@
+api:
+  image: "ghcr.io/org/starter-api:prod"
+  replicaCount: 2
+
+web:
+  image: "ghcr.io/org/starter-web:prod"
+  replicaCount: 2
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: app.example.com
+  tls:
+    - secretName: starter-tls
+      hosts:
+        - app.example.com

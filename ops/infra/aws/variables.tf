@@ -259,9 +259,19 @@ variable "redis_auth_token" {
   }
 }
 
-variable "s3_bucket_name" {
+variable "storage_bucket_name" {
   type        = string
-  description = "S3 bucket name for object storage."
+  description = "Storage bucket name for object storage."
+}
+
+variable "storage_provider" {
+  type        = string
+  description = "Storage provider for the API service (STORAGE_PROVIDER)."
+  default     = "s3"
+  validation {
+    condition     = var.storage_provider == "s3"
+    error_message = "storage_provider must be \"s3\" for the AWS blueprint."
+  }
 }
 
 variable "create_s3_bucket" {

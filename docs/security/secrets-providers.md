@@ -1,6 +1,6 @@
 # Secrets Provider Options & Runbooks
 
-**Last Updated:** 2025-11-15  
+**Last Updated:** 2026-01-02  
 **Owners:** Platform Foundations · Backend Auth Pod
 
 ## 1. Supported Providers
@@ -13,41 +13,45 @@
 | Infisical Self-Hosted | Enterprises needing VPC-only installs | ✅ Available | Same flow as cloud plus optional CA bundle path. |
 | AWS Secrets Manager | Cloud-native fallback | ✅ Available | Uses Secrets Manager-stored HMAC secret; CLI validates IAM access. |
 | Azure Key Vault | Cloud-native fallback | ✅ Available | Uses Key Vault secret as HMAC key; supports SPN + managed identity. |
+| GCP Secret Manager | Cloud-native fallback | ✅ Available | Uses Secret Manager secret as HMAC key; supports ADC/Workload Identity. |
 
-> **Default hosting posture:** The AWS/Azure reference blueprints are designed around cloud‑native
-> secrets (Secrets Manager on AWS, Key Vault on Azure). Vault/Infisical remain supported for
+> **Default hosting posture:** The AWS/Azure/GCP reference blueprints are designed around cloud‑native
+> secrets (Secrets Manager on AWS, Key Vault on Azure, Secret Manager on GCP). Vault/Infisical remain supported for
 > enterprise teams that already operate those systems, but require explicit env wiring via
 > `api_env` / `api_secrets` in the Terraform stacks.
 
 ## 2. Environment Variables
 
-| Env Var | Vault Dev/HCP | Infisical | AWS SM | Description |
-| --- | --- | --- | --- | --- |
-| `SECRETS_PROVIDER` | `vault_dev` / `vault_hcp` | `infisical_cloud` / `infisical_self_host` | `aws_sm` | Selected provider. |
-| `VAULT_ADDR` | ✅ | — | — | Vault base URL (http://127.0.0.1:18200 for dev). |
-| `VAULT_TOKEN` | ✅ | — | — | Vault token/AppRole secret for Transit. |
-| `VAULT_TRANSIT_KEY` | ✅ | — | — | Transit key used for signing/verification. |
-| `VAULT_NAMESPACE` | Optional | — | — | HCP namespaces (default `admin`). |
-| `VAULT_VERIFY_ENABLED` | ✅ | — | — | Enables signature verification. |
-| `INFISICAL_BASE_URL` | — | ✅ | — | Infisical API URL. |
-| `INFISICAL_SERVICE_TOKEN` | — | ✅ | — | Service token with read access to signing secret. |
-| `INFISICAL_PROJECT_ID` | — | ✅ | — | Workspace / project identifier. |
-| `INFISICAL_ENVIRONMENT` | — | ✅ | — | Environment slug (dev/staging/prod). |
-| `INFISICAL_SECRET_PATH` | — | ✅ | — | Secret path (e.g., `/backend`). |
-| `INFISICAL_SIGNING_SECRET_NAME` | — | ✅ | — | Secret name containing signing key material. |
-| `INFISICAL_CA_BUNDLE_PATH` | — | Optional | — | Custom CA bundle for self-hosted Infisical. |
-| `INFISICAL_CACHE_TTL_SECONDS` | — | Optional | — | Local cache TTL for secrets. |
-| `AWS_REGION` | — | — | ✅ | AWS region for Secrets Manager. |
-| `AWS_PROFILE` | — | — | Optional | Named profile for CLI/backend (alternatively static keys or IMDS). |
-| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` | — | — | Optional | Static credentials when not using profile/IMDS. |
-| `AWS_SM_SIGNING_SECRET_ARN` | — | — | ✅ | ARN/name of Secrets Manager secret storing the HMAC value. |
-| `AWS_SM_CACHE_TTL_SECONDS` | — | — | Optional | Local cache TTL for AWS secrets. |
-| `AZURE_KEY_VAULT_URL` | — | — | ✅ | Key Vault URL (https://...vault.azure.net). |
-| `AZURE_KV_SIGNING_SECRET_NAME` | — | — | ✅ | Secret name storing HMAC value. |
-| `AZURE_TENANT_ID` | — | — | Optional | Tenant for service principal auth. |
-| `AZURE_CLIENT_ID` / `AZURE_CLIENT_SECRET` | — | — | Optional | Service principal credentials. |
-| `AZURE_MANAGED_IDENTITY_CLIENT_ID` | — | — | Optional | User-assigned managed identity client ID. |
-| `AZURE_KV_CACHE_TTL_SECONDS` | — | — | Optional | Local cache TTL for Azure secrets. |
+| Env Var | Vault Dev/HCP | Infisical | AWS SM | Azure KV | GCP SM | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `SECRETS_PROVIDER` | `vault_dev` / `vault_hcp` | `infisical_cloud` / `infisical_self_host` | `aws_sm` | `azure_kv` | `gcp_sm` | Selected provider. |
+| `VAULT_ADDR` | ✅ | — | — | — | — | Vault base URL (http://127.0.0.1:18200 for dev). |
+| `VAULT_TOKEN` | ✅ | — | — | — | — | Vault token/AppRole secret for Transit. |
+| `VAULT_TRANSIT_KEY` | ✅ | — | — | — | — | Transit key used for signing/verification. |
+| `VAULT_NAMESPACE` | Optional | — | — | — | — | HCP namespaces (default `admin`). |
+| `VAULT_VERIFY_ENABLED` | ✅ | — | — | — | — | Enables signature verification. |
+| `INFISICAL_BASE_URL` | — | ✅ | — | — | — | Infisical API URL. |
+| `INFISICAL_SERVICE_TOKEN` | — | ✅ | — | — | — | Service token with read access to signing secret. |
+| `INFISICAL_PROJECT_ID` | — | ✅ | — | — | — | Workspace / project identifier. |
+| `INFISICAL_ENVIRONMENT` | — | ✅ | — | — | — | Environment slug (dev/staging/prod). |
+| `INFISICAL_SECRET_PATH` | — | ✅ | — | — | — | Secret path (e.g., `/backend`). |
+| `INFISICAL_SIGNING_SECRET_NAME` | — | ✅ | — | — | — | Secret name containing signing key material. |
+| `INFISICAL_CA_BUNDLE_PATH` | — | Optional | — | — | — | Custom CA bundle for self-hosted Infisical. |
+| `INFISICAL_CACHE_TTL_SECONDS` | — | Optional | — | — | — | Local cache TTL for secrets. |
+| `AWS_REGION` | — | — | ✅ | — | — | AWS region for Secrets Manager. |
+| `AWS_PROFILE` | — | — | Optional | — | — | Named profile for CLI/backend (alternatively static keys or IMDS). |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` | — | — | Optional | — | — | Static credentials when not using profile/IMDS. |
+| `AWS_SM_SIGNING_SECRET_ARN` | — | — | ✅ | — | — | ARN/name of Secrets Manager secret storing the HMAC value. |
+| `AWS_SM_CACHE_TTL_SECONDS` | — | — | Optional | — | — | Local cache TTL for AWS secrets. |
+| `AZURE_KEY_VAULT_URL` | — | — | — | ✅ | — | Key Vault URL (https://...vault.azure.net). |
+| `AZURE_KV_SIGNING_SECRET_NAME` | — | — | — | ✅ | — | Secret name storing HMAC value. |
+| `AZURE_TENANT_ID` | — | — | — | Optional | — | Tenant for service principal auth. |
+| `AZURE_CLIENT_ID` / `AZURE_CLIENT_SECRET` | — | — | — | Optional | — | Service principal credentials. |
+| `AZURE_MANAGED_IDENTITY_CLIENT_ID` | — | — | — | Optional | — | User-assigned managed identity client ID. |
+| `AZURE_KV_CACHE_TTL_SECONDS` | — | — | — | Optional | — | Local cache TTL for Azure secrets. |
+| `GCP_SM_PROJECT_ID` | — | — | — | — | Optional | GCP project ID for Secret Manager (required if secret names are not fully qualified). |
+| `GCP_SM_SIGNING_SECRET_NAME` | — | — | — | — | ✅ | Secret name containing HMAC signing key material. |
+| `GCP_SM_CACHE_TTL_SECONDS` | — | — | — | — | Optional | Local cache TTL for GCP Secret Manager values. |
 
 > **Hardening requirement (Nov 2025):** FastAPI now refuses to start when `ENVIRONMENT`
 > is anything other than `development/dev/demo/test` (and `DEBUG` is false) unless
@@ -110,6 +114,16 @@
 5. Apply the emitted env vars to backend + CLI and redeploy.
 6. Rotate the signing secret via Key Vault; FastAPI picks up the new value when the cache TTL expires.
 
+### 3.6 GCP Secret Manager
+
+1. Ensure the runtime service account has `roles/secretmanager.secretAccessor` on the signing secret.
+2. Store a strong random string secret named per `GCP_SM_SIGNING_SECRET_NAME`.
+3. Run `starter-console secrets onboard --provider gcp_sm` to capture project ID, secret name, and cache TTL.  
+   The CLI probes Secret Manager via ADC or `GOOGLE_APPLICATION_CREDENTIALS`.
+4. CLI onboarding sets `VAULT_VERIFY_ENABLED=true` automatically so FastAPI enforces signatures.
+5. Apply the emitted env vars to backend + CLI and redeploy.
+6. Rotate the signing secret by adding a new Secret Manager version; FastAPI picks up the new value when the cache TTL expires.
+
 ## 4. Telemetry & Health Hooks
 
 - Backend `SecretProviderHealth` now surfaces provider status; `/health/ready` will surface provider errors once the provider is initialized.
@@ -129,6 +143,12 @@
 - [x] Support service principal + managed identity auth in CLI onboarding.  
 - [x] Document RBAC requirements.  
 - [ ] Optional: support Key Vault Keys (RSA/ECDSA) for asymmetric signing.
+
+### GCP Secret Manager
+- [x] Use Secret Manager secrets as the signing source with TTL cache.  
+- [x] Support ADC/Workload Identity (optional `GOOGLE_APPLICATION_CREDENTIALS`).  
+- [x] Document IAM requirements.  
+- [ ] Optional: support CMEK or regional replication controls.
 
 ---
 

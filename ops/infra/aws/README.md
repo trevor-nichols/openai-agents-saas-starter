@@ -35,7 +35,8 @@ terraform apply \
   -var "auth_key_secret_name=<keyset-secret-name>" \
   -var "auth_key_storage_provider=aws_sm" \
   -var "db_password=<secure-password>" \
-  -var "s3_bucket_name=<unique-bucket-name>"
+  -var "storage_bucket_name=<unique-bucket-name>" \
+  -var "storage_provider=s3"
 ```
 
 Requires Terraform 1.14.x (pinned in `.tool-versions`).
@@ -56,6 +57,8 @@ The task definitions inject a base set of env vars that align with the API/web a
 - `AUTH_KEY_STORAGE_BACKEND=secret-manager`
 - `AUTH_KEY_STORAGE_PROVIDER` (defaults to `secrets_provider`)
 - `AUTH_KEY_SECRET_NAME` (Secrets Manager ARN for the Ed25519 keyset JSON; use ARN for IAM scoping on AWS)
+- `STORAGE_PROVIDER=s3`
+- `S3_BUCKET`
 - `ALLOWED_HOSTS` (derived from the effective API base URL; override when needed)
 - `ALLOWED_ORIGINS` (defaults to `APP_PUBLIC_URL`; override if you have additional browser origins)
 

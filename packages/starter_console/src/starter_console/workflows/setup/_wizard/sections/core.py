@@ -264,7 +264,7 @@ def _configure_authentication(context: WizardContext, provider: InputProvider) -
             context,
             provider,
             key="AUTH_KEY_STORAGE_PROVIDER",
-            prompt="Key storage provider (vault/infisical/aws/azure)",
+            prompt="Key storage provider (vault/infisical/aws/azure/gcp)",
             default=provider_default,
             choices=_KEY_STORAGE_PROVIDER_CHOICES,
         )

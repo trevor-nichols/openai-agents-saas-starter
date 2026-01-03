@@ -27,7 +27,7 @@ locals {
       SECRETS_PROVIDER          = local.secrets_provider
       AUTH_KEY_STORAGE_BACKEND  = "secret-manager"
       AUTH_KEY_STORAGE_PROVIDER = local.auth_key_storage_provider
-      STORAGE_PROVIDER          = "azure_blob"
+      STORAGE_PROVIDER          = var.storage_provider
       AZURE_BLOB_ACCOUNT_URL    = azurerm_storage_account.main.primary_blob_endpoint
       AZURE_BLOB_CONTAINER      = azurerm_storage_container.main.name
       ALLOWED_HOSTS             = local.api_allowed_hosts

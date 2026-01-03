@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from app.domain.secrets import (
     AWSSecretsManagerConfig,
     AzureKeyVaultConfig,
+    GCPSecretManagerConfig,
     InfisicalProviderConfig,
     SecretsProviderLiteral,
     VaultProviderConfig,
@@ -19,7 +20,7 @@ class SecretsProviderSettingsMixin(BaseModel):
         default=SecretsProviderLiteral.VAULT_DEV,
         description=(
             "Which secrets provider implementation to use (vault_dev, vault_hcp, "
-            "infisical_cloud, infisical_self_host, aws_sm, azure_kv)."
+            "infisical_cloud, infisical_self_host, aws_sm, azure_kv, gcp_sm)."
         ),
         alias="SECRETS_PROVIDER",
     )
@@ -160,6 +161,21 @@ class SecretsProviderSettingsMixin(BaseModel):
         description="TTL (seconds) for cached Key Vault secret values.",
         alias="AZURE_KV_CACHE_TTL_SECONDS",
     )
+    gcp_sm_project_id: str | None = Field(
+        default=None,
+        description="GCP project ID for Secret Manager requests.",
+        alias="GCP_SM_PROJECT_ID",
+    )
+    gcp_sm_signing_secret_name: str | None = Field(
+        default=None,
+        description="Secret Manager secret name containing the signing secret value.",
+        alias="GCP_SM_SIGNING_SECRET_NAME",
+    )
+    gcp_sm_cache_ttl_seconds: int = Field(
+        default=60,
+        description="TTL (seconds) for cached Secret Manager values.",
+        alias="GCP_SM_CACHE_TTL_SECONDS",
+    )
     enable_secrets_provider_telemetry: bool = Field(
         default=False,
         description="Emit structured metrics/logs about secrets provider selection (no payloads).",
@@ -211,6 +227,14 @@ class SecretsProviderSettingsMixin(BaseModel):
             client_secret=self.azure_client_secret,
             managed_identity_client_id=self.azure_managed_identity_client_id,
             cache_ttl_seconds=self.azure_kv_cache_ttl_seconds,
+        )
+
+    @property
+    def gcp_settings(self) -> GCPSecretManagerConfig:
+        return GCPSecretManagerConfig(
+            project_id=self.gcp_sm_project_id or "",
+            signing_secret_name=self.gcp_sm_signing_secret_name or "",
+            cache_ttl_seconds=self.gcp_sm_cache_ttl_seconds,
         )
 
     def should_require_vault_verification(self) -> bool:

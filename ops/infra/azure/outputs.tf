@@ -8,17 +8,22 @@ output "web_url" {
   description = "Base URL for the web container app."
 }
 
-output "postgres_fqdn" {
+output "database_endpoint" {
   value       = azurerm_postgresql_flexible_server.main.fqdn
-  description = "Postgres server hostname."
+  description = "Postgres endpoint hostname."
 }
 
-output "redis_hostname" {
+output "redis_endpoint" {
   value       = azurerm_redis_cache.main.hostname
-  description = "Redis hostname."
+  description = "Redis endpoint hostname."
 }
 
-output "storage_account" {
+output "storage_bucket" {
+  value       = var.storage_bucket_name
+  description = "Storage container name."
+}
+
+output "storage_account_name" {
   value       = azurerm_storage_account.main.name
   description = "Storage account name."
 }

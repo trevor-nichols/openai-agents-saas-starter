@@ -12,7 +12,11 @@ from typing import Any
 import httpx
 from starter_contracts.config import StarterSettingsProtocol
 from starter_contracts.secrets.models import SecretsProviderLiteral
-from starter_providers.secrets import AWSSecretsManagerClient, AzureKeyVaultClient
+from starter_providers.secrets import (
+    AWSSecretsManagerClient,
+    AzureKeyVaultClient,
+    GCPSecretManagerClient,
+)
 
 from ....core.constants import SAFE_ENVIRONMENTS
 from ....core.exceptions import CLIError
@@ -156,6 +160,8 @@ def _sign_with_hmac_provider(
         secret = _fetch_aws_secret(settings)
     elif provider is SecretsProviderLiteral.AZURE_KV:
         secret = _fetch_azure_secret(settings)
+    elif provider is SecretsProviderLiteral.GCP_SM:
+        secret = _fetch_gcp_secret(settings)
     else:
         raise CLIError(f"Unsupported secrets provider: {provider.value}")
 
@@ -268,6 +274,20 @@ def _fetch_azure_secret(settings: StarterSettingsProtocol) -> str:
     except Exception as exc:  # pragma: no cover
         raise CLIError(f"Azure Key Vault secret fetch failed: {exc}") from exc
     return secret
+
+
+def _fetch_gcp_secret(settings: StarterSettingsProtocol) -> str:
+    gcp = settings.gcp_settings
+    if not gcp.signing_secret_name:
+        raise CLIError("GCP Secret Manager configuration is incomplete; rerun secrets onboarding.")
+    if not gcp.project_id and not gcp.signing_secret_name.startswith("projects/"):
+        raise CLIError("GCP_SM_PROJECT_ID must be set for non-qualified secret names.")
+    client = GCPSecretManagerClient(project_id=gcp.project_id or None)
+    try:
+        value = client.get_secret_value(gcp.signing_secret_name)
+    except Exception as exc:  # pragma: no cover
+        raise CLIError(f"GCP Secret Manager secret fetch failed: {exc}") from exc
+    return value
 
 
 __all__ = ["build_vault_headers"]

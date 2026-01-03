@@ -10,6 +10,7 @@ from app.domain.secrets import SecretProviderProtocol, SecretsProviderLiteral
 
 from .aws_provider import build_aws_secret_provider
 from .azure_provider import build_azure_secret_provider
+from .gcp_provider import build_gcp_secret_provider
 from .infisical_provider import build_infisical_secret_provider
 from .vault_provider import build_vault_secret_provider
 
@@ -25,6 +26,7 @@ def _build_registry() -> Mapping[SecretsProviderLiteral, ProviderFactory]:
         SecretsProviderLiteral.INFISICAL_SELF_HOST: build_infisical_secret_provider,
         SecretsProviderLiteral.AWS_SM: build_aws_secret_provider,
         SecretsProviderLiteral.AZURE_KV: build_azure_secret_provider,
+        SecretsProviderLiteral.GCP_SM: build_gcp_secret_provider,
     }
 
 

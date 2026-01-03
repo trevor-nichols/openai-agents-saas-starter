@@ -34,9 +34,7 @@ def _apply_cloud_defaults(context: WizardContext) -> None:
         context.set_backend_default("SECRETS_PROVIDER", SecretsProviderLiteral.AZURE_KV.value)
         context.set_backend_default("STORAGE_PROVIDER", StorageProviderLiteral.AZURE_BLOB.value)
     elif provider == "gcp":
-        context.set_backend_default(
-            "SECRETS_PROVIDER", SecretsProviderLiteral.INFISICAL_CLOUD.value
-        )
+        context.set_backend_default("SECRETS_PROVIDER", SecretsProviderLiteral.GCP_SM.value)
         context.set_backend_default("STORAGE_PROVIDER", StorageProviderLiteral.GCS.value)
     else:  # aws or other default
         context.set_backend_default("SECRETS_PROVIDER", SecretsProviderLiteral.AWS_SM.value)

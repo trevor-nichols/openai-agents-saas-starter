@@ -20,6 +20,7 @@ terraform init
 terraform apply \
   -var "project_name=agent-saas" \
   -var "environment=prod" \
+  -var "region=eastus" \
   -var "api_image=<api-image>" \
   -var "web_image=<web-image>" \
   -var "secrets_provider=azure_kv" \
@@ -31,11 +32,13 @@ terraform apply \
   # or: -var "registry_password_secret_id=<key-vault-secret-id>" \
   -var "db_admin_password=<secure-password>" \
   -var "storage_account_name=<unique-storage-name>" \
+  -var "storage_bucket_name=<container-name>" \
   -var "key_vault_name=<unique-kv-name>" \
   -var "log_analytics_name=<workspace-name>" \
   -var "auth_signing_secret_name=<signing-secret-name>" \
   -var "auth_key_secret_name=<keyset-secret-name>" \
-  -var "auth_key_storage_provider=azure_kv"
+  -var "auth_key_storage_provider=azure_kv" \
+  -var "storage_provider=azure_blob"
 ```
 
 Requires Terraform 1.14.x (pinned in `.tool-versions`).

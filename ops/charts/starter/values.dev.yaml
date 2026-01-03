@@ -1,0 +1,10 @@
+api:
+  image: "ghcr.io/org/starter-api:dev"
+  replicaCount: 1
+
+web:
+  image: "ghcr.io/org/starter-web:dev"
+  replicaCount: 1
+
+ingress:
+  enabled: false

@@ -1,6 +1,6 @@
 resource "aws_s3_bucket" "storage" {
   count  = var.create_s3_bucket ? 1 : 0
-  bucket = var.s3_bucket_name
+  bucket = var.storage_bucket_name
 }
 
 resource "aws_s3_bucket_public_access_block" "storage" {

@@ -9,13 +9,37 @@ This repo ships production-ready container images and a cloud-agnostic architect
 - **Postgres**: Durable system of record.
 - **Redis**: Rate limiting, refresh tokens, billing streams.
 - **Object storage**: Tenant-scoped assets + attachments (S3, Azure Blob, GCS, MinIO).
-- **Secrets**: Vault/Infisical/AWS Secrets Manager/Azure Key Vault via the Starter Console.
+- **Secrets**: Vault/Infisical/AWS Secrets Manager/Azure Key Vault/GCP Secret Manager via the Starter Console.
 
 ## Reference Blueprints
 
 - **AWS (ECS/Fargate)** — `ops/infra/aws/` + `docs/ops/hosting-aws.md`
 - **Azure (Container Apps)** — `ops/infra/azure/` + `docs/ops/hosting-azure.md`
+- **GCP (Cloud Run)** — `ops/infra/gcp/` + `docs/ops/hosting-gcp.md`
 - **Release runbook** — `docs/ops/runbook-release.md`
+
+## Planned Targets (in progress)
+
+- **Kubernetes (Helm)** — `ops/charts/starter/` + `docs/ops/hosting-kubernetes.md`
+- **VPS / Single Server** — `ops/compose/docker-compose.prod.yml` + `docs/ops/hosting-vps.md`
+
+## Deployment Contract (Canonical)
+
+All deployment targets share a common contract so app code stays cloud-agnostic.
+
+### Required inputs
+- `project_name`, `environment`
+- `api_image`, `web_image` (optional `worker_image`)
+- `secrets_provider`, `auth_key_storage_provider`, `auth_key_secret_name`
+- `api_secrets` must include `DATABASE_URL` and `REDIS_URL`
+- `storage_provider` + bucket/container name
+- Optional `api_env`, `web_env`
+
+### Required outputs
+- `api_url`, `web_url`
+- `storage_bucket`
+- `database_endpoint`
+- `redis_endpoint`
 
 ## DNS + TLS
 
@@ -48,6 +72,7 @@ and key‑storage provider setup, see `docs/security/secrets-providers.md`.
 The AWS and Azure reference blueprints are optimized for **cloud‑native secrets** by default:
 - AWS: Secrets Manager (`SECRETS_PROVIDER=aws_sm`)
 - Azure: Key Vault (`SECRETS_PROVIDER=azure_kv`)
+- GCP: Secret Manager (`SECRETS_PROVIDER=gcp_sm`)
 
 Vault and Infisical remain **optional enterprise paths** for teams that already run those systems or
 need cross‑cloud governance. If you choose Vault/Infisical, you must explicitly wire their env vars
