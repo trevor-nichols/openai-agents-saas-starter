@@ -170,7 +170,7 @@ def test_filled_mode_accepts_signing_secret_via_api_env() -> None:
     assert "aws_sm_signing_secret_arn" not in result.values
 
 
-def test_filled_mode_accepts_signing_secret_key_presence() -> None:
+def test_filled_mode_rejects_empty_signing_secret_key() -> None:
     options = TerraformExportOptions(
         provider=TerraformProvider.AWS,
         mode=TerraformExportMode.FILLED,
@@ -189,8 +189,13 @@ def test_filled_mode_accepts_signing_secret_key_presence() -> None:
         "auth_key_secret_arn": "arn:aws:secretsmanager:us-east-1:123:secret:keyset",
         "api_env": {"AWS_SM_SIGNING_SECRET_ARN": ""},
     }
-    result = build_export(options=options, overrides=overrides)
-    assert "project_name" in result.values
+    with pytest.raises(TerraformExportError) as exc:
+        build_export(options=options, overrides=overrides)
+    assert (
+        "Provide aws_sm_signing_secret_arn or AWS_SM_SIGNING_SECRET_ARN via "
+        "api_env/api_secrets when secrets_provider=aws_sm."
+        in str(exc.value)
+    )
 
 
 def test_aws_accepts_whitespace_redis_auth_token() -> None:

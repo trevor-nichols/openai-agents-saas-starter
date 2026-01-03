@@ -357,7 +357,14 @@ def _path_value_present(values: Mapping[str, object], path: str) -> bool:
         current = current[part]
     if not isinstance(current, Mapping):
         return False
-    return parts[-1] in current
+    if parts[-1] not in current:
+        return False
+    value = current[parts[-1]]
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return value.strip() != ""
+    return True
 
 
 def _redact_value(value: object) -> object:
