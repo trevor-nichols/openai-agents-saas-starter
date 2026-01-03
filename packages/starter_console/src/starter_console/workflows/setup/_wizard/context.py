@@ -22,6 +22,7 @@ from starter_console.telemetry import (
 from ..automation import AutomationPhase, AutomationState
 from ..demo_token import DemoTokenConfig
 from ..inputs import InputProvider
+from ..provider_automation_plan import ProviderAutomationPlan
 from ..schema import WizardSchema
 from ..state import WizardStateStore
 from ..ui import WizardUIView, automation_status_to_state
@@ -52,6 +53,7 @@ class WizardContext:
     markdown_summary_path: Path | None = None
     dependency_statuses: list[DependencyStatus] = field(default_factory=list)
     automation: AutomationState = field(default_factory=AutomationState)
+    provider_automation_plan: ProviderAutomationPlan = field(default_factory=ProviderAutomationPlan)
     infra_session: InfraSession | None = None
     schema: WizardSchema | None = None
     state_store: WizardStateStore | None = None
