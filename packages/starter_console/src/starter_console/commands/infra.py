@@ -1,10 +1,16 @@
 from __future__ import annotations
 
 import argparse
+import difflib
 import json
 import subprocess
+from collections.abc import Iterable
+from pathlib import Path
 
-from starter_console.core import CLIContext
+from starter_contracts.infra.terraform_spec import TerraformProvider, get_provider_spec
+
+from starter_console.adapters.env.files import EnvFile, aggregate_env_values
+from starter_console.core import CLIContext, CLIError
 from starter_console.ports.console import ConsolePort
 from starter_console.services.infra import (
     COMPOSE_ACTION_TARGETS,
@@ -14,6 +20,14 @@ from starter_console.services.infra import (
     resolve_compose_target,
     resolve_vault_target,
 )
+from starter_console.services.infra.terraform_export import (
+    TerraformExportError,
+    TerraformExportFormat,
+    TerraformExportMode,
+    TerraformExportOptions,
+    build_export,
+)
+from starter_console.workflows.setup import load_answers_files, merge_answer_overrides
 
 
 def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -53,6 +67,80 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         help="Output dependency status as a table (default) or JSON list.",
     )
     deps_parser.set_defaults(handler=handle_deps)
+
+    terraform_parser = infra_subparsers.add_parser(
+        "terraform",
+        help="Export Terraform inputs for cloud blueprints.",
+    )
+    terraform_subparsers = terraform_parser.add_subparsers(dest="terraform_command")
+
+    terraform_export_parser = terraform_subparsers.add_parser(
+        "export",
+        help="Generate a tfvars file for a hosting provider.",
+    )
+    terraform_export_parser.add_argument(
+        "--provider",
+        choices=[provider.value for provider in TerraformProvider],
+        required=True,
+        help="Target Terraform blueprint (aws, azure, gcp).",
+    )
+    terraform_export_parser.add_argument(
+        "--mode",
+        choices=[mode.value for mode in TerraformExportMode],
+        default=TerraformExportMode.TEMPLATE.value,
+        help="template emits placeholders; filled requires all required values.",
+    )
+    terraform_export_parser.add_argument(
+        "--format",
+        choices=[fmt.value for fmt in TerraformExportFormat],
+        default=TerraformExportFormat.HCL.value,
+        help="Output format (hcl or json).",
+    )
+    terraform_export_parser.add_argument(
+        "--output",
+        metavar="PATH",
+        help="Write output to PATH (defaults to var/infra/<provider>/terraform.tfvars).",
+    )
+    terraform_export_parser.add_argument(
+        "--answers-file",
+        action="append",
+        metavar="PATH",
+        help="Optional answers file (JSON) with key/value pairs (repeatable).",
+    )
+    terraform_export_parser.add_argument(
+        "--var",
+        action="append",
+        metavar="KEY=VALUE",
+        help="Override a Terraform input or env alias (repeatable).",
+    )
+    terraform_export_parser.add_argument(
+        "--extra-var",
+        action="append",
+        metavar="KEY=VALUE",
+        help="Pass through additional Terraform inputs not in the schema (repeatable).",
+    )
+    terraform_export_parser.add_argument(
+        "--env-file",
+        action="append",
+        metavar="PATH",
+        help="Env file to prefill values (repeatable). Defaults to local .env.local files.",
+    )
+    terraform_export_parser.add_argument(
+        "--include-advanced",
+        action="store_true",
+        help="Include advanced tuning variables in the export.",
+    )
+    terraform_export_parser.add_argument(
+        "--include-secrets",
+        action="store_true",
+        help="Write sensitive values into the export (default redacts).",
+    )
+    terraform_export_parser.add_argument(
+        "--include-defaults",
+        action="store_true",
+        help="Include optional defaults even when not required.",
+    )
+    terraform_export_parser.set_defaults(handler=handle_terraform_export)
 
 
 def handle_compose(args: argparse.Namespace, ctx: CLIContext) -> int:
@@ -101,10 +189,288 @@ def handle_deps(args: argparse.Namespace, ctx: CLIContext) -> int:
     return 0
 
 
+def handle_terraform_export(args: argparse.Namespace, ctx: CLIContext) -> int:
+    provider = TerraformProvider(args.provider)
+    spec = get_provider_spec(provider)
+
+    answers = load_answers_files(args.answers_file or [])
+    overrides = merge_answer_overrides({}, args.var or [])
+    _ensure_known_overrides(spec, overrides)
+    extra_vars = _parse_kv_args(args.extra_var or [])
+
+    env_files = _resolve_env_files(ctx, args.env_file)
+    env_values = _collect_env_aliases(spec, env_files)
+
+    options = TerraformExportOptions(
+        provider=provider,
+        mode=TerraformExportMode(args.mode),
+        format=TerraformExportFormat(args.format),
+        include_advanced=bool(args.include_advanced),
+        include_secrets=bool(args.include_secrets),
+        include_defaults=bool(args.include_defaults),
+    )
+    _validate_source_keys(
+        ctx,
+        spec,
+        options.mode,
+        answers,
+        env_files,
+    )
+    try:
+        result = build_export(
+            options=options,
+            overrides=overrides,
+            answers=answers,
+            env=env_values,
+            extra_vars=extra_vars or None,
+        )
+    except TerraformExportError as exc:
+        raise CLIError(str(exc)) from exc
+
+    output_path = _resolve_output_path(ctx, provider, options.format, args.output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(result.render(format=options.format), encoding="utf-8")
+
+    ctx.console.success(f"Wrote Terraform export to {output_path}", topic="infra")
+    if result.missing_required or result.missing_requirements or result.failed_validations:
+        _log_missing_requirements(
+            ctx,
+            result.missing_required,
+            result.missing_requirements,
+            result.failed_validations,
+        )
+    return 0
+
+
 def _run_just(ctx: CLIContext, console: ConsolePort, target: str) -> None:
     cmd = just_command(target)
     console.info(f"$ {' '.join(cmd)}", topic="infra")
     subprocess.run(cmd, cwd=ctx.project_root, check=True)
+
+
+def _resolve_output_path(
+    ctx: CLIContext,
+    provider: TerraformProvider,
+    fmt: TerraformExportFormat,
+    raw: str | None,
+) -> Path:
+    if raw:
+        path = Path(raw).expanduser()
+        if not path.is_absolute():
+            path = ctx.project_root / path
+        return path
+    suffix = ".tfvars.json" if fmt == TerraformExportFormat.JSON else ".tfvars"
+    return ctx.project_root / "var" / "infra" / provider.value / f"terraform{suffix}"
+
+
+def _resolve_env_files(ctx: CLIContext, raw_paths: list[str] | None) -> list[EnvFile]:
+    if raw_paths:
+        resolved: list[Path] = []
+        for raw in raw_paths:
+            path = Path(raw).expanduser()
+            if not path.is_absolute():
+                path = ctx.project_root / path
+            if not path.exists():
+                raise CLIError(f"Env file not found: {path}")
+            resolved.append(path)
+        return [EnvFile(path) for path in resolved]
+
+    candidates = [
+        ctx.project_root / "apps" / "api-service" / ".env.local",
+        ctx.project_root / "apps" / "web-app" / ".env.local",
+    ]
+    return [EnvFile(path) for path in candidates if path.exists()]
+
+
+def _collect_env_aliases(spec, env_files: list[EnvFile]) -> dict[str, str]:
+    keys = {
+        alias
+        for variable in spec.variables
+        for alias in variable.env_aliases
+    }
+    if not keys:
+        return {}
+    aggregated = aggregate_env_values(env_files, keys)
+    return {key: value for key, value in aggregated.items() if value is not None}
+
+
+def _ensure_known_overrides(spec, overrides: dict[str, str]) -> None:
+    known = {variable.name.lower() for variable in spec.variables}
+    for variable in spec.variables:
+        known.update(alias.lower() for alias in variable.env_aliases)
+    for key in overrides.keys():
+        if key.lower() in known:
+            continue
+        raise CLIError(
+            f"Unknown Terraform input '{key}'. Use --extra-var for passthrough values."
+        )
+
+
+def _validate_source_keys(
+    ctx: CLIContext,
+    spec,
+    mode: TerraformExportMode,
+    answers: dict[str, str],
+    env_files: list[EnvFile],
+) -> None:
+    known_keys = _known_terraform_keys(spec)
+    known_lower = {key.lower() for key in known_keys}
+    alias_keys = _known_env_aliases(spec)
+    alias_lower_map = {alias.lower(): alias for alias in alias_keys}
+    var_lower_map = {variable.name.lower(): variable.name for variable in spec.variables}
+
+    suspicious_answers = _find_suspicious_keys(answers.keys(), known_keys, known_lower)
+    if suspicious_answers:
+        message = _format_suspicious_message(
+            "answers file",
+            suspicious_answers,
+            guidance="Use --extra-var for passthrough values or correct the key.",
+        )
+        if mode == TerraformExportMode.FILLED:
+            raise CLIError(message)
+        ctx.console.warn(message, topic="infra")
+
+    env_key_issues = _collect_env_key_issues(
+        env_files,
+        known_keys,
+        known_lower,
+        alias_keys,
+        alias_lower_map,
+        var_lower_map,
+    )
+    if env_key_issues:
+        ctx.console.warn(
+            _format_env_issues_message(env_key_issues),
+            topic="infra",
+        )
+
+
+def _known_env_aliases(spec) -> set[str]:
+    return {alias for variable in spec.variables for alias in variable.env_aliases}
+
+
+def _known_terraform_keys(spec) -> list[str]:
+    keys = {variable.name for variable in spec.variables}
+    keys.update(_known_env_aliases(spec))
+    return sorted(keys)
+
+
+def _find_suspicious_keys(
+    keys: Iterable[str],
+    known_keys: list[str],
+    known_lower: set[str],
+    *,
+    cutoff: float = 0.9,
+) -> list[tuple[str, str]]:
+    suggestions: list[tuple[str, str]] = []
+    lookup = {key.lower(): key for key in known_keys}
+    for raw in keys:
+        normalized = raw.strip().lower()
+        if not normalized or normalized in known_lower:
+            continue
+        matches = difflib.get_close_matches(normalized, lookup.keys(), n=1, cutoff=cutoff)
+        if matches:
+            suggestions.append((raw, lookup[matches[0]]))
+    return suggestions
+
+
+def _collect_env_key_issues(
+    env_files: list[EnvFile],
+    known_keys: list[str],
+    known_lower: set[str],
+    alias_keys: set[str],
+    alias_lower_map: dict[str, str],
+    var_lower_map: dict[str, str],
+) -> list[str]:
+    if not env_files:
+        return []
+    issues: list[str] = []
+    seen: set[str] = set()
+    for env_file in env_files:
+        for key in env_file.as_dict().keys():
+            normalized = key.lower()
+            if normalized in alias_lower_map and key not in alias_keys:
+                issue = (
+                    f"Env key '{key}' is case-sensitive and will be ignored; "
+                    f"use '{alias_lower_map[normalized]}' instead."
+                )
+                if issue not in seen:
+                    seen.add(issue)
+                    issues.append(issue)
+                continue
+            if normalized in var_lower_map and normalized not in alias_lower_map:
+                issue = (
+                    f"Env key '{key}' matches Terraform variable "
+                    f"'{var_lower_map[normalized]}' but env files only read aliases; "
+                    "use --var or an answers file."
+                )
+                if issue not in seen:
+                    seen.add(issue)
+                    issues.append(issue)
+                continue
+            if normalized not in known_lower:
+                continue
+            # If the key is known but not an alias, ignore; variable names are handled above.
+            # Otherwise, skip.
+            continue
+    # Look for likely typos in env files as a best-effort signal.
+    env_keys = {key for env_file in env_files for key in env_file.as_dict().keys()}
+    for raw, suggestion in _find_suspicious_keys(env_keys, known_keys, known_lower):
+        issue = f"Env key '{raw}' is ignored; did you mean '{suggestion}'?"
+        if issue not in seen:
+            seen.add(issue)
+            issues.append(issue)
+    return issues
+
+
+def _format_suspicious_message(
+    source: str,
+    entries: list[tuple[str, str]],
+    *,
+    guidance: str,
+) -> str:
+    header = f"Suspicious Terraform inputs detected in {source}:"
+    lines = [header]
+    for raw, suggestion in entries:
+        lines.append(f"- {raw} (did you mean {suggestion}?)")
+    lines.append(guidance)
+    return "\n".join(lines)
+
+
+def _format_env_issues_message(issues: list[str]) -> str:
+    lines = ["Env file inputs need attention:"]
+    lines.extend(f"- {issue}" for issue in issues)
+    return "\n".join(lines)
+
+
+def _parse_kv_args(values: list[str]) -> dict[str, str]:
+    parsed: dict[str, str] = {}
+    for raw in values:
+        if "=" not in raw:
+            raise CLIError(f"Invalid value '{raw}'. Expected KEY=VALUE format.")
+        key, value = raw.split("=", 1)
+        parsed[key.strip()] = value
+    return parsed
+
+
+def _log_missing_requirements(
+    ctx: CLIContext,
+    missing_required: Iterable[str],
+    missing_requirements: Iterable[str],
+    failed_validations: Iterable[str],
+) -> None:
+    if missing_required:
+        ctx.console.warn("Template export missing required values:", topic="infra")
+        for name in sorted(missing_required):
+            ctx.console.warn(f"- {name}", topic="infra")
+    if missing_requirements:
+        ctx.console.warn("Additional requirement hints:", topic="infra")
+        for message in missing_requirements:
+            ctx.console.warn(f"- {message}", topic="infra")
+    if failed_validations:
+        ctx.console.warn("Template export violates Terraform validations:", topic="infra")
+        for message in failed_validations:
+            ctx.console.warn(f"- {message}", topic="infra")
 
 
 __all__ = ["register"]

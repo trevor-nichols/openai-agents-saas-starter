@@ -70,13 +70,15 @@ For the full list, see `docs/trackers/CONSOLE_ENV_INVENTORY.md`.
 
 | Terraform input | Env var | Notes |
 | --- | --- | --- |
+| `region` | — | Azure region for all resources. |
 | `environment` | `ENVIRONMENT` | Used for production safety checks. |
 | `secrets_provider` | `SECRETS_PROVIDER` | Defaults to `azure_kv`; set to Vault/Infisical if used. |
 | `auth_signing_secret_name` | `AZURE_KV_SIGNING_SECRET_NAME` | Key Vault secret name for signing (required when `secrets_provider=azure_kv`). |
 | `auth_key_secret_name` | `AUTH_KEY_SECRET_NAME` | Ed25519 keyset stored in secret manager (Key Vault when provider is `azure_kv`). |
 | `auth_key_storage_provider` | `AUTH_KEY_STORAGE_PROVIDER` | Key storage provider (defaults to `secrets_provider`). |
 | `storage_account_name` | `AZURE_BLOB_ACCOUNT_URL` | Resolved by the platform from the storage account. |
-| `storage_container_name` | `AZURE_BLOB_CONTAINER` | Blob container used for object storage. |
+| `storage_provider` | `STORAGE_PROVIDER` | Defaults to `azure_blob` for this blueprint. |
+| `storage_bucket_name` | `AZURE_BLOB_CONTAINER` | Blob container used for object storage. |
 
 ## DNS + HTTPS (Azure DNS + Managed Certificates)
 
@@ -119,8 +121,8 @@ Use custom domains like `api.example.com` and `app.example.com`. Container Apps 
 ## Billing Worker Topology
 
 When running more than one API replica, move billing retries into a dedicated service:
-- API: `ENABLE_BILLING_RETRY_WORKER=false`
-- Worker: `ENABLE_BILLING_RETRY_WORKER=true`, `BILLING_RETRY_DEPLOYMENT_MODE=dedicated`
+- API: `ENABLE_BILLING_RETRY_WORKER=false`, `ENABLE_BILLING_STREAM_REPLAY=false`
+- Worker: `ENABLE_BILLING_RETRY_WORKER=true`, `ENABLE_BILLING_STREAM_REPLAY=true`, `BILLING_RETRY_DEPLOYMENT_MODE=dedicated`
 
 ## Migrations
 

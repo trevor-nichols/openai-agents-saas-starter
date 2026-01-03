@@ -15,6 +15,8 @@ from starter_providers.secrets import (
     AWSSecretsManagerError,
     AzureKeyVaultClient,
     AzureKeyVaultError,
+    GCPSecretManagerClient,
+    GCPSecretManagerError,
 )
 from starter_providers.secrets.infisical_client import InfisicalAPIClient, InfisicalAPIError
 
@@ -111,6 +113,33 @@ class InfisicalSecretManagerKeyStorageClient(SecretManagerClient):
             raise KeyStorageError(str(exc)) from exc
 
 
+class GCPSecretManagerKeyStorageClient(SecretManagerClient):
+    def __init__(self, ctx: CLIContext) -> None:
+        settings = ctx.require_settings()
+        gcp = settings.gcp_settings
+        secret_name = settings.auth_key_secret_name or ""
+        if not gcp.project_id and not secret_name.startswith("projects/"):
+            raise KeyStorageError(
+                "GCP_SM_PROJECT_ID must be set when AUTH_KEY_SECRET_NAME is not fully qualified."
+            )
+        try:
+            self._client = GCPSecretManagerClient(project_id=gcp.project_id or None)
+        except GCPSecretManagerError as exc:
+            raise KeyStorageError(str(exc)) from exc
+
+    def read_secret(self, name: str) -> str | None:
+        try:
+            return self._client.get_secret_value_optional(name)
+        except GCPSecretManagerError as exc:
+            raise KeyStorageError(str(exc)) from exc
+
+    def write_secret(self, name: str, value: str) -> None:
+        try:
+            self._client.put_secret_value(name, value)
+        except GCPSecretManagerError as exc:
+            raise KeyStorageError(str(exc)) from exc
+
+
 def configure_key_storage_secret_manager(ctx: CLIContext) -> None:
     settings = ctx.require_settings()
     if settings.auth_key_storage_backend != "secret-manager":
@@ -127,6 +156,10 @@ def configure_key_storage_secret_manager(ctx: CLIContext) -> None:
 
     if provider == SecretsProviderLiteral.AZURE_KV:
         register_secret_manager_client(lambda: AzureKeyVaultSecretManagerClient(ctx))
+        return
+
+    if provider == SecretsProviderLiteral.GCP_SM:
+        register_secret_manager_client(lambda: GCPSecretManagerKeyStorageClient(ctx))
         return
 
     if provider in {

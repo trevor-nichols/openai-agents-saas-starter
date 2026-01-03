@@ -1,0 +1,22 @@
+{
+  email {$CADDY_EMAIL}
+}
+
+{$APP_HOST} {
+  encode zstd gzip
+
+  @api path /api* /api/* /api
+  handle @api {
+    reverse_proxy web:3000
+  }
+
+  handle {
+    reverse_proxy web:3000
+  }
+}
+
+# Optional: separate API host (server-to-server only; browser traffic should use the web app BFF)
+# {$API_HOST} {
+#   encode zstd gzip
+#   reverse_proxy api:8000
+# }

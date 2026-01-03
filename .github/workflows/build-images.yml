@@ -225,10 +225,37 @@ jobs:
 
       - name: Terraform validate (ops/infra)
         run: |
-          for dir in ops/infra/aws ops/infra/azure; do
+          for dir in ops/infra/aws ops/infra/azure ops/infra/gcp; do
             terraform -chdir="$dir" init -backend=false
             terraform -chdir="$dir" validate
           done
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: "3.14.4"
+
+      - name: Helm lint (ops/charts)
+        run: helm lint ops/charts/starter
+
+      - name: Helm template (ops/charts)
+        run: helm template starter ops/charts/starter -f ops/charts/starter/values.prod.yaml
+
+      - name: Prepare Compose env files
+        run: |
+          mkdir -p apps/api-service apps/web-app
+          touch apps/api-service/.env.local apps/web-app/.env.local
+          if [ ! -f .env.compose ]; then
+            cp .env.compose.example .env.compose
+          fi
+
+      - name: Docker Compose config (ops/compose)
+        env:
+          API_IMAGE: "example.com/starter-api:ci"
+          WEB_IMAGE: "example.com/starter-web:ci"
+          APP_HOST: "app.example.com"
+          CADDY_EMAIL: "ci@example.com"
+        run: docker compose -f ops/compose/docker-compose.prod.yml config
 
   workflow_lint:
     runs-on: ubuntu-latest

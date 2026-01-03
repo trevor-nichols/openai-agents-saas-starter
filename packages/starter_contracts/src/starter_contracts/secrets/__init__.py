@@ -3,6 +3,7 @@
 from .models import (
     AWSSecretsManagerConfig,
     AzureKeyVaultConfig,
+    GCPSecretManagerConfig,
     InfisicalProviderConfig,
     SecretProviderHealth,
     SecretProviderProtocol,
@@ -17,6 +18,7 @@ from .models import (
 __all__ = [
     "AWSSecretsManagerConfig",
     "AzureKeyVaultConfig",
+    "GCPSecretManagerConfig",
     "InfisicalProviderConfig",
     "SecretProviderHealth",
     "SecretProviderProtocol",

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from starter_contracts.secrets.models import SecretsProviderLiteral
 
 from .models import ProviderOption, SecretsWorkflow
-from .providers import aws, azure, infisical, vault
+from .providers import aws, azure, gcp, infisical, vault
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,6 +70,15 @@ PROVIDER_WORKFLOWS: tuple[ProviderWorkflow, ...] = (
             available=True,
         ),
         azure.run_azure_kv,
+    ),
+    ProviderWorkflow(
+        ProviderOption(
+            literal=SecretsProviderLiteral.GCP_SM,
+            label="GCP Secret Manager",
+            description="Use GCP Secret Manager secrets as the signing key store.",
+            available=True,
+        ),
+        gcp.run_gcp_sm,
     ),
 )
 

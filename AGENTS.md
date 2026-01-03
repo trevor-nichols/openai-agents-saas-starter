@@ -154,7 +154,7 @@ You are a professional engineer and developer in charge of the OpenAI Agent SaaS
 - Postgres integration suites (`tests/integration/test_postgres_migrations.py`) remain skipped unless `USE_REAL_POSTGRES=true`; leave this off for local/unit CI runs so we never accidentally hit a developer's Postgres instance.
 
 # Notes
-- Throughout the codebase you will see SNAPSHOT.md files. These files contain architectural documentation using directory trees with inline comments to help you understand and navigate the project efficiently.
+- Throughout the codebase you will see SNAPSHOT.md files. These files contain architectural documentation using directory trees with inline comments to help you understand and navigate the project efficiently. They are not tracked in github.
     - Run `cb --snapshots` to idenitfy location of SNAPSHOT.md files.
     - Update snapshots by running `cb tree-sync-batch -y` to sync with the latest changes.
 - Refer to `docs/trackers/` for the latest status of the codebase. Keep these trackers up to date with the latest changes and status of the codebase.

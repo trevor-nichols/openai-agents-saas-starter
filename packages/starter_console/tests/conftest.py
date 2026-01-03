@@ -31,11 +31,10 @@ for _path in (_REPO_ROOT, _API_DIR, _API_SRC, _API_TESTS):
 
 def _install_google_stubs() -> None:
     """Stub google cloud modules so FastAPI imports don't require heavy deps."""
-
+    import importlib.machinery
+    import importlib.util
+    import importlib
     import types
-
-    if "google" in sys.modules:
-        return
 
     class _DummyGcsError(Exception):
         ...
@@ -43,14 +42,12 @@ def _install_google_stubs() -> None:
     class _DummyNotFound(_DummyGcsError):
         ...
 
-    google: Any = types.ModuleType("google")
-    api_core: Any = types.ModuleType("google.api_core")
-    api_core.exceptions = cast(
-        Any,
-        types.SimpleNamespace(
-            GoogleAPIError=_DummyGcsError, NotFound=_DummyNotFound
-        ),
-    )
+    def _module(name: str, *, is_pkg: bool) -> Any:
+        mod = types.ModuleType(name)
+        if is_pkg:
+            mod.__path__ = []
+        mod.__spec__ = importlib.machinery.ModuleSpec(name, loader=None)
+        return mod
 
     class _DummyBlob:
         def __init__(self, key: str) -> None:
@@ -101,34 +98,56 @@ def _install_google_stubs() -> None:
         def list_buckets(self, page_size: int = 1):
             return []
 
-    storage_mod: Any = types.ModuleType("google.cloud.storage")
-    storage_mod.Client = _DummyClient
+    if importlib.util.find_spec("google") is None:
+        sys.modules.setdefault("google", _module("google", is_pkg=True))
 
-    cloud: Any = types.ModuleType("google.cloud")
-    cloud.storage = storage_mod
+    if importlib.util.find_spec("google.api_core") is None:
+        api_core: Any = _module("google.api_core", is_pkg=True)
+        api_core.exceptions = cast(
+            Any,
+            types.SimpleNamespace(
+                GoogleAPIError=_DummyGcsError, NotFound=_DummyNotFound
+            ),
+        )
+        sys.modules.setdefault("google.api_core", api_core)
+        sys.modules.setdefault("google.api_core.exceptions", cast(Any, api_core.exceptions))
 
-    oauth2: Any = types.ModuleType("google.oauth2")
-    service_account: Any = types.ModuleType("google.oauth2.service_account")
+    if importlib.util.find_spec("google.cloud.storage") is None:
+        storage_mod: Any = _module("google.cloud.storage", is_pkg=False)
+        storage_mod.Client = _DummyClient
+        cloud_mod: Any
+        if "google.cloud" in sys.modules:
+            cloud_mod = sys.modules["google.cloud"]
+        elif importlib.util.find_spec("google.cloud") is not None:
+            cloud_mod = importlib.import_module("google.cloud")
+        else:
+            cloud_mod = _module("google.cloud", is_pkg=True)
+            sys.modules.setdefault("google.cloud", cloud_mod)
+        setattr(cloud_mod, "storage", storage_mod)
+        sys.modules.setdefault("google.cloud.storage", storage_mod)
 
-    class _DummyCreds:
-        @classmethod
-        def from_service_account_info(cls, info: object) -> "_DummyCreds":
-            return cls()
+    if importlib.util.find_spec("google.oauth2") is None:
+        oauth2: Any = _module("google.oauth2", is_pkg=True)
+        sys.modules.setdefault("google.oauth2", oauth2)
+    else:
+        oauth2 = importlib.import_module("google.oauth2")
+    oauth2 = cast(Any, oauth2)
 
-        @classmethod
-        def from_service_account_file(cls, path: str) -> "_DummyCreds":
-            return cls()
+    if importlib.util.find_spec("google.oauth2.service_account") is None:
+        service_account: Any = _module("google.oauth2.service_account", is_pkg=False)
 
-    service_account.Credentials = _DummyCreds
-    oauth2.service_account = service_account
+        class _DummyCreds:
+            @classmethod
+            def from_service_account_info(cls, info: object) -> "_DummyCreds":
+                return cls()
 
-    sys.modules["google"] = google
-    sys.modules["google.api_core"] = api_core
-    sys.modules["google.api_core.exceptions"] = cast(Any, api_core.exceptions)
-    sys.modules["google.cloud"] = cloud
-    sys.modules["google.cloud.storage"] = storage_mod
-    sys.modules["google.oauth2"] = oauth2
-    sys.modules["google.oauth2.service_account"] = service_account
+            @classmethod
+            def from_service_account_file(cls, path: str) -> "_DummyCreds":
+                return cls()
+
+        service_account.Credentials = _DummyCreds
+        oauth2.service_account = service_account
+        sys.modules.setdefault("google.oauth2.service_account", service_account)
 
 
 _install_google_stubs()

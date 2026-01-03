@@ -41,8 +41,8 @@ If any of these are missing or failing, resolve before tagging a release.
 ## Billing Worker Topology
 
 If running more than one API replica, move billing retries to a dedicated service to prevent duplicate retries:
-- API: `ENABLE_BILLING_RETRY_WORKER=false`
-- Worker: `ENABLE_BILLING_RETRY_WORKER=true`, `BILLING_RETRY_DEPLOYMENT_MODE=dedicated`
+- API: `ENABLE_BILLING_RETRY_WORKER=false`, `ENABLE_BILLING_STREAM_REPLAY=false`
+- Worker: `ENABLE_BILLING_RETRY_WORKER=true`, `ENABLE_BILLING_STREAM_REPLAY=true`, `BILLING_RETRY_DEPLOYMENT_MODE=dedicated`
 
 ## Rollback Strategy
 

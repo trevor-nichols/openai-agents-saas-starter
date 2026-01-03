@@ -91,7 +91,7 @@ def _collect_provider_choice(
                 key="SECRETS_PROVIDER",
                 prompt=(
                     "Secrets provider "
-                    "(vault_dev/vault_hcp/infisical_cloud/infisical_self_host/aws_sm/azure_kv)"
+                    "(vault_dev/vault_hcp/infisical_cloud/infisical_self_host/aws_sm/azure_kv/gcp_sm)"
                 ),
                 default=default_provider,
                 required=True,
@@ -175,6 +175,9 @@ def _collect_key_storage_provider(
         return
     if key_provider == SecretsProviderLiteral.AZURE_KV:
         _collect_azure_key_storage(context, provider)
+        return
+    if key_provider == SecretsProviderLiteral.GCP_SM:
+        _collect_gcp_key_storage(context, provider)
         return
     if key_provider in {
         SecretsProviderLiteral.INFISICAL_CLOUD,
@@ -316,6 +319,22 @@ def _collect_azure_key_storage(context: WizardContext, provider: InputProvider) 
         context.set_backend("AZURE_CLIENT_SECRET", client_secret, mask=True)
     if managed_identity_client_id:
         context.set_backend("AZURE_MANAGED_IDENTITY_CLIENT_ID", managed_identity_client_id)
+
+
+def _collect_gcp_key_storage(context: WizardContext, provider: InputProvider) -> None:
+    project_id = provider.prompt_string(
+        key="GCP_SM_PROJECT_ID",
+        prompt="GCP project ID (optional if AUTH_KEY_SECRET_NAME is fully qualified)",
+        default=context.current("GCP_SM_PROJECT_ID") or "",
+        required=False,
+    )
+    secret_name = context.current("AUTH_KEY_SECRET_NAME") or ""
+    if not project_id and secret_name and not secret_name.startswith("projects/"):
+        raise CLIError(
+            "GCP_SM_PROJECT_ID is required when AUTH_KEY_SECRET_NAME is not fully qualified."
+        )
+    if project_id:
+        context.set_backend("GCP_SM_PROJECT_ID", project_id)
 
 
 def _collect_infisical_key_storage(

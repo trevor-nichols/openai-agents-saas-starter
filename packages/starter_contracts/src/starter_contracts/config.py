@@ -17,6 +17,7 @@ from typing import Any, Literal, Protocol, cast, runtime_checkable
 from starter_contracts.secrets.models import (
     AWSSecretsManagerConfig,
     AzureKeyVaultConfig,
+    GCPSecretManagerConfig,
     InfisicalProviderConfig,
     SecretsProviderLiteral,
     VaultProviderConfig,
@@ -64,6 +65,9 @@ class StarterSettingsProtocol(Protocol):
     azure_client_secret: str | None
     azure_managed_identity_client_id: str | None
     azure_kv_cache_ttl_seconds: int
+    gcp_sm_project_id: str | None
+    gcp_sm_signing_secret_name: str | None
+    gcp_sm_cache_ttl_seconds: int
     auth_key_storage_backend: str
     auth_key_storage_provider: SecretsProviderLiteral | None
     auth_key_storage_path: str
@@ -112,6 +116,9 @@ class StarterSettingsProtocol(Protocol):
 
     @property
     def azure_settings(self) -> AzureKeyVaultConfig: ...
+
+    @property
+    def gcp_settings(self) -> GCPSecretManagerConfig: ...
 
     @property
     def minio_settings(self) -> MinioProviderConfig: ...

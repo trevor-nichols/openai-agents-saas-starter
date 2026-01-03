@@ -41,11 +41,12 @@ Operator console for the OpenAI Agents SaaS starter stack. It is the single entr
 ## Command catalog (high-level)
 - `setup menu|wizard`: setup hub + milestone wizard with hosting presets, automation toggles, and audit summaries.
 - `infra deps|compose|vault`: verify prerequisites and manage Docker Compose + Vault dev signer.
+- `infra terraform export`: generate Terraform tfvars for AWS/Azure/GCP blueprints.
 - `start` / `stop`: start dev/backend/frontend with health checks; detach to run in the background.
 - `home` / `doctor`: TUI hub and consolidated readiness probes (JSON/Markdown supported).
 - `auth tokens|keys|jwks`: issue service-account tokens and rotate Ed25519 keys.
 - `users ensure-dev|seed`: seed a dev user/tenant or a specific user.
-- `secrets onboard`: onboarding for Vault, AWS Secrets Manager, Azure Key Vault, Infisical.
+- `secrets onboard`: onboarding for Vault, AWS Secrets Manager, Azure Key Vault, GCP Secret Manager, Infisical.
 - `sso setup`: provision optional OIDC SSO providers (Google/Azure/Okta/Auth0/custom) and seed provider config.
 - `providers validate`: validate Stripe/Resend configuration (strict mode supported).
 - `stripe`: provision catalog, capture webhook secrets, replay events.
@@ -105,5 +106,6 @@ OPENAPI_INPUT=../api-service/.artifacts/openapi-fixtures.json pnpm generate:fixt
 - `docs/ops/setup-wizard-presets.md`
 - `docs/observability/README.md`
 - `docs/security/secrets-providers.md`
+- `docs/ops/terraform-export.md`
 - `docs/scripts/stripe-setup.md`
 - `docs/ops/db-release-playbook.md`

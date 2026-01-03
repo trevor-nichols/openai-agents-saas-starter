@@ -14,6 +14,7 @@ Fast, deterministic checks that hit a running api-service over HTTP. Designed fo
 - Usage counters
 - User profile, consents, and notification preferences
 - Tenant settings (get + update) + tenant members/invites (list/issue/revoke)
+- Platform operator tenant list + detail
 - Workflows list/runs + descriptors
 - Storage presign + list + download/delete
 - Uploads agent-input presign

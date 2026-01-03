@@ -18,7 +18,7 @@ output "redis_endpoint" {
   description = "Redis endpoint hostname."
 }
 
-output "s3_bucket" {
-  value       = var.s3_bucket_name
-  description = "S3 bucket name for storage."
+output "storage_bucket" {
+  value       = var.storage_bucket_name
+  description = "Storage bucket name."
 }

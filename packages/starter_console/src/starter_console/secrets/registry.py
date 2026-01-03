@@ -8,6 +8,7 @@ from starter_contracts.config import StarterSettingsProtocol
 from starter_contracts.secrets.models import (
     AWSSecretsManagerConfig,
     AzureKeyVaultConfig,
+    GCPSecretManagerConfig,
     InfisicalProviderConfig,
     SecretsProviderLiteral,
     VaultProviderConfig,
@@ -23,6 +24,7 @@ class CLISecretsProvider:
     infisical: InfisicalProviderConfig | None = None
     aws: AWSSecretsManagerConfig | None = None
     azure: AzureKeyVaultConfig | None = None
+    gcp: GCPSecretManagerConfig | None = None
 
 
 def resolve_cli_secrets_provider(settings: StarterSettingsProtocol) -> CLISecretsProvider:
@@ -44,6 +46,8 @@ def resolve_cli_secrets_provider(settings: StarterSettingsProtocol) -> CLISecret
         return CLISecretsProvider(kind=provider, aws=settings.aws_settings)
     if provider is SecretsProviderLiteral.AZURE_KV:
         return CLISecretsProvider(kind=provider, azure=settings.azure_settings)
+    if provider is SecretsProviderLiteral.GCP_SM:
+        return CLISecretsProvider(kind=provider, gcp=settings.gcp_settings)
 
     raise RuntimeError(
         f"Secrets provider {provider.value} is not available in the CLI yet. "

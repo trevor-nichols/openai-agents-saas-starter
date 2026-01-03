@@ -30,6 +30,7 @@ from .infra import InfraSession
 from .inputs import InputProvider, InteractiveInputProvider, is_headless_provider
 from .models import SectionResult
 from .preflight import run_preflight
+from .provider_automation import run_provider_automation
 from .schema import load_schema
 from .schema_provider import SchemaAwareInputProvider
 from .section_specs import SECTION_LABELS, SECTION_SPECS
@@ -247,6 +248,7 @@ class SetupWizard:
         self.context.save_env_files()
         self.context.load_environment()
         self.context.refresh_settings_cache()
+        run_provider_automation(self.context)
         run_sso_automation(self.context)
         run_dev_user_automation(self.context)
         capture_tenant_summary(self.context)

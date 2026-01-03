@@ -52,8 +52,8 @@ locals {
       AWS_REGION                = var.region
       AUTH_KEY_STORAGE_BACKEND  = "secret-manager"
       AUTH_KEY_STORAGE_PROVIDER = local.auth_key_storage_provider
-      STORAGE_PROVIDER          = "s3"
-      S3_BUCKET                 = var.s3_bucket_name
+      STORAGE_PROVIDER          = var.storage_provider
+      S3_BUCKET                 = var.storage_bucket_name
       S3_REGION                 = var.region
       ALLOWED_HOSTS             = local.api_allowed_hosts
       ALLOWED_ORIGINS           = local.app_public_url_effective

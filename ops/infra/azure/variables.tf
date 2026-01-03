@@ -8,7 +8,7 @@ variable "environment" {
   description = "Deployment environment (dev/staging/prod)."
 }
 
-variable "location" {
+variable "region" {
   type        = string
   description = "Azure region."
   default     = "eastus"
@@ -180,10 +180,20 @@ variable "storage_account_name" {
   description = "Storage account name for Blob storage (must be globally unique)."
 }
 
-variable "storage_container_name" {
+variable "storage_bucket_name" {
   type        = string
   description = "Blob container name for object storage."
   default     = "assets"
+}
+
+variable "storage_provider" {
+  type        = string
+  description = "Storage provider for the API service (STORAGE_PROVIDER)."
+  default     = "azure_blob"
+  validation {
+    condition     = var.storage_provider == "azure_blob"
+    error_message = "storage_provider must be \"azure_blob\" for the Azure blueprint."
+  }
 }
 
 variable "key_vault_name" {

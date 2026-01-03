@@ -1,0 +1,112 @@
+nameOverride: ""
+fullnameOverride: ""
+
+commonLabels: {}
+imagePullSecrets: []
+
+api:
+  image: ""
+  imagePullPolicy: IfNotPresent
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    port: 8000
+  secretName: ""
+  env: {}
+  secrets: {}
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1Gi"
+  podLabels: {}
+  podAnnotations: {}
+
+web:
+  image: ""
+  imagePullPolicy: IfNotPresent
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    port: 3000
+  secretName: ""
+  env: {}
+  secrets: {}
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1Gi"
+  podLabels: {}
+  podAnnotations: {}
+
+worker:
+  enabled: false
+  image: ""
+  imagePullPolicy: IfNotPresent
+  replicaCount: 1
+  secretName: ""
+  env: {}
+  secrets: {}
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1Gi"
+  podLabels: {}
+  podAnnotations: {}
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+podSecurityContext: {}
+securityContext: {}
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts: []
+  tls: []
+  apiHosts: []
+  apiTls: []
+
+ingressPaths:
+  api: /api
+  web: /
+  apiHost: /
+
+autoscaling:
+  enabled: false
+  targetCPUUtilizationPercentage: 80
+
+  api:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+  web:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+
+externalSecrets:
+  enabled: true
+  refreshInterval: 1h
+  secretStoreRef:
+    name: ""
+    kind: ClusterSecretStore
+
+  api:
+    data: {}
+  web:
+    data: {}
+  worker:
+    data: {}

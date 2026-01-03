@@ -8,6 +8,15 @@ from .just_targets import (
     resolve_compose_target,
     resolve_vault_target,
 )
+from .terraform_export import (
+    TerraformExportError,
+    TerraformExportFormat,
+    TerraformExportMode,
+    TerraformExportOptions,
+    TerraformExportResult,
+    build_export,
+    render_hcl,
+)
 
 __all__ = [
     "COMPOSE_ACTION_TARGETS",
@@ -17,4 +26,11 @@ __all__ = [
     "just_command",
     "resolve_compose_target",
     "resolve_vault_target",
+    "TerraformExportError",
+    "TerraformExportFormat",
+    "TerraformExportMode",
+    "TerraformExportOptions",
+    "TerraformExportResult",
+    "build_export",
+    "render_hcl",
 ]

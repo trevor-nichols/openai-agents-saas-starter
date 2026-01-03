@@ -9,6 +9,7 @@ from starter_console.core import CLIError
 from ...inputs import InputProvider, is_headless_provider
 from ..context import WizardContext
 from ..presets import apply_hosting_preset
+from ._prompts import prompt_nonempty_string
 
 _DEFAULT_AUTH_AUDIENCE = (
     "agent-api,analytics-service,billing-worker,support-console,synthetic-monitor"
@@ -85,7 +86,7 @@ def run(context: WizardContext, provider: InputProvider) -> None:
     )
     context.set_backend("ALLOWED_ORIGINS", allowed_origins)
 
-    allowed_methods = _prompt_nonempty_string(
+    allowed_methods = prompt_nonempty_string(
         context,
         provider,
         key="ALLOWED_METHODS",
@@ -94,7 +95,7 @@ def run(context: WizardContext, provider: InputProvider) -> None:
     )
     context.set_backend("ALLOWED_METHODS", allowed_methods)
 
-    allowed_headers = _prompt_nonempty_string(
+    allowed_headers = prompt_nonempty_string(
         context,
         provider,
         key="ALLOWED_HEADERS",
@@ -167,7 +168,7 @@ def _configure_setup_preferences(context: WizardContext, provider: InputProvider
 
 
 def _configure_branding(context: WizardContext, provider: InputProvider) -> None:
-    app_name = _prompt_nonempty_string(
+    app_name = prompt_nonempty_string(
         context,
         provider,
         key="APP_NAME",
@@ -176,7 +177,7 @@ def _configure_branding(context: WizardContext, provider: InputProvider) -> None
     )
     context.set_backend("APP_NAME", app_name)
 
-    app_description = _prompt_nonempty_string(
+    app_description = prompt_nonempty_string(
         context,
         provider,
         key="APP_DESCRIPTION",
@@ -185,7 +186,7 @@ def _configure_branding(context: WizardContext, provider: InputProvider) -> None
     )
     context.set_backend("APP_DESCRIPTION", app_description)
 
-    app_version = _prompt_nonempty_string(
+    app_version = prompt_nonempty_string(
         context,
         provider,
         key="APP_VERSION",
@@ -204,7 +205,7 @@ def _configure_authentication(context: WizardContext, provider: InputProvider) -
     context.set_backend_bool("REQUIRE_EMAIL_VERIFICATION", require_email)
 
     audience_default = context.current("AUTH_AUDIENCE") or _DEFAULT_AUTH_AUDIENCE
-    raw_audience = _prompt_nonempty_string(
+    raw_audience = prompt_nonempty_string(
         context,
         provider,
         key="AUTH_AUDIENCE",
@@ -213,7 +214,7 @@ def _configure_authentication(context: WizardContext, provider: InputProvider) -
     )
     context.set_backend("AUTH_AUDIENCE", _normalize_audience_value(raw_audience))
 
-    jwt_algorithm = _prompt_nonempty_string(
+    jwt_algorithm = prompt_nonempty_string(
         context,
         provider,
         key="JWT_ALGORITHM",
@@ -240,7 +241,7 @@ def _configure_authentication(context: WizardContext, provider: InputProvider) -
     context.set_backend("AUTH_KEY_STORAGE_BACKEND", backend_choice)
 
     if backend_choice == "file":
-        storage_path = _prompt_nonempty_string(
+        storage_path = prompt_nonempty_string(
             context,
             provider,
             key="AUTH_KEY_STORAGE_PATH",
@@ -264,7 +265,7 @@ def _configure_authentication(context: WizardContext, provider: InputProvider) -
             context,
             provider,
             key="AUTH_KEY_STORAGE_PROVIDER",
-            prompt="Key storage provider (vault/infisical/aws/azure)",
+            prompt="Key storage provider (vault/infisical/aws/azure/gcp)",
             default=provider_default,
             choices=_KEY_STORAGE_PROVIDER_CHOICES,
         )
@@ -340,7 +341,7 @@ def _configure_database(context: WizardContext, provider: InputProvider) -> None
 
 
 def _configure_logging(context: WizardContext, provider: InputProvider) -> None:
-    log_level = _prompt_nonempty_string(
+    log_level = prompt_nonempty_string(
         context,
         provider,
         key="LOG_LEVEL",
@@ -348,28 +349,6 @@ def _configure_logging(context: WizardContext, provider: InputProvider) -> None:
         default=context.current("LOG_LEVEL") or "INFO",
     )
     context.set_backend("LOG_LEVEL", log_level)
-
-
-def _prompt_nonempty_string(
-    context: WizardContext,
-    provider: InputProvider,
-    *,
-    key: str,
-    prompt: str,
-    default: str,
-) -> str:
-    while True:
-        value = provider.prompt_string(
-            key=key,
-            prompt=prompt,
-            default=default,
-            required=True,
-        ).strip()
-        if value:
-            return value
-        if _is_headless(provider):
-            raise CLIError(f"{key} cannot be blank.")
-        context.console.warn(f"{key} cannot be blank.", topic="wizard")
 
 
 def _normalize_audience_value(raw_value: str) -> str:

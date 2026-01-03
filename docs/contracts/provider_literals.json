@@ -18,6 +18,7 @@
   "secrets_provider_literal": [
     "aws_sm",
     "azure_kv",
+    "gcp_sm",
     "infisical_cloud",
     "infisical_self_host",
     "vault_dev",

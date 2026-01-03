@@ -2,6 +2,8 @@
 
 from .console import ConsolePort, StdConsole
 from .presentation import NotifyPort, Presenter, ProgressPort, PromptPort
+from .redis import RedisHealthPort
+from .stripe import StripeWebhookCapturePort
 
 __all__ = [
     "ConsolePort",
@@ -9,5 +11,7 @@ __all__ = [
     "Presenter",
     "ProgressPort",
     "PromptPort",
+    "RedisHealthPort",
+    "StripeWebhookCapturePort",
     "StdConsole",
 ]

@@ -82,7 +82,8 @@ For the full list, see `docs/trackers/CONSOLE_ENV_INVENTORY.md`.
 | `auth_key_secret_arn` | `AUTH_KEY_SECRET_NAME` | Ed25519 keyset stored in Secrets Manager (required when `auth_key_storage_provider=aws_sm`). |
 | `auth_key_secret_name` | `AUTH_KEY_SECRET_NAME` | Generic secret-manager key/path for non-AWS providers. |
 | `auth_key_storage_provider` | `AUTH_KEY_STORAGE_PROVIDER` | Key storage provider (defaults to `secrets_provider`). |
-| `s3_bucket_name` | `S3_BUCKET` | Object storage bucket. |
+| `storage_provider` | `STORAGE_PROVIDER` | Defaults to `s3` for this blueprint. |
+| `storage_bucket_name` | `S3_BUCKET` | Object storage bucket. |
 
 ## DNS + HTTPS (Route53 + ACM)
 
@@ -131,8 +132,8 @@ Use custom domains like `api.example.com` and `app.example.com`. ACM certificate
 ## Billing Worker Topology
 
 When running more than one API replica, move billing retries into a dedicated service:
-- API: `ENABLE_BILLING_RETRY_WORKER=false`
-- Worker: `ENABLE_BILLING_RETRY_WORKER=true`, `BILLING_RETRY_DEPLOYMENT_MODE=dedicated`
+- API: `ENABLE_BILLING_RETRY_WORKER=false`, `ENABLE_BILLING_STREAM_REPLAY=false`
+- Worker: `ENABLE_BILLING_RETRY_WORKER=true`, `ENABLE_BILLING_STREAM_REPLAY=true`, `BILLING_RETRY_DEPLOYMENT_MODE=dedicated`
 
 ## Migrations
 

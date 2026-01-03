@@ -73,6 +73,9 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | AZURE_KV_SIGNING_SECRET_NAME | str \| NoneType | — |  | ✅ | Key Vault secret name containing the signing secret value. |
 | AZURE_MANAGED_IDENTITY_CLIENT_ID | str \| NoneType | — |  | ✅ | User-assigned managed identity client ID (optional). |
 | AZURE_TENANT_ID | str \| NoneType | — |  | ✅ | Azure AD tenant ID for service principal auth. |
+| GCP_SM_CACHE_TTL_SECONDS | int | 60 |  | ✅ | TTL (seconds) for cached GCP Secret Manager values. |
+| GCP_SM_PROJECT_ID | str \| NoneType | — |  | ✅ | GCP project ID for Secret Manager requests. |
+| GCP_SM_SIGNING_SECRET_NAME | str \| NoneType | — |  | ✅ | Secret Manager secret name containing the signing secret value. |
 | BILLING_EVENTS_REDIS_URL | str \| NoneType | — |  | ✅ | Redis URL used for billing event pub/sub (defaults to REDIS_URL when unset) |
 | BILLING_RETRY_DEPLOYMENT_MODE | str | inline |  | ✅ | Documented deployment target for the Stripe retry worker (inline/dedicated). |
 | BILLING_STREAM_CONCURRENT_LIMIT | int | 3 |  | ✅ | Simultaneous billing stream connections allowed per tenant. |
@@ -187,7 +190,7 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | S3_ENDPOINT_URL | str \| NoneType | — |  | ✅ | Optional custom S3 endpoint URL (leave blank for AWS). |
 | S3_FORCE_PATH_STYLE | bool | False |  | ✅ | Force path-style addressing for S3-compatible endpoints. |
 | S3_REGION | str \| NoneType | — |  | ✅ | AWS region for S3 operations (optional; falls back to SDK defaults). |
-| SECRETS_PROVIDER | SecretsProviderLiteral | vault_dev |  | ✅ | Which secrets provider implementation to use (vault_dev, vault_hcp, infisical_cloud, infisical_self_host, aws_sm, azure_kv). |
+| SECRETS_PROVIDER | SecretsProviderLiteral | vault_dev |  | ✅ | Which secrets provider implementation to use (vault_dev, vault_hcp, infisical_cloud, infisical_self_host, aws_sm, azure_kv, gcp_sm). |
 | SECRET_KEY | str | your-secret-key-here-change-in-production |  | ✅ | JWT secret key |
 | SECURITY_TOKEN_REDIS_URL | str \| NoneType | — |  | ✅ | Redis URL dedicated to nonce/email/password token stores (falls back to REDIS_URL). |
 | SIGNUP_ACCESS_POLICY | public \| invite_only \| approval | invite_only |  | ✅ | Signup exposure posture: public, invite_only, or approval. |
