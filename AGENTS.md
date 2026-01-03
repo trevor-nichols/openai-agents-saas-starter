@@ -170,6 +170,11 @@ You are a professional engineer and developer in charge of the OpenAI Agent SaaS
 - Console (CLI/TUI): `var/log/current/starter-console/all.log` and `error.log` when `CONSOLE_LOGGING_SINKS` includes `file` (default); Textual debug logs additionally write to `starter-console/textual.log` when `TEXTUAL_LOG` is set.
 - Quick tail: `starter-console logs tail --service api --service frontend --service starter-console --errors`.
 
+# Environment Variable Contract
+- Source of truth: `docs/contracts/settings.schema.json` (backend settings schema).
+- Operator-facing summary: `docs/contracts/settings.md`.
+- No legacy aliases: update the schema first, then align `docs/contracts/settings.md`, `.env.example` files, and CI/Compose defaults.
+
 # Codebase Patterns
 <patterns>
 openai-agents-saas-starter/
