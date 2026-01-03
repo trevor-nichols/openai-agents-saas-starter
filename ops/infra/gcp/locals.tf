@@ -72,21 +72,36 @@ locals {
   web_env_list    = [for key, value in local.web_env_combined : { name = key, value = value }]
   worker_env_list = [for key, value in local.worker_env_combined : { name = key, value = value }]
 
-  api_secret_refs = {
-    for key, raw in var.api_secrets : key => {
-      normalized = startswith(trimspace(raw), "projects/") ? trimspace(raw) : "projects/${var.project_id}/secrets/${trimspace(raw)}"
-      secret     = length(split("/versions/", normalized)) > 1 ? element(split("/versions/", normalized), 0) : normalized
-      version    = length(split("/versions/", normalized)) > 1 ? element(split("/versions/", normalized), 1) : "latest"
-    }
+  api_secret_names = {
+    for key, raw in var.api_secrets :
+    key => (
+      startswith(trimspace(raw), "projects/") ?
+      trimspace(raw) :
+      "projects/${local.gcp_sm_project_id}/secrets/${trimspace(raw)}"
+    )
     if length(trimspace(raw)) > 0
   }
-  web_secret_refs = {
-    for key, raw in var.web_secrets : key => {
-      normalized = startswith(trimspace(raw), "projects/") ? trimspace(raw) : "projects/${var.project_id}/secrets/${trimspace(raw)}"
-      secret     = length(split("/versions/", normalized)) > 1 ? element(split("/versions/", normalized), 0) : normalized
-      version    = length(split("/versions/", normalized)) > 1 ? element(split("/versions/", normalized), 1) : "latest"
-    }
+  web_secret_names = {
+    for key, raw in var.web_secrets :
+    key => (
+      startswith(trimspace(raw), "projects/") ?
+      trimspace(raw) :
+      "projects/${local.gcp_sm_project_id}/secrets/${trimspace(raw)}"
+    )
     if length(trimspace(raw)) > 0
+  }
+
+  api_secret_refs = {
+    for key, normalized in local.api_secret_names : key => {
+      secret  = length(split("/versions/", normalized)) > 1 ? element(split("/versions/", normalized), 0) : normalized
+      version = length(split("/versions/", normalized)) > 1 ? element(split("/versions/", normalized), 1) : "latest"
+    }
+  }
+  web_secret_refs = {
+    for key, normalized in local.web_secret_names : key => {
+      secret  = length(split("/versions/", normalized)) > 1 ? element(split("/versions/", normalized), 0) : normalized
+      version = length(split("/versions/", normalized)) > 1 ? element(split("/versions/", normalized), 1) : "latest"
+    }
   }
 
   api_secret_list = [
@@ -106,7 +121,11 @@ locals {
   ]
 
   worker_secret_list = local.api_secret_list
-  service_account_id = substr(regexreplace(lower("sa-${local.name_prefix}"), "[^a-z0-9-]", ""), 0, 30)
+  service_account_id = substr(
+    join("", regexall("[a-z0-9-]", lower("sa-${local.name_prefix}"))),
+    0,
+    30
+  )
 
   required_project_services = toset([
     "compute.googleapis.com",
