@@ -1,0 +1,7 @@
+## packages/starter_providers
+
+**Note**: The codebase primarily relies on dependency injection (passing configuration via class constructors) rather than reading environment variables directly. The variable listed above is explicitly named in an exception message, indicating the expected environment configuration key for the consuming application, but the code provided does not contain the actual `os.getenv` or `os.environ` call for it. Other libraries used (boto3, azure-identity, google-cloud-secret-manager) may implicitly read standard environment variables (e.g., `AWS_ACCESS_KEY_ID`, `AZURE_CLIENT_ID`, `GOOGLE_APPLICATION_CREDENTIALS`) if not configured via code, but these variable names do not appear as string literals in the provided source files.
+
+| Name | Purpose | Location | Required | Default | Format | Sensitivity |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `GCP_SM_PROJECT_ID` | Specifies the GCP Project ID. Referenced in an error message indicating it must be set if the `project_id` argument is missing and secret names are not fully qualified. | `src/starter_providers/secrets/gcp_client.py`:108 (`_resolve_secret_name`) | Optional (Required if `project_id` init arg is missing) | None | String | Non-secret |
