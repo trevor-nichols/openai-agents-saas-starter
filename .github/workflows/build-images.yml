@@ -245,6 +245,9 @@ jobs:
         run: |
           mkdir -p apps/api-service apps/web-app
           touch apps/api-service/.env.local apps/web-app/.env.local
+          if [ ! -f .env.compose ]; then
+            cp .env.compose.example .env.compose
+          fi
 
       - name: Docker Compose config (ops/compose)
         env:
