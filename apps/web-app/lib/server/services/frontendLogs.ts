@@ -2,6 +2,7 @@ import 'server-only';
 
 import { createHmac } from 'node:crypto';
 
+import { jsonBodySerializer } from '@/lib/api/client/core/bodySerializer.gen';
 import { ingestFrontendLogApiV1LogsPost } from '@/lib/api/client/sdk.gen';
 import type { FrontendLogPayload } from '@/lib/api/client/types.gen';
 import { ACCESS_TOKEN_COOKIE } from '@/lib/config';
@@ -51,7 +52,7 @@ function resolveTextPayload(error: unknown): string {
 export async function forwardFrontendLog(
   options: FrontendLogForwardOptions,
 ): Promise<FrontendLogForwardResult> {
-  const body = JSON.stringify(options.payload);
+  const serializedBody = jsonBodySerializer.bodySerializer(options.payload);
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
@@ -65,7 +66,7 @@ export async function forwardFrontendLog(
   }
 
   if (!headers.Authorization) {
-    const signature = signBody(body);
+    const signature = signBody(serializedBody);
     if (signature) headers['X-Log-Signature'] = signature;
   }
 
@@ -77,6 +78,7 @@ export async function forwardFrontendLog(
     parseAs: 'text',
     headers,
     body: options.payload,
+    bodySerializer: () => serializedBody,
     cache: 'no-store',
     redirect: 'manual',
   });
