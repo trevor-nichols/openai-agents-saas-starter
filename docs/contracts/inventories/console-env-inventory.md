@@ -1,7 +1,7 @@
 # Starter Console Environment Inventory
 
 This file is generated via `starter-console config write-inventory`.
-Last updated: 2026-01-01 19:15:16 UTC
+Last updated: 2026-01-04 16:17:22 UTC
 
 Legend: `✅` = wizard prompts for it, blank = requires manual population.
 
@@ -23,6 +23,7 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | ALLOWED_METHODS | str | GET,POST,PUT,DELETE,OPTIONS |  | ✅ | CORS allowed methods (comma-separated) |
 | ALLOWED_ORIGINS | str | http://localhost:3000,http://localhost:8000 |  | ✅ | CORS allowed origins (comma-separated) |
 | ALLOW_ANON_FRONTEND_LOGS | bool | False |  |  | Allow anonymous frontend log ingest when signature is valid. |
+| ALLOW_PUBLIC_SIGNUP | bool | False |  |  | Allow unauthenticated tenants to self-register via /auth/register. Derived from SIGNUP_ACCESS_POLICY. |
 | ALLOW_SIGNUP_TRIAL_OVERRIDE | bool | False |  | ✅ | Permit /auth/register callers to request trial periods up to the plan/default cap. |
 | ANTHROPIC_API_KEY | str \| NoneType | — |  | ✅ | Anthropic API key |
 | APP_DESCRIPTION | str | api-service FastAPI microservice |  | ✅ | Application description |
@@ -72,9 +73,6 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | AZURE_KV_SIGNING_SECRET_NAME | str \| NoneType | — |  | ✅ | Key Vault secret name containing the signing secret value. |
 | AZURE_MANAGED_IDENTITY_CLIENT_ID | str \| NoneType | — |  | ✅ | User-assigned managed identity client ID (optional). |
 | AZURE_TENANT_ID | str \| NoneType | — |  | ✅ | Azure AD tenant ID for service principal auth. |
-| GCP_SM_CACHE_TTL_SECONDS | int | 60 |  | ✅ | TTL (seconds) for cached GCP Secret Manager values. |
-| GCP_SM_PROJECT_ID | str \| NoneType | — |  | ✅ | GCP project ID for Secret Manager requests. |
-| GCP_SM_SIGNING_SECRET_NAME | str \| NoneType | — |  | ✅ | Secret Manager secret name containing the signing secret value. |
 | BILLING_EVENTS_REDIS_URL | str \| NoneType | — |  | ✅ | Redis URL used for billing event pub/sub (defaults to REDIS_URL when unset) |
 | BILLING_RETRY_DEPLOYMENT_MODE | str | inline |  | ✅ | Documented deployment target for the Stripe retry worker (inline/dedicated). |
 | BILLING_STREAM_CONCURRENT_LIMIT | int | 3 |  | ✅ | Simultaneous billing stream connections allowed per tenant. |
@@ -114,10 +112,13 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | ENABLE_VECTOR_STORE_SYNC_WORKER | bool | True |  |  | Run background sync worker to refresh vector store/file status and expiry. Set false only for constrained/local dev. |
 | ENVIRONMENT | str | development |  | ✅ | Deployment environment label (development, staging, production, etc.) |
 | FRONTEND_LOG_SHARED_SECRET | str \| NoneType | — |  |  | Shared secret for signed anonymous frontend logs. |
+| GCP_PROJECT_ID | str \| NoneType | — |  | ✅ | GCP project ID for GCS operations. |
+| GCP_SM_CACHE_TTL_SECONDS | int | 60 |  | ✅ | TTL (seconds) for cached Secret Manager values. |
+| GCP_SM_PROJECT_ID | str \| NoneType | — |  | ✅ | GCP project ID for Secret Manager requests. |
+| GCP_SM_SIGNING_SECRET_NAME | str \| NoneType | — |  | ✅ | Secret Manager secret name containing the signing secret value. |
 | GCS_BUCKET | str \| NoneType | — |  | ✅ | Default bucket name when using GCS provider. |
 | GCS_CREDENTIALS_JSON | str \| NoneType | — |  | ✅ | Inline JSON credentials for GCS (service account). Optional if using ADC or credentials path. |
 | GCS_CREDENTIALS_PATH | str \| NoneType | — |  | ✅ | Path to GCS credentials JSON file. |
-| GCP_PROJECT_ID | str \| NoneType | — |  | ✅ | GCP project ID for GCS operations. |
 | GCS_SIGNING_EMAIL | str \| NoneType | — |  | ✅ | Service account email used for V4 signed URLs (GCS). |
 | GCS_UNIFORM_ACCESS | bool | True |  | ✅ | Assume uniform bucket-level access (UBLA) is enabled. |
 | GEMINI_API_KEY | str \| NoneType | — |  | ✅ | Google Gemini API key |
