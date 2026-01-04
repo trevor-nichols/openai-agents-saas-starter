@@ -91,6 +91,15 @@ function throwVectorStoreError(
   throw new VectorStoreServiceError(message, status, resolveDetail(error));
 }
 
+function throwIfError<TData>(
+  result: ApiFieldsResult<TData>,
+  fallbackMessage: string,
+): void {
+  if ('error' in result && result.error) {
+    throwVectorStoreError(result.error, fallbackMessage, result.response?.status);
+  }
+}
+
 export async function listVectorStores(): Promise<VectorStoreListResponse> {
   const { client, auth } = await getServerApiClient();
   const result = (await listVectorStoresApiV1VectorStoresGet({
@@ -100,9 +109,7 @@ export async function listVectorStores(): Promise<VectorStoreListResponse> {
     responseStyle: 'fields',
   })) as ApiFieldsResult<VectorStoreListResponse>;
 
-  if ('error' in result && result.error) {
-    throwVectorStoreError(result.error, 'Failed to load vector stores', result.response?.status);
-  }
+  throwIfError(result, 'Failed to load vector stores');
 
   return result.data ?? { items: [], total: 0 };
 }
@@ -119,11 +126,10 @@ export async function createVectorStore(
     body: payload,
   })) as ApiFieldsResult<VectorStoreResponse>;
 
-  if ('error' in result && result.error) {
-    throwVectorStoreError(result.error, 'Failed to create vector store', result.response?.status);
-  }
+  throwIfError(result, 'Failed to create vector store');
   if (!result.data) {
-    throw new VectorStoreServiceError('Vector store create missing data', 500);
+    const status = result.response?.status ?? 502;
+    throw new VectorStoreServiceError('Vector store create missing data', status);
   }
   return result.data;
 }
@@ -133,24 +139,24 @@ export async function getVectorStore(vectorStoreId: string): Promise<VectorStore
     throw new VectorStoreServiceError('vectorStoreId is required.', 400);
   }
 
-  try {
-    const { client, auth } = await getServerApiClient();
-    const response = await getVectorStoreApiV1VectorStoresVectorStoreIdGet({
-      client,
-      auth,
-      throwOnError: true,
-      responseStyle: 'fields',
-      path: { vector_store_id: vectorStoreId },
-    });
+  const { client, auth } = await getServerApiClient();
+  const response = (await getVectorStoreApiV1VectorStoresVectorStoreIdGet({
+    client,
+    auth,
+    throwOnError: false,
+    responseStyle: 'fields',
+    path: { vector_store_id: vectorStoreId },
+  })) as ApiFieldsResult<VectorStoreResponse>;
 
-    if (!response.data) {
-      throw new VectorStoreServiceError('Vector store not found', 404);
-    }
+  throwIfError(response, 'Failed to load vector store');
 
-    return response.data;
-  } catch (error) {
-    throwVectorStoreError(error, 'Failed to load vector store');
+  if (!response.data) {
+    const status = response.response?.status ?? 404;
+    const resolvedStatus = status >= 400 ? status : 404;
+    throw new VectorStoreServiceError('Vector store not found', resolvedStatus);
   }
+
+  return response.data;
 }
 
 export async function deleteVectorStore(vectorStoreId: string): Promise<void> {
@@ -158,16 +164,21 @@ export async function deleteVectorStore(vectorStoreId: string): Promise<void> {
     throw new VectorStoreServiceError('vectorStoreId is required.', 400);
   }
 
-  try {
-    const { client, auth } = await getServerApiClient();
-    await deleteVectorStoreApiV1VectorStoresVectorStoreIdDelete({
-      client,
-      auth,
-      throwOnError: true,
-      path: { vector_store_id: vectorStoreId },
-    });
-  } catch (error) {
-    throwVectorStoreError(error, 'Failed to delete vector store');
+  const { client, auth } = await getServerApiClient();
+  const response = (await deleteVectorStoreApiV1VectorStoresVectorStoreIdDelete({
+    client,
+    auth,
+    throwOnError: false,
+    responseStyle: 'fields',
+    path: { vector_store_id: vectorStoreId },
+  })) as ApiFieldsResult<void>;
+
+  if ('error' in response && response.error) {
+    throwVectorStoreError(response.error, 'Failed to delete vector store', response.response?.status);
+  }
+  const status = response.response?.status ?? 204;
+  if (status >= 400) {
+    throw new VectorStoreServiceError('Failed to delete vector store', status);
   }
 }
 
@@ -178,19 +189,17 @@ export async function listVectorStoreFiles(
     throw new VectorStoreServiceError('vectorStoreId is required.', 400);
   }
 
-  try {
-    const { client, auth } = await getServerApiClient();
-    const response = await listFilesApiV1VectorStoresVectorStoreIdFilesGet({
-      client,
-      auth,
-      throwOnError: true,
-      responseStyle: 'fields',
-      path: { vector_store_id: vectorStoreId },
-    });
-    return response.data ?? { items: [], total: 0 };
-  } catch (error) {
-    throwVectorStoreError(error, 'Failed to list vector store files');
-  }
+  const { client, auth } = await getServerApiClient();
+  const response = (await listFilesApiV1VectorStoresVectorStoreIdFilesGet({
+    client,
+    auth,
+    throwOnError: false,
+    responseStyle: 'fields',
+    path: { vector_store_id: vectorStoreId },
+  })) as ApiFieldsResult<VectorStoreFileListResponse>;
+
+  throwIfError(response, 'Failed to list vector store files');
+  return response.data ?? { items: [], total: 0 };
 }
 
 export async function attachVectorStoreFile(
@@ -201,25 +210,24 @@ export async function attachVectorStoreFile(
     throw new VectorStoreServiceError('vectorStoreId is required.', 400);
   }
 
-  try {
-    const { client, auth } = await getServerApiClient();
-    const response = await attachFileApiV1VectorStoresVectorStoreIdFilesPost({
-      client,
-      auth,
-      throwOnError: true,
-      responseStyle: 'fields',
-      path: { vector_store_id: vectorStoreId },
-      body: payload,
-    });
+  const { client, auth } = await getServerApiClient();
+  const response = (await attachFileApiV1VectorStoresVectorStoreIdFilesPost({
+    client,
+    auth,
+    throwOnError: false,
+    responseStyle: 'fields',
+    path: { vector_store_id: vectorStoreId },
+    body: payload,
+  })) as ApiFieldsResult<VectorStoreFileResponse>;
 
-    if (!response.data) {
-      throw new VectorStoreServiceError('Attach file missing data', 500);
-    }
+  throwIfError(response, 'Failed to attach file');
 
-    return response.data;
-  } catch (error) {
-    throwVectorStoreError(error, 'Failed to attach file');
+  if (!response.data) {
+    const status = response.response?.status ?? 502;
+    throw new VectorStoreServiceError('Attach file missing data', status);
   }
+
+  return response.data;
 }
 
 export async function getVectorStoreFile(
@@ -230,24 +238,24 @@ export async function getVectorStoreFile(
     throw new VectorStoreServiceError('vectorStoreId and fileId are required.', 400);
   }
 
-  try {
-    const { client, auth } = await getServerApiClient();
-    const response = await getFileApiV1VectorStoresVectorStoreIdFilesFileIdGet({
-      client,
-      auth,
-      throwOnError: true,
-      responseStyle: 'fields',
-      path: { vector_store_id: vectorStoreId, file_id: fileId },
-    });
+  const { client, auth } = await getServerApiClient();
+  const response = (await getFileApiV1VectorStoresVectorStoreIdFilesFileIdGet({
+    client,
+    auth,
+    throwOnError: false,
+    responseStyle: 'fields',
+    path: { vector_store_id: vectorStoreId, file_id: fileId },
+  })) as ApiFieldsResult<VectorStoreFileResponse>;
 
-    if (!response.data) {
-      throw new VectorStoreServiceError('Vector store file not found', 404);
-    }
+  throwIfError(response, 'Failed to load vector store file');
 
-    return response.data;
-  } catch (error) {
-    throwVectorStoreError(error, 'Failed to load vector store file');
+  if (!response.data) {
+    const status = response.response?.status ?? 404;
+    const resolvedStatus = status >= 400 ? status : 404;
+    throw new VectorStoreServiceError('Vector store file not found', resolvedStatus);
   }
+
+  return response.data;
 }
 
 export async function deleteVectorStoreFile(
@@ -258,16 +266,22 @@ export async function deleteVectorStoreFile(
     throw new VectorStoreServiceError('vectorStoreId and fileId are required.', 400);
   }
 
-  try {
-    const { client, auth } = await getServerApiClient();
-    await deleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDelete({
-      client,
-      auth,
-      throwOnError: true,
-      path: { vector_store_id: vectorStoreId, file_id: fileId },
-    });
-  } catch (error) {
-    throwVectorStoreError(error, 'Failed to delete vector store file');
+  const { client, auth } = await getServerApiClient();
+  const response = (await deleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDelete({
+    client,
+    auth,
+    throwOnError: false,
+    responseStyle: 'fields',
+    path: { vector_store_id: vectorStoreId, file_id: fileId },
+  })) as ApiFieldsResult<void>;
+
+  if ('error' in response && response.error) {
+    throwVectorStoreError(response.error, 'Failed to delete vector store file', response.response?.status);
+  }
+
+  const status = response.response?.status ?? 204;
+  if (status >= 400) {
+    throw new VectorStoreServiceError('Failed to delete vector store file', status);
   }
 }
 
@@ -289,18 +303,14 @@ export async function uploadVectorStoreFile(
     body: payload,
   })) as ApiFieldsResult<VectorStoreFileResponse>;
 
-  const status = result.response?.status ?? (result.error ? 500 : 201);
+  const status = result.response?.status ?? (result.error ? 502 : 201);
   if ('error' in result && result.error) {
-    const detail = resolveDetail(result.error);
-    const message = resolveErrorMessage(
-      result.error,
-      detail ?? 'Failed to upload vector store file',
-    );
-    throw new VectorStoreServiceError(message, status, detail);
+    throwVectorStoreError(result.error, 'Failed to upload vector store file', status);
   }
 
   if (!result.data) {
-    throw new VectorStoreServiceError('Vector store upload missing data', 500);
+    const resolvedStatus = status >= 400 ? status : 502;
+    throw new VectorStoreServiceError('Vector store upload missing data', resolvedStatus);
   }
 
   return { data: result.data, status };
@@ -314,30 +324,30 @@ export async function searchVectorStore(
     throw new VectorStoreServiceError('vectorStoreId is required.', 400);
   }
 
-  try {
-    const { client, auth } = await getServerApiClient();
-    const response = await searchVectorStoreApiV1VectorStoresVectorStoreIdSearchPost({
-      client,
-      auth,
-      throwOnError: true,
-      responseStyle: 'fields',
-      path: { vector_store_id: vectorStoreId },
-      body: payload,
-    });
+  const { client, auth } = await getServerApiClient();
+  const response = (await searchVectorStoreApiV1VectorStoresVectorStoreIdSearchPost({
+    client,
+    auth,
+    throwOnError: false,
+    responseStyle: 'fields',
+    path: { vector_store_id: vectorStoreId },
+    body: payload,
+  })) as ApiFieldsResult<VectorStoreSearchResponse>;
 
-    if (!response.data || typeof response.data !== 'object') {
-      throw new VectorStoreServiceError('Vector store search returned an invalid payload.', 502);
-    }
+  throwIfError(response, 'Failed to search vector store');
 
-    const record = response.data as Record<string, unknown>;
-    if (typeof record.object !== 'string' || typeof record.search_query !== 'string') {
-      throw new VectorStoreServiceError('Vector store search returned an invalid payload.', 502);
-    }
-
-    return response.data as VectorStoreSearchResponse;
-  } catch (error) {
-    throwVectorStoreError(error, 'Failed to search vector store');
+  if (!response.data || typeof response.data !== 'object') {
+    const status = response.response?.status ?? 502;
+    throw new VectorStoreServiceError('Vector store search returned an invalid payload.', status);
   }
+
+  const record = response.data as Record<string, unknown>;
+  if (typeof record.object !== 'string' || typeof record.search_query !== 'string') {
+    const status = response.response?.status ?? 502;
+    throw new VectorStoreServiceError('Vector store search returned an invalid payload.', status);
+  }
+
+  return response.data as VectorStoreSearchResponse;
 }
 
 export async function bindAgentToVectorStore(
@@ -348,17 +358,22 @@ export async function bindAgentToVectorStore(
     throw new VectorStoreServiceError('vectorStoreId and agentKey are required.', 400);
   }
 
-  try {
-    const { client, auth } = await getServerApiClient();
-    await bindAgentToVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyPost({
-      client,
-      auth,
-      throwOnError: true,
-      responseStyle: 'fields',
-      path: { vector_store_id: vectorStoreId, agent_key: agentKey },
-    });
-  } catch (error) {
-    throwVectorStoreError(error, 'Failed to bind agent to vector store');
+  const { client, auth } = await getServerApiClient();
+  const response = (await bindAgentToVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyPost({
+    client,
+    auth,
+    throwOnError: false,
+    responseStyle: 'fields',
+    path: { vector_store_id: vectorStoreId, agent_key: agentKey },
+  })) as ApiFieldsResult<void>;
+
+  if ('error' in response && response.error) {
+    throwVectorStoreError(response.error, 'Failed to bind agent to vector store', response.response?.status);
+  }
+
+  const status = response.response?.status ?? 204;
+  if (status >= 400) {
+    throw new VectorStoreServiceError('Failed to bind agent to vector store', status);
   }
 }
 
@@ -370,15 +385,21 @@ export async function unbindAgentFromVectorStore(
     throw new VectorStoreServiceError('vectorStoreId and agentKey are required.', 400);
   }
 
-  try {
-    const { client, auth } = await getServerApiClient();
-    await unbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDelete({
-      client,
-      auth,
-      throwOnError: true,
-      path: { vector_store_id: vectorStoreId, agent_key: agentKey },
-    });
-  } catch (error) {
-    throwVectorStoreError(error, 'Failed to unbind agent from vector store');
+  const { client, auth } = await getServerApiClient();
+  const response = (await unbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDelete({
+    client,
+    auth,
+    throwOnError: false,
+    responseStyle: 'fields',
+    path: { vector_store_id: vectorStoreId, agent_key: agentKey },
+  })) as ApiFieldsResult<void>;
+
+  if ('error' in response && response.error) {
+    throwVectorStoreError(response.error, 'Failed to unbind agent from vector store', response.response?.status);
+  }
+
+  const status = response.response?.status ?? 204;
+  if (status >= 400) {
+    throw new VectorStoreServiceError('Failed to unbind agent from vector store', status);
   }
 }
