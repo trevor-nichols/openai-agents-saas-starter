@@ -115,7 +115,8 @@ def build_gcp_secret_provider(settings: Settings) -> SecretProviderProtocol:
         raise GCPSecretManagerError("GCP_SM_SIGNING_SECRET_NAME must be set.")
     if not config.project_id and not config.signing_secret_name.startswith("projects/"):
         raise GCPSecretManagerError(
-            "GCP_SM_PROJECT_ID must be set when secret name is not fully qualified."
+            "GCP_SM_PROJECT_ID or GCP_PROJECT_ID must be set when secret name "
+            "is not fully qualified."
         )
 
     client = GCPSecretManagerClient(project_id=config.project_id or None)

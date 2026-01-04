@@ -1,7 +1,7 @@
 <!-- SECTION: Title -->
 # Observability Stack & Bundled OpenTelemetry Collector
 
-_Last updated: December 31, 2025_
+_Last updated: January 3, 2026_
 
 This doc explains how the starter repo ships a turnkey OpenTelemetry Collector so every operator—from first-time users to enterprise SREs—gets a local OTLP endpoint without wiring their own infra. The same flow scales to production by pointing the FastAPI backend at any external collector or SaaS OTLP intake.
 
@@ -9,7 +9,7 @@ This doc explains how the starter repo ships a turnkey OpenTelemetry Collector s
 
 1. Run the Starter Console setup wizard (interactive or headless) and select `otlp` as your logging sink.
 2. When prompted, choose **“Start bundled OpenTelemetry Collector”** to let docker compose manage the collector container.
-3. (Optional) Enable Sentry and/or Datadog exporters directly from the wizard—provide the OTLP endpoint + bearer token for Sentry or the API key + site for Datadog.
+3. (Optional) Enable Sentry and/or Datadog exporters directly from the wizard—provide the OTLP endpoint + bearer token for Sentry or the Datadog API key + site (`LOGGING_DATADOG_API_KEY`, `LOGGING_DATADOG_SITE`).
 4. The wizard writes the env vars below to `apps/api-service/.env.local`, and `just dev-up` renders `var/observability/collector.generated.yaml` before launching `otel/opentelemetry-collector-contrib:0.139.0` with those settings.
 5. FastAPI points `LOGGING_OTLP_ENDPOINT` at `http://otel-collector:4318/v1/logs` automatically, so structured logs flow through the collector and on to any configured exporters.
 
@@ -41,7 +41,7 @@ The collector image is pinned to `otel/opentelemetry-collector-contrib:0.139.0`,
 | `OTEL_MEMORY_LIMIT_MIB` | Collector memory cap (default 512). | Manual |
 | `OTEL_DEBUG_VERBOSITY` | Collector debug exporter verbosity (`detailed` default). | Manual |
 | `OTEL_EXPORTER_SENTRY_*` | Sentry OTLP settings. | ✅ |
-| `OTEL_EXPORTER_DATADOG_*` | Datadog exporter settings. | ✅ |
+| `LOGGING_DATADOG_API_KEY` / `LOGGING_DATADOG_SITE` | Datadog exporter settings. | ✅ |
 
 ### Local file logging layout (new)
 

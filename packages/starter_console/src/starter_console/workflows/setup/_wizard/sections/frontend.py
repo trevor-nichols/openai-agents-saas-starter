@@ -12,7 +12,9 @@ def configure(context: WizardContext, provider: InputProvider) -> None:
         "Frontend",
         "Finalize Next.js environment variables and local testing hooks.",
     )
-    context.set_frontend("NEXT_PUBLIC_API_URL", context.api_base_url)
+    context.set_frontend("API_BASE_URL", context.api_base_url)
+    public_url = context.current("APP_PUBLIC_URL") or "http://localhost:3000"
+    context.set_frontend("APP_PUBLIC_URL", public_url)
     playwright_default = context.frontend_env.get("PLAYWRIGHT_BASE_URL") or "http://localhost:3000"
     playwright = provider.prompt_string(
         key="PLAYWRIGHT_BASE_URL",
@@ -23,11 +25,11 @@ def configure(context: WizardContext, provider: InputProvider) -> None:
     context.set_frontend("PLAYWRIGHT_BASE_URL", playwright)
 
     use_mock = provider.prompt_bool(
-        key="AGENT_API_MOCK",
+        key="NEXT_PUBLIC_AGENT_API_MOCK",
         prompt="Use mock API responses in Next.js?",
-        default=context.current_frontend_bool("AGENT_API_MOCK", False),
+        default=context.current_frontend_bool("NEXT_PUBLIC_AGENT_API_MOCK", False),
     )
-    context.set_frontend_bool("AGENT_API_MOCK", use_mock)
+    context.set_frontend_bool("NEXT_PUBLIC_AGENT_API_MOCK", use_mock)
 
     force_secure = provider.prompt_bool(
         key="AGENT_FORCE_SECURE_COOKIES",

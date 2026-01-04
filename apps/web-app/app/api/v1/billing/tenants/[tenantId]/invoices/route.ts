@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
-import { billingEnabled } from '@/lib/config/features';
+import { isBillingEnabled } from '@/lib/server/features';
 import { listTenantInvoices } from '@/lib/server/services/billing';
 import { parseOptionalLimit } from '@/app/api/v1/_utils/pagination';
 import {
@@ -23,7 +23,7 @@ function parseOptionalOffset(raw: string | null): number | undefined | { error: 
 }
 
 export async function GET(request: NextRequest, context: BillingTenantRouteContext) {
-  if (!billingEnabled) {
+  if (!(await isBillingEnabled())) {
     return NextResponse.json({ success: false, error: 'Billing is disabled.' }, { status: 404 });
   }
 

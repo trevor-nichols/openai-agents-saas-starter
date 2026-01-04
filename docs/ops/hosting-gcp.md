@@ -50,7 +50,7 @@ to `false`, enable the APIs above manually before running `terraform apply`.
 - `AUTH_KEY_STORAGE_PROVIDER` (defaults to `gcp_sm`)
 - `AUTH_KEY_SECRET_NAME`
 - `STORAGE_PROVIDER=gcs`
-- `GCS_BUCKET`, `GCS_PROJECT_ID`
+- `GCS_BUCKET`, `GCP_PROJECT_ID`
 - `ALLOWED_HOSTS`, `ALLOWED_ORIGINS`
 
 ### Web (minimal)
@@ -60,7 +60,7 @@ to `false`, enable the APIs above manually before running `terraform apply`.
 - Use Workload Identity or service account bindings.
 - If needed for local tooling, set `GOOGLE_APPLICATION_CREDENTIALS` to a service account key file.
 
-For the full list, see `docs/trackers/CONSOLE_ENV_INVENTORY.md`.
+For the full list, see `docs/contracts/inventories/console-env-inventory.md`.
 
 ### Terraform -> Env Mapping (core)
 

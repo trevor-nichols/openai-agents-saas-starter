@@ -1,29 +1,16 @@
 import { NextResponse } from 'next/server';
 
-import {
-  deleteVectorStoreApiV1VectorStoresVectorStoreIdDelete,
-  getVectorStoreApiV1VectorStoresVectorStoreIdGet,
-} from '@/lib/api/client/sdk.gen';
-import { getServerApiClient } from '@/lib/server/apiClient';
+import { deleteVectorStore, getVectorStore, VectorStoreServiceError } from '@/lib/server/services/vectorStores';
 
 export async function GET(_req: Request, { params }: { params: Promise<{ vectorStoreId: string }> }) {
   const { vectorStoreId } = await params;
   try {
-    const { client, auth } = await getServerApiClient();
-    const res = await getVectorStoreApiV1VectorStoresVectorStoreIdGet({
-      client,
-      auth,
-      throwOnError: true,
-      responseStyle: 'fields',
-      path: { vector_store_id: vectorStoreId },
-    });
-
-    if (!res.data) {
-      return NextResponse.json({ message: 'Vector store not found' }, { status: 404 });
-    }
-
-    return NextResponse.json(res.data);
+    const res = await getVectorStore(vectorStoreId);
+    return NextResponse.json(res);
   } catch (error) {
+    if (error instanceof VectorStoreServiceError) {
+      return NextResponse.json({ message: error.message }, { status: error.status });
+    }
     const message = error instanceof Error ? error.message : 'Failed to load vector store';
     const normalized = message.toLowerCase();
     if (normalized.includes('missing access token')) {
@@ -43,15 +30,12 @@ export async function DELETE(
 ) {
   const { vectorStoreId } = await params;
   try {
-    const { client, auth } = await getServerApiClient();
-    await deleteVectorStoreApiV1VectorStoresVectorStoreIdDelete({
-      client,
-      auth,
-      throwOnError: true,
-      path: { vector_store_id: vectorStoreId },
-    });
+    await deleteVectorStore(vectorStoreId);
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (error instanceof VectorStoreServiceError) {
+      return NextResponse.json({ message: error.message }, { status: error.status });
+    }
     const message = error instanceof Error ? error.message : 'Failed to delete vector store';
     const normalized = message.toLowerCase();
     if (normalized.includes('missing access token')) {

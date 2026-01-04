@@ -216,6 +216,10 @@ ignore_missing_imports = true
 module = ["asyncpg", "asyncpg.*"]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+module = ["google.cloud", "google.cloud.*"]
+ignore_missing_imports = true
+
 [tool.pyright]
 include = ["src"]
 typeCheckingMode = "basic"

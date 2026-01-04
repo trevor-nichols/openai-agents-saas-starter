@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 
 import { fetchBillingInvoices } from '@/lib/api/billingInvoices';
 import { readClientSessionMeta } from '@/lib/auth/clientMeta';
-import { billingEnabled } from '@/lib/config/features';
+import { useFeatureFlags } from '@/lib/queries/featureFlags';
 import type { BillingInvoice, BillingInvoiceListResponse } from '@/types/billing';
 
 import { queryKeys } from './keys';
@@ -24,6 +24,8 @@ interface UseBillingInvoicesResult {
 }
 
 export function useBillingInvoices(options?: UseBillingInvoicesOptions): UseBillingInvoicesResult {
+  const { flags } = useFeatureFlags();
+  const billingEnabled = Boolean(flags?.billingEnabled);
   const meta = readClientSessionMeta();
   const tenantId = meta?.tenantId ?? null;
   const pageSize = options?.pageSize ?? 25;

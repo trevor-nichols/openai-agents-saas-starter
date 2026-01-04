@@ -47,7 +47,8 @@ function printUsage() {
       'Usage: pnpm test:seed [--spec path/to/spec.yaml] [--output path/to/output.json]',
       '',
       'Environment variables:',
-      '  PLAYWRIGHT_API_URL      Override backend URL (default http://localhost:8000)',
+      '  PLAYWRIGHT_API_URL      Override backend URL (falls back to API_BASE_URL or http://localhost:8000)',
+      '  API_BASE_URL            Default backend URL when PLAYWRIGHT_API_URL is unset',
       '  PLAYWRIGHT_SEED_FILE    Alternative spec file path',
     ].join('\n'),
   );
@@ -96,7 +97,7 @@ async function main() {
   const options = parseArgs(process.argv);
   const apiUrl =
     process.env.PLAYWRIGHT_API_URL ||
-    process.env.NEXT_PUBLIC_API_URL ||
+    process.env.API_BASE_URL ||
     'http://localhost:8000';
 
   try {

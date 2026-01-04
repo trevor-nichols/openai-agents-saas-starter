@@ -1,6 +1,6 @@
 # Frontend Test Architecture
 
-_Last updated: December 30, 2025_
+_Last updated: January 3, 2026_
 
 ## Testing Conventions
 
@@ -46,7 +46,7 @@ This keeps env logic in one place and makes E2E failures actionable and determin
 
 ## 2.1 Playwright Projects
 - **chromium-real**: real backend, seeded data, critical journeys (`*.spec.ts`).
-- **chromium-mock**: fast UI regressions, `AGENT_API_MOCK=true` + `NEXT_PUBLIC_AGENT_API_MOCK=true`, runs `*.mock.spec.ts` (backend not required).
+- **chromium-mock**: fast UI regressions, `NEXT_PUBLIC_AGENT_API_MOCK=true`, runs `*.mock.spec.ts` (backend not required).
 - Global setup caches authenticated storage states under `tests/.auth` (set `PLAYWRIGHT_REFRESH_STORAGE_STATE=true` to regenerate).
 
 ## 3. Deterministic Fixture Harness
@@ -56,7 +56,7 @@ Every Playwright flow in `regressions/` assumes specific tenants, plans, and inf
 | Flow | Required Data / Infra | Seeding Notes |
 | --- | --- | --- |
 | Auth + chat handshake | Tenant `playwright-starter` with admin user + baseline conversations | Included in `seeds/playwright.yaml` as `tenant_admin` user; chat history populated via `starter-console seed conversations`. |
-| Self-serve signup + email verification | Invitation-free signup tenant plus disposable inbox token | Enable `ALLOW_PUBLIC_SIGNUP=true`, provision `signup_pending@example.com`, and rely on the `/api/v1/test-fixtures/email-verification-token` helper to mint deterministic tokens per test run. |
+| Self-serve signup + email verification | Invitation-free signup tenant plus disposable inbox token | Set `SIGNUP_ACCESS_POLICY=public`, provision `signup_pending@example.com`, and rely on the `/api/v1/test-fixtures/email-verification-token` helper to mint deterministic tokens per test run. |
 | Plan upgrade/downgrade + audit | Stripe plan codes `starter`, `scale`, plus mock invoices/events | Seed via `starter-console seed billing --tenant playwright-starter --plans starter,scale`. Keep `STRIPE_PRODUCT_PRICE_MAP` populated so the optimistic UI + SSE assertions reflect real plans. |
 | Billing ledger & usage | Redis stream (`agents-redis`), usage rows via `/api/v1/billing/tenants/{id}/usage` | The spec emits usage via authenticated `fetch('/api/billing/.../usage')`. Ensure Redis is running and the backend started with `ENABLE_BILLING_STREAM=true` so SSE updates land instantly. |
 | Service-account issue/revoke | Operator tenant + Vault dev signer (optional when `VAULT_VERIFY_ENABLED=false`) | Run `just vault-up` before tests if Vault verification is enabled. When verification is off (default), browser issuance falls back to a dev-demo signature only when `USE_TEST_FIXTURES=true`. |

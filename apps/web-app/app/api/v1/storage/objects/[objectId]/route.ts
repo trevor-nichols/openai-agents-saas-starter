@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 
-import { deleteObjectApiV1StorageObjectsObjectIdDelete } from '@/lib/api/client/sdk.gen';
-import { getServerApiClient } from '@/lib/server/apiClient';
+import { deleteStorageObject } from '@/lib/server/services/storage';
 
 export async function DELETE(
   _request: Request,
@@ -9,13 +8,7 @@ export async function DELETE(
 ) {
   const { objectId } = await params;
   try {
-    const { client, auth } = await getServerApiClient();
-    await deleteObjectApiV1StorageObjectsObjectIdDelete({
-      client,
-      auth,
-      throwOnError: true,
-      path: { object_id: objectId },
-    });
+    await deleteStorageObject(objectId);
 
     return NextResponse.json({ success: true });
   } catch (error) {

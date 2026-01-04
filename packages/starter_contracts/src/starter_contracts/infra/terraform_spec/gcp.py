@@ -38,7 +38,7 @@ GCP_VARIABLES = (
         "GCP project ID hosting the resources.",
         category=TerraformVarCategory.CORE,
         required=True,
-        env_aliases=("GCS_PROJECT_ID",),
+        env_aliases=("GCP_PROJECT_ID",),
         template_value=_REQUIRED_PLACEHOLDER,
     ),
     _var(

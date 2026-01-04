@@ -2,21 +2,17 @@ import { vi } from 'vitest';
 
 import { POST } from './route';
 
-const startSsoApiV1AuthSsoProviderStartPost = vi.hoisted(() => vi.fn());
+const startSso = vi.hoisted(() => vi.fn());
 const clearSsoRedirectCookie = vi.hoisted(() => vi.fn());
 const setSsoRedirectCookie = vi.hoisted(() => vi.fn());
 
-vi.mock('@/lib/api/client/sdk.gen', () => ({
-  startSsoApiV1AuthSsoProviderStartPost,
+vi.mock('@/lib/server/services/auth/sso', () => ({
+  startSso,
 }));
 
 vi.mock('@/lib/auth/ssoCookies', () => ({
   clearSsoRedirectCookie,
   setSsoRedirectCookie,
-}));
-
-vi.mock('@/lib/server/apiClient', () => ({
-  createApiClient: () => ({}),
 }));
 
 describe('POST /api/v1/auth/sso/[provider]/start', () => {
@@ -67,12 +63,13 @@ describe('POST /api/v1/auth/sso/[provider]/start', () => {
     await expect(response.json()).resolves.toMatchObject({
       message: 'Invalid redirect target.',
     });
-    expect(startSsoApiV1AuthSsoProviderStartPost).not.toHaveBeenCalled();
+    expect(startSso).not.toHaveBeenCalled();
   });
 
   it('starts SSO and stores redirect cookie', async () => {
-    startSsoApiV1AuthSsoProviderStartPost.mockResolvedValue({
+    startSso.mockResolvedValue({
       data: { authorize_url: 'https://accounts.google.com' },
+      status: 200,
     });
 
     const request = new Request('http://localhost/api/v1/auth/sso/google/start', {
@@ -87,16 +84,11 @@ describe('POST /api/v1/auth/sso/[provider]/start', () => {
 
     const response = await POST(request, { params: Promise.resolve({ provider: 'google' }) });
 
-    expect(startSsoApiV1AuthSsoProviderStartPost).toHaveBeenCalledWith(
-      expect.objectContaining({
-        path: { provider: 'google' },
-        body: {
-          tenant_id: null,
-          tenant_slug: 'acme',
-          login_hint: 'user@example.com',
-        },
-      }),
-    );
+    expect(startSso).toHaveBeenCalledWith('google', {
+      tenant_id: null,
+      tenant_slug: 'acme',
+      login_hint: 'user@example.com',
+    });
     expect(setSsoRedirectCookie).toHaveBeenCalledWith('/dashboard');
     expect(clearSsoRedirectCookie).not.toHaveBeenCalled();
     expect(response.status).toBe(200);
@@ -106,8 +98,9 @@ describe('POST /api/v1/auth/sso/[provider]/start', () => {
   });
 
   it('clears redirect cookie when redirect_to is omitted', async () => {
-    startSsoApiV1AuthSsoProviderStartPost.mockResolvedValue({
+    startSso.mockResolvedValue({
       data: { authorize_url: 'https://accounts.google.com' },
+      status: 200,
     });
 
     const request = new Request('http://localhost/api/v1/auth/sso/google/start', {

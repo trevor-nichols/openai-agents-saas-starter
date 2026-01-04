@@ -77,9 +77,9 @@ def _local_headless_answers() -> dict[str, str]:
         "AWS_PROFILE": "prod-profile",
         "AWS_REGION": "us-east-1",
         "OPENAI_API_KEY": "sk-openai",
-        "ENABLE_ANTHROPIC_API_KEY": "false",
-        "ENABLE_GEMINI_API_KEY": "false",
-        "ENABLE_XAI_API_KEY": "false",
+        "CONFIGURE_ANTHROPIC_API_KEY": "false",
+        "CONFIGURE_GEMINI_API_KEY": "false",
+        "CONFIGURE_XAI_API_KEY": "false",
         "REDIS_URL": "redis://localhost:6379/0",
         "RATE_LIMIT_REDIS_URL": "",
         "AUTH_CACHE_REDIS_URL": "",
@@ -94,7 +94,6 @@ def _local_headless_answers() -> dict[str, str]:
         "LOGGING_SINKS": "stdout",
         "GEOIP_PROVIDER": "none",
         "SIGNUP_ACCESS_POLICY": "public",
-        "ALLOW_PUBLIC_SIGNUP": "true",
         "ALLOW_SIGNUP_TRIAL_OVERRIDE": "false",
         "SIGNUP_RATE_LIMIT_PER_HOUR": "15",
         "SIGNUP_RATE_LIMIT_PER_IP_DAY": "90",
@@ -148,7 +147,6 @@ def test_wizard_headless_local_generates_env(temp_ctx: CLIContext) -> None:
     assert "API_BASE_URL=http://127.0.0.1:8000" in env_body
     assert "LOGGING_SINKS=stdout" in env_body
     assert "SIGNUP_ACCESS_POLICY=public" in env_body
-    assert "ALLOW_PUBLIC_SIGNUP=true" in env_body
     assert "BILLING_RETRY_DEPLOYMENT_MODE=inline" in env_body
     assert 'ANTHROPIC_API_KEY=""' in env_body
     _cleanup_env(snapshot)
@@ -298,9 +296,6 @@ def test_wizard_configures_bundled_collector(temp_ctx: CLIContext) -> None:
         "OTEL_EXPORTER_SENTRY_ENDPOINT": "https://o11y.ingest.sentry.io/api/42/otlp",
         "OTEL_EXPORTER_SENTRY_AUTH_HEADER": "Bearer sentry-token",
         "OTEL_EXPORTER_SENTRY_HEADERS": "",
-        "OTEL_EXPORTER_DATADOG_ENABLED": "true",
-        "OTEL_EXPORTER_DATADOG_API_KEY": "dd-api-key",
-        "OTEL_EXPORTER_DATADOG_SITE": "datadoghq.eu",
     }
     wizard = _create_setup_wizard(
         ctx=temp_ctx,
@@ -315,8 +310,6 @@ def test_wizard_configures_bundled_collector(temp_ctx: CLIContext) -> None:
     assert "LOGGING_OTLP_ENDPOINT=http://otel-collector:4318/v1/logs" in env_body
     assert "OTEL_EXPORTER_SENTRY_ENDPOINT=https://o11y.ingest.sentry.io/api/42/otlp" in env_body
     assert 'OTEL_EXPORTER_SENTRY_AUTH_HEADER="Bearer sentry-token"' in env_body
-    assert "OTEL_EXPORTER_DATADOG_API_KEY=dd-api-key" in env_body
-    assert "OTEL_EXPORTER_DATADOG_SITE=datadoghq.eu" in env_body
     _cleanup_env(snapshot)
 
 
@@ -455,9 +448,9 @@ def test_wizard_writes_dedicated_worker_artifacts(temp_ctx: CLIContext) -> None:
         "AWS_PROFILE": "prod-profile",
         "AWS_REGION": "us-east-1",
         "OPENAI_API_KEY": "sk-openai",
-        "ENABLE_ANTHROPIC_API_KEY": "false",
-        "ENABLE_GEMINI_API_KEY": "false",
-        "ENABLE_XAI_API_KEY": "false",
+        "CONFIGURE_ANTHROPIC_API_KEY": "false",
+        "CONFIGURE_GEMINI_API_KEY": "false",
+        "CONFIGURE_XAI_API_KEY": "false",
         "REDIS_URL": "rediss://:secret@redis.example.com:6379/0",
         "RATE_LIMIT_REDIS_URL": "",
         "AUTH_CACHE_REDIS_URL": "",
@@ -475,7 +468,6 @@ def test_wizard_writes_dedicated_worker_artifacts(temp_ctx: CLIContext) -> None:
         "LOGGING_SINKS": "stdout",
         "GEOIP_PROVIDER": "none",
         "SIGNUP_ACCESS_POLICY": "invite_only",
-        "ALLOW_PUBLIC_SIGNUP": "false",
         "ALLOW_SIGNUP_TRIAL_OVERRIDE": "false",
         "SIGNUP_RATE_LIMIT_PER_HOUR": "10",
         "SIGNUP_RATE_LIMIT_PER_IP_DAY": "20",
@@ -516,7 +508,6 @@ def test_wizard_writes_dedicated_worker_artifacts(temp_ctx: CLIContext) -> None:
 def test_wizard_refreshes_cached_settings(temp_ctx: CLIContext) -> None:
     # Seed .env.local with an initial value so Settings caches it.
     env_file = backend_env_path(temp_ctx)
-    env_file.write_text("ALLOW_PUBLIC_SIGNUP=false\n", encoding="utf-8")
 
     temp_ctx.load_environment(verbose=False)
     temp_ctx.require_settings()
@@ -535,9 +526,9 @@ def test_wizard_refreshes_cached_settings(temp_ctx: CLIContext) -> None:
         "ROTATE_SIGNING_KEYS": "false",
         "VAULT_VERIFY_ENABLED": "false",
         "OPENAI_API_KEY": "sk-openai",
-        "ENABLE_ANTHROPIC_API_KEY": "false",
-        "ENABLE_GEMINI_API_KEY": "false",
-        "ENABLE_XAI_API_KEY": "false",
+        "CONFIGURE_ANTHROPIC_API_KEY": "false",
+        "CONFIGURE_GEMINI_API_KEY": "false",
+        "CONFIGURE_XAI_API_KEY": "false",
         "REDIS_URL": "redis://localhost:6379/0",
         "RATE_LIMIT_REDIS_URL": "",
         "AUTH_CACHE_REDIS_URL": "",
@@ -552,7 +543,6 @@ def test_wizard_refreshes_cached_settings(temp_ctx: CLIContext) -> None:
         "LOGGING_SINKS": "stdout",
         "GEOIP_PROVIDER": "none",
         "SIGNUP_ACCESS_POLICY": "public",
-        "ALLOW_PUBLIC_SIGNUP": "true",
         "ALLOW_SIGNUP_TRIAL_OVERRIDE": "false",
         "SIGNUP_RATE_LIMIT_PER_HOUR": "15",
         "SIGNUP_RATE_LIMIT_PER_IP_DAY": "90",
@@ -607,9 +597,9 @@ def test_wizard_clears_optional_provider_keys(temp_ctx: CLIContext) -> None:
         "ROTATE_SIGNING_KEYS": "false",
         "VAULT_VERIFY_ENABLED": "false",
         "OPENAI_API_KEY": "sk-openai",
-        "ENABLE_ANTHROPIC_API_KEY": "false",
-        "ENABLE_GEMINI_API_KEY": "false",
-        "ENABLE_XAI_API_KEY": "false",
+        "CONFIGURE_ANTHROPIC_API_KEY": "false",
+        "CONFIGURE_GEMINI_API_KEY": "false",
+        "CONFIGURE_XAI_API_KEY": "false",
         "REDIS_URL": "redis://localhost:6379/0",
         "RATE_LIMIT_REDIS_URL": "",
         "AUTH_CACHE_REDIS_URL": "",
@@ -624,7 +614,6 @@ def test_wizard_clears_optional_provider_keys(temp_ctx: CLIContext) -> None:
         "LOGGING_SINKS": "stdout",
         "GEOIP_PROVIDER": "none",
         "SIGNUP_ACCESS_POLICY": "public",
-        "ALLOW_PUBLIC_SIGNUP": "true",
         "ALLOW_SIGNUP_TRIAL_OVERRIDE": "false",
         "SIGNUP_RATE_LIMIT_PER_HOUR": "15",
         "SIGNUP_RATE_LIMIT_PER_IP_DAY": "90",
@@ -654,7 +643,6 @@ def test_wizard_clears_optional_provider_keys(temp_ctx: CLIContext) -> None:
 
 
 def test_wizard_does_not_leak_env_values(temp_ctx: CLIContext) -> None:
-    os.environ["ALLOW_PUBLIC_SIGNUP"] = "false"
     baseline_snapshot = dict(os.environ)
 
     answers = {
@@ -670,9 +658,9 @@ def test_wizard_does_not_leak_env_values(temp_ctx: CLIContext) -> None:
         "ROTATE_SIGNING_KEYS": "false",
         "VAULT_VERIFY_ENABLED": "false",
         "OPENAI_API_KEY": "sk-openai",
-        "ENABLE_ANTHROPIC_API_KEY": "false",
-        "ENABLE_GEMINI_API_KEY": "false",
-        "ENABLE_XAI_API_KEY": "false",
+        "CONFIGURE_ANTHROPIC_API_KEY": "false",
+        "CONFIGURE_GEMINI_API_KEY": "false",
+        "CONFIGURE_XAI_API_KEY": "false",
         "REDIS_URL": "redis://localhost:6379/0",
         "RATE_LIMIT_REDIS_URL": "",
         "AUTH_CACHE_REDIS_URL": "",
@@ -687,7 +675,6 @@ def test_wizard_does_not_leak_env_values(temp_ctx: CLIContext) -> None:
         "LOGGING_SINKS": "stdout",
         "GEOIP_PROVIDER": "none",
         "SIGNUP_ACCESS_POLICY": "public",
-        "ALLOW_PUBLIC_SIGNUP": "true",
         "ALLOW_SIGNUP_TRIAL_OVERRIDE": "false",
         "SIGNUP_RATE_LIMIT_PER_HOUR": "15",
         "SIGNUP_RATE_LIMIT_PER_IP_DAY": "90",
@@ -708,11 +695,9 @@ def test_wizard_does_not_leak_env_values(temp_ctx: CLIContext) -> None:
         input_provider=HeadlessInputProvider(answers=answers),
     )
     wizard.execute()
-    assert os.environ["ALLOW_PUBLIC_SIGNUP"] == "true"
     assert os.environ["SIGNUP_ACCESS_POLICY"] == "public"
 
     _cleanup_env(baseline_snapshot)
-    assert os.environ["ALLOW_PUBLIC_SIGNUP"] == "false"
     assert "SIGNUP_ACCESS_POLICY" not in os.environ
 
 
@@ -746,9 +731,9 @@ def test_wizard_rotates_new_peppers(monkeypatch, temp_ctx: CLIContext) -> None:
         "ROTATE_SIGNING_KEYS": "false",
         "VAULT_VERIFY_ENABLED": "false",
         "OPENAI_API_KEY": "sk-openai",
-        "ENABLE_ANTHROPIC_API_KEY": "false",
-        "ENABLE_GEMINI_API_KEY": "false",
-        "ENABLE_XAI_API_KEY": "false",
+        "CONFIGURE_ANTHROPIC_API_KEY": "false",
+        "CONFIGURE_GEMINI_API_KEY": "false",
+        "CONFIGURE_XAI_API_KEY": "false",
         "REDIS_URL": "redis://localhost:6379/0",
         "RATE_LIMIT_REDIS_URL": "",
         "AUTH_CACHE_REDIS_URL": "",
@@ -763,7 +748,6 @@ def test_wizard_rotates_new_peppers(monkeypatch, temp_ctx: CLIContext) -> None:
         "LOGGING_SINKS": "stdout",
         "GEOIP_PROVIDER": "none",
         "SIGNUP_ACCESS_POLICY": "public",
-        "ALLOW_PUBLIC_SIGNUP": "true",
         "ALLOW_SIGNUP_TRIAL_OVERRIDE": "false",
         "SIGNUP_RATE_LIMIT_PER_HOUR": "15",
         "SIGNUP_RATE_LIMIT_PER_IP_DAY": "90",
@@ -817,9 +801,9 @@ def test_wizard_staging_verifies_vault(
         "AWS_PROFILE": "staging-profile",
         "AWS_REGION": "us-east-1",
         "OPENAI_API_KEY": "sk-openai",
-        "ENABLE_ANTHROPIC_API_KEY": "false",
-        "ENABLE_GEMINI_API_KEY": "false",
-        "ENABLE_XAI_API_KEY": "false",
+        "CONFIGURE_ANTHROPIC_API_KEY": "false",
+        "CONFIGURE_GEMINI_API_KEY": "false",
+        "CONFIGURE_XAI_API_KEY": "false",
         "REDIS_URL": "rediss://:secret@redis.example:6380/0",
         "RATE_LIMIT_REDIS_URL": "rediss://:secret@redis.example:6380/2",
         "AUTH_CACHE_REDIS_URL": "rediss://:secret@redis.example:6380/3",
@@ -834,7 +818,6 @@ def test_wizard_staging_verifies_vault(
         "LOGGING_SINKS": "none",
         "GEOIP_PROVIDER": "none",
         "SIGNUP_ACCESS_POLICY": "invite_only",
-        "ALLOW_PUBLIC_SIGNUP": "false",
         "ALLOW_SIGNUP_TRIAL_OVERRIDE": "false",
         "SIGNUP_RATE_LIMIT_PER_HOUR": "10",
         "SIGNUP_RATE_LIMIT_PER_IP_DAY": "50",

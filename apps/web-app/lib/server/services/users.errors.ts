@@ -1,3 +1,4 @@
+import 'server-only';
 export class UserProfileApiError extends Error {
   constructor(
     public readonly status: number,

@@ -4,7 +4,10 @@ import json
 from collections.abc import Sequence
 from datetime import UTC, datetime
 
-from starter_console.core.inventory import WIZARD_PROMPTED_ENV_VARS
+from starter_console.core.inventory import (
+    CONSOLE_ENV_INVENTORY_PATH,
+    WIZARD_PROMPTED_ENV_VARS,
+)
 from starter_console.telemetry import artifacts_to_dict
 
 from ..models import CheckResult, SectionResult
@@ -98,7 +101,7 @@ def render_schema_summary(context: WizardContext) -> None:
         suffix = " …" if len(remaining) > 5 else ""
         context.console.info(
             "Review remaining variables via `starter-console config dump-schema` or "
-            f"docs/trackers/CONSOLE_ENV_INVENTORY.md (next: {preview}{suffix}).",
+            f"{CONSOLE_ENV_INVENTORY_PATH} (next: {preview}{suffix}).",
             topic="wizard",
         )
 
@@ -336,7 +339,6 @@ def _signup_worker_section(settings, env_snapshot: dict[str, str]) -> SectionRes
     section.checks.extend(
         [
             _env_presence("SIGNUP_ACCESS_POLICY", env_snapshot),
-            _env_presence("ALLOW_PUBLIC_SIGNUP", env_snapshot),
             _env_presence("SIGNUP_RATE_LIMIT_PER_HOUR", env_snapshot),
             _env_presence("SIGNUP_RATE_LIMIT_PER_IP_DAY", env_snapshot),
             _env_presence("SIGNUP_RATE_LIMIT_PER_EMAIL_DAY", env_snapshot),

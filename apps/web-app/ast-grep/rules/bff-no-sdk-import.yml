@@ -1,0 +1,12 @@
+id: bff-no-sdk-import
+language: TypeScript
+severity: error
+message: BFF routes must call server services; do not import the generated SDK.
+rule:
+  any:
+    - pattern: "import $A from '$MODULE'"
+    - pattern: "import { $$$ } from '$MODULE'"
+    - pattern: "import * as $A from '$MODULE'"
+constraints:
+  MODULE:
+    regex: "lib/api/client"

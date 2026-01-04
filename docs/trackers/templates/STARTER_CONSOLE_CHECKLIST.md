@@ -42,7 +42,6 @@ Baseline tenant + logging + geo telemetry.
 Ensure signup controls & billing workers match deployment.
 
 - [ ] `SIGNUP_ACCESS_POLICY` — ❌ missing
-- [ ] `ALLOW_PUBLIC_SIGNUP` — ❌ missing
 - [ ] `SIGNUP_RATE_LIMIT_PER_HOUR` — ❌ missing
 - [ ] `SIGNUP_RATE_LIMIT_PER_IP_DAY` — ❌ missing
 - [ ] `SIGNUP_RATE_LIMIT_PER_EMAIL_DAY` — ❌ missing

@@ -14,7 +14,7 @@ afterEach(() => {
 
 describe('manifest route', () => {
   it('returns required PWA fields and icons with absolute URLs', () => {
-    process.env.SITE_URL = 'https://example.com';
+    process.env.APP_PUBLIC_URL = 'https://example.com';
 
     const result = manifest();
 

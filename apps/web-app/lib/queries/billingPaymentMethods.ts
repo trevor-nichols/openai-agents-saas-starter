@@ -12,7 +12,7 @@ import type {
   BillingSetupIntentPayload,
   SuccessNoData,
 } from '@/lib/types/billing';
-import { billingEnabled } from '@/lib/config/features';
+import { useFeatureFlags } from '@/lib/queries/featureFlags';
 import { queryKeys } from './keys';
 
 interface PaymentMethodOptions {
@@ -28,6 +28,8 @@ interface UsePaymentMethodsResult {
 }
 
 export function usePaymentMethodsQuery(options: PaymentMethodOptions): UsePaymentMethodsResult {
+  const { flags } = useFeatureFlags();
+  const billingEnabled = Boolean(flags?.billingEnabled);
   const { tenantId, tenantRole = null } = options;
   const enabled = billingEnabled && Boolean(tenantId);
 
@@ -47,6 +49,8 @@ export function usePaymentMethodsQuery(options: PaymentMethodOptions): UsePaymen
 }
 
 export function useCreateSetupIntentMutation(options: PaymentMethodOptions) {
+  const { flags } = useFeatureFlags();
+  const billingEnabled = Boolean(flags?.billingEnabled);
   const { tenantId, tenantRole = null } = options;
 
   return useMutation<BillingSetupIntent, Error, BillingSetupIntentPayload>({
@@ -64,6 +68,8 @@ export function useCreateSetupIntentMutation(options: PaymentMethodOptions) {
 
 export function useSetDefaultPaymentMethodMutation(options: PaymentMethodOptions) {
   const queryClient = useQueryClient();
+  const { flags } = useFeatureFlags();
+  const billingEnabled = Boolean(flags?.billingEnabled);
   const { tenantId, tenantRole = null } = options;
 
   return useMutation<SuccessNoData, Error, { paymentMethodId: string }>({
@@ -85,6 +91,8 @@ export function useSetDefaultPaymentMethodMutation(options: PaymentMethodOptions
 
 export function useDetachPaymentMethodMutation(options: PaymentMethodOptions) {
   const queryClient = useQueryClient();
+  const { flags } = useFeatureFlags();
+  const billingEnabled = Boolean(flags?.billingEnabled);
   const { tenantId, tenantRole = null } = options;
 
   return useMutation<SuccessNoData, Error, { paymentMethodId: string }>({

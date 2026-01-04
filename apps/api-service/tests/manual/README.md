@@ -54,7 +54,7 @@ Auth flow
 - Otherwise the test uses `DEV_USER_PASSWORD` (email defaults to `dev@example.com`). If it is not set, the test skips (no prompt).
 
 Base URL resolution
-- Uses `NEXT_PUBLIC_API_URL` if set; otherwise `http://localhost:{PORT or 8000}`.
+- Uses `API_BASE_URL` if set; otherwise `http://localhost:{PORT or 8000}`.
 
 Notes
 - Keep these tests deterministic: prompts explicitly instruct the agent to perform web search before answering.

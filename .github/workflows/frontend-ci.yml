@@ -34,6 +34,9 @@ jobs:
       - name: Verify billing OpenAPI artifact
         run: node tools/assert-billing-openapi.js
 
+      - name: Verify OpenAPI artifacts
+        run: node tools/assert-openapi-artifacts.js
+
       - name: Use pnpm 10.15.0
         run: corepack prepare pnpm@10.15.0 --activate
 
@@ -65,8 +68,51 @@ jobs:
       - name: Lint
         run: just web-lint
 
+      - name: Architecture lint
+        working-directory: apps/web-app
+        run: pnpm lint:arch
+
       - name: Type check
         run: just web-typecheck
 
+      - name: Knip (unused code)
+        working-directory: apps/web-app
+        run: pnpm lint:knip
+
       - name: Build
         run: just web-build
+
+  duplication:
+    name: code-duplication
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Use pnpm 10.15.0
+        run: corepack prepare pnpm@10.15.0 --activate
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: jscpd report
+        run: pnpm lint:jscpd
+
+      - name: Upload jscpd report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jscpd-report
+          path: var/reports/jscpd/jscpd-report.json

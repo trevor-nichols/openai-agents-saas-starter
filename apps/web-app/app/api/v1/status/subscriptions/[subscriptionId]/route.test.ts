@@ -4,18 +4,11 @@ import { vi } from 'vitest';
 import { DELETE } from './route';
 
 const unsubscribeStatusSubscriptionViaToken = vi.hoisted(() => vi.fn());
-const revokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDelete = vi.hoisted(() => vi.fn());
+const revokeStatusSubscription = vi.hoisted(() => vi.fn());
 
 vi.mock('@/lib/server/services/statusSubscriptions', () => ({
   unsubscribeStatusSubscriptionViaToken,
-}));
-
-vi.mock('@/lib/server/apiClient', () => ({
-  getServerApiClient: vi.fn().mockResolvedValue({ client: 'client', auth: 'auth' }),
-}));
-
-vi.mock('@/lib/api/client/sdk.gen', () => ({
-  revokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDelete,
+  revokeStatusSubscription,
 }));
 
 describe('/api/v1/status/subscriptions/[subscriptionId] route', () => {
@@ -44,7 +37,7 @@ describe('/api/v1/status/subscriptions/[subscriptionId] route', () => {
       new NextRequest('https://example.com/api/v1/status/subscriptions/sub-1'),
       { params: Promise.resolve({ subscriptionId: 'sub-1' }) } as never,
     );
-    expect(revokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDelete).toHaveBeenCalled();
+    expect(revokeStatusSubscription).toHaveBeenCalled();
     expect(response.status).toBe(200);
   });
 });

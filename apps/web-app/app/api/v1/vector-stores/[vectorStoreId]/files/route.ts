@@ -1,25 +1,21 @@
 import { NextResponse } from 'next/server';
 
-import {
-  attachFileApiV1VectorStoresVectorStoreIdFilesPost,
-  listFilesApiV1VectorStoresVectorStoreIdFilesGet,
-} from '@/lib/api/client/sdk.gen';
 import type { VectorStoreFileCreateRequest } from '@/lib/api/client/types.gen';
-import { getServerApiClient } from '@/lib/server/apiClient';
+import {
+  attachVectorStoreFile,
+  listVectorStoreFiles,
+  VectorStoreServiceError,
+} from '@/lib/server/services/vectorStores';
 
 export async function GET(_req: Request, { params }: { params: Promise<{ vectorStoreId: string }> }) {
   const { vectorStoreId } = await params;
   try {
-    const { client, auth } = await getServerApiClient();
-    const res = await listFilesApiV1VectorStoresVectorStoreIdFilesGet({
-      client,
-      auth,
-      throwOnError: true,
-      responseStyle: 'fields',
-      path: { vector_store_id: vectorStoreId },
-    });
-    return NextResponse.json(res.data ?? { items: [], total: 0 });
+    const res = await listVectorStoreFiles(vectorStoreId);
+    return NextResponse.json(res ?? { items: [], total: 0 });
   } catch (error) {
+    if (error instanceof VectorStoreServiceError) {
+      return NextResponse.json({ message: error.message }, { status: error.status });
+    }
     const message = error instanceof Error ? error.message : 'Failed to list vector store files';
     const normalized = message.toLowerCase();
     if (normalized.includes('missing access token')) {
@@ -39,18 +35,12 @@ export async function POST(
   const { vectorStoreId } = await params;
   try {
     const payload = (await request.json()) as VectorStoreFileCreateRequest;
-    const { client, auth } = await getServerApiClient();
-    const res = await attachFileApiV1VectorStoresVectorStoreIdFilesPost({
-      client,
-      auth,
-      throwOnError: true,
-      responseStyle: 'fields',
-      path: { vector_store_id: vectorStoreId },
-      body: payload,
-    });
-    if (!res.data) return NextResponse.json({ message: 'Attach file missing data' }, { status: 500 });
-    return NextResponse.json(res.data);
+    const res = await attachVectorStoreFile(vectorStoreId, payload);
+    return NextResponse.json(res);
   } catch (error) {
+    if (error instanceof VectorStoreServiceError) {
+      return NextResponse.json({ message: error.message }, { status: error.status });
+    }
     const message = error instanceof Error ? error.message : 'Failed to attach file';
     const normalized = message.toLowerCase();
     if (normalized.includes('missing access token')) {

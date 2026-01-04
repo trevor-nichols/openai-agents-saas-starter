@@ -1,6 +1,5 @@
 import type { AppNavItem, NavIconKey } from '@/components/shell/AppNavLinks';
 import { isTenantAdmin } from '@/lib/auth/roles';
-import { billingEnabled } from '@/lib/config/features';
 
 const STORAGE_NAV_ITEM: AppNavItem = {
   href: '/ops/storage',
@@ -59,7 +58,13 @@ const OPS_TENANTS_ITEM: AppNavItem = {
   badgeVariant: 'outline',
 };
 
-export function buildPrimaryNav({ includeStorage = false }: { includeStorage?: boolean } = {}): AppNavItem[] {
+export function buildPrimaryNav({
+  includeStorage = false,
+  billingEnabled = false,
+}: {
+  includeStorage?: boolean;
+  billingEnabled?: boolean;
+} = {}): AppNavItem[] {
   const workspaceItems = includeStorage ? WORKSPACE_ITEMS_WITH_STORAGE : WORKSPACE_BASE_ITEMS;
 
   const primary = PRIMARY_NAV.map((item) =>
@@ -74,14 +79,17 @@ export function buildNavItems({
   hasOperator,
   role,
   scopes,
+  billingEnabled = false,
 }: {
   hasStatusScope: boolean;
   hasOperator: boolean;
   role?: string | null;
   scopes?: string[] | null;
+  billingEnabled?: boolean;
 }): AppNavItem[] {
   const primaryNav = buildPrimaryNav({
     includeStorage: isTenantAdmin({ role, scopes }),
+    billingEnabled,
   });
   const opsItems: AppNavItem[] = [];
   if (hasStatusScope) {

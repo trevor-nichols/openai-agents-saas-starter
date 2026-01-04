@@ -1,0 +1,20 @@
+{
+  "next": true,
+  "include": ["dependencies", "unlisted", "unresolved", "binaries"],
+  "ignoreDependencies": ["@shikijs/transformers"],
+  "ignore": [
+    "lib/api/client/**",
+    ".storybook/**",
+    "**/__stories__/**",
+    "**/*.stories.*",
+    "**/*.story.*",
+    ".next/**",
+    ".turbo/**",
+    "coverage/**",
+    "dist/**",
+    "out/**"
+  ],
+  "ignoreIssues": {
+    "lib/api/client/**": ["exports", "types"]
+  }
+}

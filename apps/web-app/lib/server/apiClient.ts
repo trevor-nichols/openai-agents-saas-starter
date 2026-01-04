@@ -1,6 +1,9 @@
+import 'server-only';
 import { createClient, createConfig, type Client } from '@/lib/api/client/client';
-import { API_BASE_URL } from '@/lib/config';
 import { getAccessTokenFromCookies } from '@/lib/auth/cookies';
+import { getApiBaseUrl } from './apiBaseUrl';
+
+export { getApiBaseUrl };
 
 /**
  * Minimal context returned by {@link getServerApiClient}. It bundles the
@@ -17,13 +20,9 @@ export interface ServerApiClientContext {
   auth: () => string;
 }
 
-const normalizedBaseUrl = API_BASE_URL.endsWith('/')
-  ? API_BASE_URL.slice(0, -1)
-  : API_BASE_URL;
-
 const baseConfig = createConfig({
-  baseUrl: normalizedBaseUrl,
-  responseStyle: 'data',
+  baseUrl: getApiBaseUrl(),
+  responseStyle: 'fields',
   throwOnError: true,
 });
 

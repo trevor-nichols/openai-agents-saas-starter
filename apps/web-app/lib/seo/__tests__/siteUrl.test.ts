@@ -14,27 +14,19 @@ afterEach(() => {
 
 describe('getSiteUrl', () => {
   it('returns fallback localhost when no env provided', () => {
-    delete process.env.SITE_URL;
-    delete process.env.NEXT_PUBLIC_SITE_URL;
+    delete process.env.APP_PUBLIC_URL;
 
     expect(getSiteUrl()).toBe('http://localhost:3000');
   });
 
   it('normalizes protocol/host and strips trailing slash', () => {
-    process.env.SITE_URL = 'HTTPS://Example.COM:8443/';
+    process.env.APP_PUBLIC_URL = 'HTTPS://Example.COM:8443/';
 
     expect(getSiteUrl()).toBe('https://example.com:8443');
   });
 
-  it('prefers SITE_URL over NEXT_PUBLIC_SITE_URL', () => {
-    process.env.SITE_URL = 'https://primary.example';
-    process.env.NEXT_PUBLIC_SITE_URL = 'https://secondary.example';
-
-    expect(getSiteUrl()).toBe('https://primary.example');
-  });
-
   it('throws when a path segment is present', () => {
-    process.env.SITE_URL = 'https://example.com/app';
+    process.env.APP_PUBLIC_URL = 'https://example.com/app';
 
     expect(() => getSiteUrl()).toThrow();
   });
@@ -42,7 +34,7 @@ describe('getSiteUrl', () => {
 
 describe('buildAbsoluteUrl', () => {
   it('concatenates the base and normalized path', () => {
-    process.env.SITE_URL = 'https://example.com/';
+    process.env.APP_PUBLIC_URL = 'https://example.com/';
 
     expect(buildAbsoluteUrl('pricing')).toBe('https://example.com/pricing');
     expect(buildAbsoluteUrl('/pricing')).toBe('https://example.com/pricing');

@@ -229,10 +229,17 @@ class SecretsProviderSettingsMixin(BaseModel):
             cache_ttl_seconds=self.azure_kv_cache_ttl_seconds,
         )
 
+    def resolve_gcp_sm_project_id(self) -> str | None:
+        candidate = self.gcp_sm_project_id or getattr(self, "gcp_project_id", None)
+        if not candidate:
+            return None
+        cleaned = str(candidate).strip()
+        return cleaned or None
+
     @property
     def gcp_settings(self) -> GCPSecretManagerConfig:
         return GCPSecretManagerConfig(
-            project_id=self.gcp_sm_project_id or "",
+            project_id=self.resolve_gcp_sm_project_id() or "",
             signing_secret_name=self.gcp_sm_signing_secret_name or "",
             cache_ttl_seconds=self.gcp_sm_cache_ttl_seconds,
         )

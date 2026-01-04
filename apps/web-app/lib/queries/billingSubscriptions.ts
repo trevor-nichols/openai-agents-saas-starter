@@ -18,7 +18,7 @@ import {
   updateSubscriptionRequest,
 } from '@/lib/api/billingSubscriptions';
 import { queryKeys } from './keys';
-import { billingEnabled } from '@/lib/config/features';
+import { useFeatureFlags } from '@/lib/queries/featureFlags';
 
 interface SubscriptionOptions {
   tenantId: string | null;
@@ -26,6 +26,8 @@ interface SubscriptionOptions {
 }
 
 export function useTenantSubscription(options: SubscriptionOptions) {
+  const { flags } = useFeatureFlags();
+  const billingEnabled = Boolean(flags?.billingEnabled);
   const { tenantId, tenantRole = null } = options;
   const enabled = billingEnabled && Boolean(tenantId);
 
@@ -46,6 +48,8 @@ export function useTenantSubscription(options: SubscriptionOptions) {
 
 export function useStartSubscriptionMutation(options: SubscriptionOptions) {
   const queryClient = useQueryClient();
+  const { flags } = useFeatureFlags();
+  const billingEnabled = Boolean(flags?.billingEnabled);
   const { tenantId, tenantRole = null } = options;
 
   return useMutation({
@@ -67,6 +71,8 @@ export function useStartSubscriptionMutation(options: SubscriptionOptions) {
 
 export function useUpdateSubscriptionMutation(options: SubscriptionOptions) {
   const queryClient = useQueryClient();
+  const { flags } = useFeatureFlags();
+  const billingEnabled = Boolean(flags?.billingEnabled);
   const { tenantId, tenantRole = null } = options;
 
   return useMutation({
@@ -88,6 +94,8 @@ export function useUpdateSubscriptionMutation(options: SubscriptionOptions) {
 
 export function useCancelSubscriptionMutation(options: SubscriptionOptions) {
   const queryClient = useQueryClient();
+  const { flags } = useFeatureFlags();
+  const billingEnabled = Boolean(flags?.billingEnabled);
   const { tenantId, tenantRole = null } = options;
 
   return useMutation({
@@ -109,6 +117,8 @@ export function useCancelSubscriptionMutation(options: SubscriptionOptions) {
 
 export function useChangeSubscriptionPlanMutation(options: SubscriptionOptions) {
   const queryClient = useQueryClient();
+  const { flags } = useFeatureFlags();
+  const billingEnabled = Boolean(flags?.billingEnabled);
   const { tenantId, tenantRole = null } = options;
 
   return useMutation<SubscriptionPlanChangeResponse, Error, SubscriptionPlanChangePayload>({
@@ -130,6 +140,8 @@ export function useChangeSubscriptionPlanMutation(options: SubscriptionOptions) 
 }
 
 export function useUsageRecordMutation(options: SubscriptionOptions) {
+  const { flags } = useFeatureFlags();
+  const billingEnabled = Boolean(flags?.billingEnabled);
   const { tenantId, tenantRole = null } = options;
 
   return useMutation({

@@ -1,7 +1,7 @@
 import { defineConfig } from '@hey-api/openapi-ts';
 
-// Allow developers to override the spec source (e.g., to include test-fixture routes)
-// by setting OPENAPI_INPUT. Default points at the committed OpenAPI artifact so CI stays stable.
+// Allow developers to override the production spec source by setting OPENAPI_INPUT.
+// Fixture endpoints are generated via openapi-ts.fixtures.config.ts.
 const input = process.env.OPENAPI_INPUT || '../api-service/.artifacts/openapi.json';
 
 export default defineConfig({

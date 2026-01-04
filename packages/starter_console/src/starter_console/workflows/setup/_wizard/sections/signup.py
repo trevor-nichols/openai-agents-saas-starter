@@ -24,7 +24,6 @@ def run(context: WizardContext, provider: InputProvider) -> None:
     )
     policy = _prompt_signup_policy(context, provider)
     context.set_backend("SIGNUP_ACCESS_POLICY", policy)
-    context.set_backend_bool("ALLOW_PUBLIC_SIGNUP", policy == "public")
 
     allow_override = provider.prompt_bool(
         key="ALLOW_SIGNUP_TRIAL_OVERRIDE",
@@ -168,14 +167,6 @@ def _resolve_policy_default(context: WizardContext, provider: InputProvider) -> 
     if headless_policy:
         return headless_policy
 
-    headless_allow = _headless_answer(provider, "ALLOW_PUBLIC_SIGNUP")
-    if headless_allow is not None:
-        return "public" if _coerce_bool_like(headless_allow) else "invite_only"
-
-    env_allow_value = context.current("ALLOW_PUBLIC_SIGNUP")
-    if env_allow_value is not None:
-        return "public" if _coerce_bool_like(env_allow_value) else "invite_only"
-
     return "invite_only"
 
 
@@ -310,7 +301,3 @@ def _headless_answer(provider: InputProvider, key: str) -> str | None:
     if answers:
         return answers.get(key.upper())
     return None
-
-
-def _coerce_bool_like(value: str) -> bool:
-    return value.strip().lower() in {"1", "true", "yes", "y"}

@@ -4,7 +4,10 @@ import { buildSignupAccount, issueEmailVerificationToken } from '../utils/signup
 
 const PUBLIC_SIGNUP_ENABLED = isPublicSignupEnabled();
 
-test.skip(!PUBLIC_SIGNUP_ENABLED, 'Public signup disabled. Set ALLOW_PUBLIC_SIGNUP=true to run this spec.');
+test.skip(
+  !PUBLIC_SIGNUP_ENABLED,
+  'Public signup disabled. Set SIGNUP_ACCESS_POLICY=public to run this spec.'
+);
 
 test.describe('Self-serve signup + email verification', () => {
   test('new tenant registers, verifies email, and re-authenticates', async ({ page }) => {

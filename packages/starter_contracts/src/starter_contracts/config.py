@@ -91,7 +91,7 @@ class StarterSettingsProtocol(Protocol):
     minio_secret_key: str | None
     minio_region: str | None
     minio_secure: bool
-    gcs_project_id: str | None
+    gcp_project_id: str | None
     gcs_bucket: str | None
     gcs_credentials_json: str | None
     gcs_credentials_path: str | None

@@ -104,9 +104,9 @@ def _configure_minio(context: WizardContext, provider: InputProvider) -> None:
 
 def _configure_gcs(context: WizardContext, provider: InputProvider) -> None:
     project_id = provider.prompt_string(
-        key="GCS_PROJECT_ID",
-        prompt="GCS project id",
-        default=context.current("GCS_PROJECT_ID") or "",
+        key="GCP_PROJECT_ID",
+        prompt="GCP project id",
+        default=context.current("GCP_PROJECT_ID") or "",
         required=True,
     )
     bucket = provider.prompt_string(
@@ -139,7 +139,7 @@ def _configure_gcs(context: WizardContext, provider: InputProvider) -> None:
         default=context.current_bool("GCS_UNIFORM_ACCESS", True),
     )
 
-    context.set_backend("GCS_PROJECT_ID", project_id)
+    context.set_backend("GCP_PROJECT_ID", project_id)
     context.set_backend("GCS_BUCKET", bucket)
     context.set_backend("GCS_CREDENTIALS_PATH", creds_path)
     context.set_backend("GCS_CREDENTIALS_JSON", creds_json, mask=True)

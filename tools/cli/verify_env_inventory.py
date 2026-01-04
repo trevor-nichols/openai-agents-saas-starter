@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify docs/trackers/CONSOLE_ENV_INVENTORY.md matches the runtime settings schema."""
+"""Verify docs/contracts/inventories/console-env-inventory.md matches the runtime settings schema."""
 
 from __future__ import annotations
 
@@ -7,11 +7,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping
 
-from starter_console.core.inventory import WIZARD_PROMPTED_ENV_VARS
+from starter_console.core.inventory import (
+    CONSOLE_ENV_INVENTORY_PATH,
+    WIZARD_PROMPTED_ENV_VARS,
+)
 from starter_contracts.config import get_settings
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DOC_PATH = REPO_ROOT / "docs/trackers/CONSOLE_ENV_INVENTORY.md"
+DOC_PATH = REPO_ROOT / CONSOLE_ENV_INVENTORY_PATH
 
 
 @dataclass(slots=True)
@@ -110,12 +113,12 @@ def _report_diff(expected: Mapping[str, EnvEntry], documented: Mapping[str, EnvE
 
     exit_code = 0
     if missing:
-        print("Missing entries in CONSOLE_ENV_INVENTORY.md:")
+        print("Missing entries in console-env-inventory.md:")
         for alias in missing:
             print(f"  - {alias}")
         exit_code = 1
     if extra:
-        print("Extraneous entries in CONSOLE_ENV_INVENTORY.md:")
+        print("Extraneous entries in console-env-inventory.md:")
         for alias in extra:
             print(f"  - {alias}")
         exit_code = 1
@@ -134,7 +137,7 @@ def _report_diff(expected: Mapping[str, EnvEntry], documented: Mapping[str, EnvE
     else:
         print(
             "Run `starter-console config dump-schema --format table` to review expected values. "
-            "Update docs/trackers/CONSOLE_ENV_INVENTORY.md accordingly."
+            f"Update {CONSOLE_ENV_INVENTORY_PATH} accordingly."
         )
     return exit_code
 

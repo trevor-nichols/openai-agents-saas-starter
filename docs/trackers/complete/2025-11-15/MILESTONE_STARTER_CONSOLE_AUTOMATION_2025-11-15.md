@@ -50,7 +50,7 @@ This section captures every prerequisite a new operator must satisfy today. Each
 | Area | Manual Steps Today | Auto? | Notes/Dependencies |
 | --- | --- | --- | --- |
 | Python tooling | Install Python 3.11+, Hatch, project deps (`pip install 'api-service[dev]'`, `hatch env create`). | ⚠️ Assist | CLI can confirm Hatch + deps (via `infra deps`). Full install remains manual but add guidance/remediation text. |
-| Env file | Copy `apps/api-service/.env.local.example` → `apps/api-service/.env.local`, fill every secret (peppers, keys, Vault vars). | ✅ Target | Wizard already collects values; automation ensures file creation plus diff logging. |
+| Env file | Copy `apps/api-service/.env.example` → `apps/api-service/.env.local`, fill every secret (peppers, keys, Vault vars). | ✅ Target | Wizard already collects values; automation ensures file creation plus diff logging. |
 | Secrets & peppers | Generate `SECRET_KEY`, `AUTH_*` peppers, session salts. | ✅ Target | Wizard milestone M1 covers; ensure outputs flagged in summary with “generated” markers. |
 | Persistence config | Supply `DATABASE_URL`, `REDIS_URL`, `BILLING_EVENTS_REDIS_URL`, `AUTO_RUN_MIGRATIONS`. | ✅ Target | Wizard M2 collects; automation should validate connectivity post-compose. |
 | Providers (AI/Email) | Populate `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `RESEND_*`, etc. | ⚠️ Assist | Wizard prompts; automation limited to validation (ping key endpoints when safe). |

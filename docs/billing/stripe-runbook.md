@@ -215,7 +215,7 @@ Implementation checklist:
 
 ## Rate Limiting & Abuse Controls
 
-- `/api/v1/billing/stream` enforces Redis-backed quotas. Each tenant may initiate at most `BILLING_STREAM_RATE_LIMIT_PER_MINUTE` new subscriptions per minute and hold `BILLING_STREAM_CONCURRENT_LIMIT` simultaneous connections. Defaults ship in `apps/api-service/.env.local.example` and can be tuned per environment.
+- `/api/v1/billing/stream` enforces Redis-backed quotas. Each tenant may initiate at most `BILLING_STREAM_RATE_LIMIT_PER_MINUTE` new subscriptions per minute and hold `BILLING_STREAM_CONCURRENT_LIMIT` simultaneous connections. Defaults ship in `apps/api-service/.env.example` and can be tuned per environment.
 - Exceeding either threshold results in HTTP 429 + `Retry-After` along with structured `rate_limit.block` logs and the Prometheus counter `rate_limit_hits_total{quota="billing_stream_*"}`. Tenants can self-retry after the indicated back-off; operators should avoid manual resets unless absolutely necessary.
 - To unblock a tenant manually, remove Redis keys prefixed with `${RATE_LIMIT_KEY_PREFIX}:quota:billing_stream_*:<tenant_id>` (for bursts) or `${RATE_LIMIT_KEY_PREFIX}:concurrency:billing_stream_concurrency:<tenant_id>` (for stuck sockets). Capture the key name, tenant id, and rationale in the incident log before clearing counters.
 

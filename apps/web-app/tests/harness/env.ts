@@ -13,12 +13,12 @@ const EnvSchema = z.object({
   PLAYWRIGHT_TENANT_SLUG: z.string().min(1),
   PLAYWRIGHT_OPERATOR_TENANT: z.string().min(1),
   PLAYWRIGHT_BILLING_EMAIL: z.string().email().optional(),
-  PLAYWRIGHT_ALLOW_PUBLIC_SIGNUP: z.string().optional(),
   PLAYWRIGHT_SKIP_WEB_SERVER: z.string().optional(),
   PLAYWRIGHT_SEED_ON_START: z.string().optional(),
   PLAYWRIGHT_SKIP_SEED: z.string().optional(),
   PLAYWRIGHT_REFRESH_STORAGE_STATE: z.string().optional(),
   PLAYWRIGHT_SKIP_STORAGE_STATE: z.string().optional(),
+  SIGNUP_ACCESS_POLICY: z.string().optional(),
   CI: z.string().optional(),
 });
 
@@ -69,7 +69,7 @@ function buildRawEnv(): RawEnv {
     PLAYWRIGHT_MOCK_BASE_URL: process.env.PLAYWRIGHT_MOCK_BASE_URL ?? 'http://localhost:3001',
     PLAYWRIGHT_API_URL:
       process.env.PLAYWRIGHT_API_URL ??
-      process.env.NEXT_PUBLIC_API_URL ??
+      process.env.API_BASE_URL ??
       'http://localhost:8000',
     PLAYWRIGHT_TENANT_ADMIN_EMAIL: process.env.PLAYWRIGHT_TENANT_ADMIN_EMAIL ?? 'user@example.com',
     PLAYWRIGHT_TENANT_ADMIN_PASSWORD: process.env.PLAYWRIGHT_TENANT_ADMIN_PASSWORD ?? 'SuperSecret123!',
@@ -78,10 +78,7 @@ function buildRawEnv(): RawEnv {
     PLAYWRIGHT_TENANT_SLUG: process.env.PLAYWRIGHT_TENANT_SLUG ?? 'playwright-starter',
     PLAYWRIGHT_OPERATOR_TENANT: process.env.PLAYWRIGHT_OPERATOR_TENANT ?? 'platform-ops',
     PLAYWRIGHT_BILLING_EMAIL: process.env.PLAYWRIGHT_BILLING_EMAIL,
-    PLAYWRIGHT_ALLOW_PUBLIC_SIGNUP:
-      process.env.PLAYWRIGHT_ALLOW_PUBLIC_SIGNUP ??
-      process.env.ALLOW_PUBLIC_SIGNUP ??
-      process.env.NEXT_PUBLIC_ALLOW_PUBLIC_SIGNUP,
+    SIGNUP_ACCESS_POLICY: process.env.SIGNUP_ACCESS_POLICY,
     PLAYWRIGHT_SKIP_WEB_SERVER: process.env.PLAYWRIGHT_SKIP_WEB_SERVER,
     PLAYWRIGHT_SEED_ON_START: process.env.PLAYWRIGHT_SEED_ON_START,
     PLAYWRIGHT_SKIP_SEED: process.env.PLAYWRIGHT_SKIP_SEED,
@@ -123,7 +120,7 @@ export function getPlaywrightEnv(): PlaywrightEnv {
       skipSeed: isTruthy(raw.PLAYWRIGHT_SKIP_SEED),
       refreshStorageState: isTruthy(raw.PLAYWRIGHT_REFRESH_STORAGE_STATE),
       skipStorageState: isTruthy(raw.PLAYWRIGHT_SKIP_STORAGE_STATE),
-      allowPublicSignup: isTruthy(raw.PLAYWRIGHT_ALLOW_PUBLIC_SIGNUP),
+      allowPublicSignup: raw.SIGNUP_ACCESS_POLICY?.trim().toLowerCase() === 'public',
     },
   };
 

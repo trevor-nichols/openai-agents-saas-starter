@@ -1,14 +1,7 @@
 import { NextResponse } from 'next/server';
 
-import { searchVectorStoreApiV1VectorStoresVectorStoreIdSearchPost } from '@/lib/api/client/sdk.gen';
 import type { VectorStoreSearchRequest, VectorStoreSearchResponse } from '@/lib/api/client/types.gen';
-import { getServerApiClient } from '@/lib/server/apiClient';
-
-function isVectorStoreSearchResponse(payload: unknown): payload is VectorStoreSearchResponse {
-  if (!payload || typeof payload !== 'object') return false;
-  const record = payload as Record<string, unknown>;
-  return typeof record.object === 'string' && typeof record.search_query === 'string';
-}
+import { searchVectorStore, VectorStoreServiceError } from '@/lib/server/services/vectorStores';
 
 export async function POST(
   request: Request,
@@ -17,23 +10,12 @@ export async function POST(
   const { vectorStoreId } = await params;
   try {
     const payload = (await request.json()) as VectorStoreSearchRequest;
-    const { client, auth } = await getServerApiClient();
-    const res = await searchVectorStoreApiV1VectorStoresVectorStoreIdSearchPost({
-      client,
-      auth,
-      throwOnError: true,
-      responseStyle: 'fields',
-      path: { vector_store_id: vectorStoreId },
-      body: payload,
-    });
-    if (!isVectorStoreSearchResponse(res.data)) {
-      return NextResponse.json(
-        { message: 'Vector store search returned an invalid payload.' },
-        { status: 502 },
-      );
-    }
-    return NextResponse.json(res.data);
+    const res = await searchVectorStore(vectorStoreId, payload);
+    return NextResponse.json(res as VectorStoreSearchResponse);
   } catch (error) {
+    if (error instanceof VectorStoreServiceError) {
+      return NextResponse.json({ message: error.message }, { status: error.status });
+    }
     const message = error instanceof Error ? error.message : 'Failed to search vector store';
     const normalized = message.toLowerCase();
     if (normalized.includes('missing access token')) {

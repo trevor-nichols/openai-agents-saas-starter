@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 
-import { runWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPost } from '@/lib/api/client/sdk.gen';
 import type { WorkflowRunRequestBody } from '@/lib/api/client/types.gen';
-import { getServerApiClient } from '@/lib/server/apiClient';
+import { openWorkflowStream } from '@/lib/server/services/workflows';
 
 export async function POST(
   request: Request,
@@ -11,28 +10,7 @@ export async function POST(
   const { workflowKey } = await params;
   try {
     const payload = (await request.json()) as WorkflowRunRequestBody;
-    const { client, auth } = await getServerApiClient();
-
-    const upstream = await runWorkflowStreamApiV1WorkflowsWorkflowKeyRunStreamPost({
-      client,
-      auth,
-      signal: request.signal,
-      cache: 'no-store',
-      responseStyle: undefined,
-      throwOnError: true,
-      path: { workflow_key: workflowKey },
-      body: payload,
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'text/event-stream',
-      },
-      parseAs: 'stream',
-    });
-
-    const stream = upstream.response?.body;
-    if (!stream || !upstream.response) {
-      return NextResponse.json({ message: 'Workflow stream missing body' }, { status: 500 });
-    }
+    const upstream = await openWorkflowStream(workflowKey, payload, request.signal);
 
     const headers = new Headers({
       'Content-Type': 'text/event-stream',
@@ -40,14 +18,13 @@ export async function POST(
       'Cache-Control': 'no-cache',
     });
 
-    const contentType = upstream.response.headers.get('Content-Type');
+    const contentType = upstream.contentType;
     if (contentType) {
       headers.set('Content-Type', contentType);
     }
 
-    return new Response(stream, {
-      status: upstream.response.status,
-      statusText: upstream.response.statusText,
+    return new Response(upstream.stream, {
+      status: upstream.status,
       headers,
     });
   } catch (error) {

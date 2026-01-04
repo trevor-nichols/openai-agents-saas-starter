@@ -1,17 +1,11 @@
 import { NextResponse } from 'next/server';
 
-import { regenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePost } from '@/lib/api/client/sdk.gen';
-import { getServerApiClient } from '@/lib/server/apiClient';
+import { regenerateRecoveryCodes } from '@/lib/server/services/auth/mfa';
 
 export async function POST() {
   try {
-    const { client, auth } = await getServerApiClient();
-    const res = await regenerateRecoveryCodesApiV1AuthMfaRecoveryRegeneratePost({
-      client,
-      auth,
-      throwOnError: true,
-    });
-    return NextResponse.json(res.data, { status: 200 });
+    const res = await regenerateRecoveryCodes();
+    return NextResponse.json(res, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to regenerate recovery codes.';
     const status = message.toLowerCase().includes('missing access token') ? 401 : 400;

@@ -1,6 +1,6 @@
 # Frontend Data Access Guidelines
 
-_Last updated: November 10, 2025_
+_Last updated: January 3, 2026_
 
 This document codifies how the Next.js frontend talks to the FastAPI backend. Every new feature must follow this layering to keep auth boundaries clear, maximize reuse, and make it obvious where to plug in caching, logging, or mocks.
 
@@ -31,18 +31,41 @@ This document codifies how the Next.js frontend talks to the FastAPI backend. Ev
    - Set sensible `staleTime` per domain (streams: 0, lists: minutes).  
    - Non-React consumers should reuse the fetch helpers.
 
+## Architecture Guardrails (Lint)
+
+To prevent bypassing the BFF boundary, we enforce route-layer constraints in lint tooling:
+
+- **ESLint (primary guardrail)**  
+  - `no-restricted-imports` blocks `@/lib/api/client/**` and `@/lib/config/server` inside `app/api/**/route.ts(x)`.  
+  - `eslint-plugin-boundaries` backs this with an explicit BFF element rule.
+  - `no-restricted-syntax` blocks direct `fetch(...)` calls inside BFF routes.
+- **ast-grep (secondary guardrail)**  
+  - `pnpm lint:arch` scans `app/api/**/route.ts` for SDK imports or `process.env.*API_BASE_URL` access.  
+  - It also flags direct `fetch(...)` usage to keep all network access inside server services.
+  - Run locally from `apps/web-app` whenever you add or refactor BFF routes.
+  - Requires the pinned `@ast-grep/cli` devDependency (enabled in the pnpm build allow-list).
+- **CI**  
+  - Frontend CI runs `pnpm lint:arch` to prevent regressions.
+
 ## OpenAPI + SDK Regeneration (Required)
 
 Any backend API/schema change must refresh OpenAPI artifacts and the generated web SDK **before** touching frontend code. Run from repo root:
 
-1. Export the superset schema (billing + test fixtures):
+1. Export the canonical OpenAPI artifacts (billing-enabled, fixtures included in the superset):
    ```
-   cd packages/starter_console && starter-console api export-openapi --output apps/api-service/.artifacts/openapi-fixtures.json --enable-billing --enable-test-fixtures
+   just openapi-export
    ```
-2. Regenerate the frontend SDK from the exported fixtures:
+2. Regenerate the frontend SDK from the canonical spec:
    ```
-   cd apps/web-app && OPENAPI_INPUT=../api-service/.artifacts/openapi-fixtures.json pnpm generate:fixtures
+   cd apps/web-app && pnpm generate
    ```
+
+Generate the fixture-only SDK (separate output path) when you need fixture endpoints:
+```
+cd apps/web-app && pnpm generate:fixtures
+```
+The production SDK remains under `lib/api/client` (from `openapi.json`). The fixture SDK lives under
+`lib/api/fixtures-client` (from `openapi-fixtures.json`) and may be committed alongside the main SDK.
 
 Do not hand-edit `apps/web-app/lib/api/client/*`. Generated files must come from the commands above.
 
@@ -86,7 +109,7 @@ Do not hand-edit `apps/web-app/lib/api/client/*`. Generated files must come from
   - Keep the domain service for server-side orchestration.
   - Add a lightweight API route + fetch helper for browser access.  
 - Example: billing subscription flows now share `lib/api/billingSubscriptions.ts`, and `lib/queries/billingSubscriptions.ts` exclusively calls those helpers. Server components that need the same data can still import `lib/server/services/billing.ts`.  
-- Billing visibility: `NEXT_PUBLIC_ENABLE_BILLING` (default `false`) controls nav/pages/API routes/query `enabled` flags. The Starter Console writes it to `apps/web-app/.env.local` alongside backend `ENABLE_BILLING` in `apps/api-service/.env.local`.
+- Billing visibility: the frontend derives billing flags from `/api/health/features`, which proxies the backend `ENABLE_BILLING` and `ENABLE_BILLING_STREAM` settings. Navigation, pages, API routes, and query `enabled` flags should all read from this endpoint instead of a frontend env var.
 - If a hook only ever runs in a server component, prefer a server action instead of creating a redundant `/api` route.
 
 ## Streaming Guidance
@@ -95,6 +118,12 @@ Do not hand-edit `apps/web-app/lib/api/client/*`. Generated files must come from
 - Browser-accessible streams (billing events, chat fallback) live behind `/app/api/...` proxy routes that pipe the SSE response and enforce cookie auth.  
 - Client-side streaming utilities (`lib/api/streaming.ts`) only talk to our API routes to avoid leaking tokens.
 - Hooks exposed to client components must come from `lib/queries/*`. For example, import `useBillingStream` from `lib/queries/billing` and `useSilentRefresh` from `lib/queries/session`; the legacy `hooks/*` versions have been removed to keep a single source of truth.
+
+## Proxy-Style Routes (Downloads, Logs, RSS)
+
+- When a route must pass through non-JSON payloads (file streams, RSS, log ingestion), keep the handler thin and route through a server service.  
+- Services own auth/header handling and any response-shape normalization (e.g., `lib/server/services/openaiFiles.ts`, `status.ts`, `frontendLogs.ts`, `testFixtures.ts`).  
+- Route handlers should avoid direct SDK or `fetch` usage; they simply adapt HTTP semantics for the browser response.
 
 ## Chat Data Flow
 

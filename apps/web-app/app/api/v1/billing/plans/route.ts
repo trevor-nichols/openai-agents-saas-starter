@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 
+import { isBillingEnabled } from '@/lib/server/features';
 import { listBillingPlans } from '@/lib/server/services/billing';
-import { billingEnabled } from '@/lib/config/features';
 
 export async function GET() {
-  if (!billingEnabled) {
+  if (!(await isBillingEnabled())) {
     return NextResponse.json({ success: false, error: 'Billing is disabled.' }, { status: 404 });
   }
   try {

@@ -582,7 +582,6 @@ async def test_register_requires_invite_under_invite_only_policy(
     session_factory,
 ) -> None:
     monkeypatch.delenv("SIGNUP_ACCESS_POLICY", raising=False)
-    monkeypatch.delenv("ALLOW_PUBLIC_SIGNUP", raising=False)
     billing_stub = StubBillingService()
     auth_stub = StubAuthService(tokens=_token_payload("user-4", "tenant-4"))
     cast(Any, get_container()).auth_service = auth_stub
@@ -616,7 +615,6 @@ async def test_register_consumes_invite_when_token_present(
     session_factory,
 ) -> None:
     monkeypatch.delenv("SIGNUP_ACCESS_POLICY", raising=False)
-    monkeypatch.delenv("ALLOW_PUBLIC_SIGNUP", raising=False)
     billing_stub = StubBillingService()
     auth_stub = StubAuthService(tokens=_token_payload("user-5", "tenant-5"))
     cast(Any, get_container()).auth_service = auth_stub
@@ -654,7 +652,6 @@ async def test_register_invalid_invite_maps_to_public_signup_error(
     session_factory,
 ) -> None:
     monkeypatch.delenv("SIGNUP_ACCESS_POLICY", raising=False)
-    monkeypatch.delenv("ALLOW_PUBLIC_SIGNUP", raising=False)
     billing_stub = StubBillingService()
     auth_stub = StubAuthService(tokens=_token_payload("user-err", "tenant-err"))
     cast(Any, get_container()).auth_service = auth_stub
@@ -688,7 +685,6 @@ async def test_register_email_mismatch_maps_to_public_signup_error(
     session_factory,
 ) -> None:
     monkeypatch.delenv("SIGNUP_ACCESS_POLICY", raising=False)
-    monkeypatch.delenv("ALLOW_PUBLIC_SIGNUP", raising=False)
     billing_stub = StubBillingService()
     auth_stub = StubAuthService(tokens=_token_payload("user-err", "tenant-err"))
     cast(Any, get_container()).auth_service = auth_stub
@@ -722,7 +718,6 @@ async def test_register_releases_invite_on_failure(
     session_factory,
 ) -> None:
     monkeypatch.delenv("SIGNUP_ACCESS_POLICY", raising=False)
-    monkeypatch.delenv("ALLOW_PUBLIC_SIGNUP", raising=False)
     billing_stub = StubBillingService()
     auth_stub = StubAuthService(tokens=_token_payload("user-err", "tenant-err"))
     cast(Any, get_container()).auth_service = auth_stub

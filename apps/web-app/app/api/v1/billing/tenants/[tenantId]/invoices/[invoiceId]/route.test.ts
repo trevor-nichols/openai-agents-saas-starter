@@ -4,9 +4,13 @@ import type { SubscriptionInvoiceResponse } from '@/lib/api/client/types.gen';
 import type { NextRequest } from 'next/server';
 
 const getTenantInvoice = vi.hoisted(() => vi.fn());
+const isBillingEnabled = vi.hoisted(() => vi.fn());
 
 vi.mock('@/lib/server/services/billing', () => ({
   getTenantInvoice,
+}));
+vi.mock('@/lib/server/features', () => ({
+  isBillingEnabled,
 }));
 
 async function loadHandler() {
@@ -27,13 +31,13 @@ const context = (tenantId?: string, invoiceId?: string): Parameters<
 });
 
 beforeEach(() => {
-  delete process.env.NEXT_PUBLIC_ENABLE_BILLING;
   getTenantInvoice.mockReset();
+  isBillingEnabled.mockReset();
 });
 
 describe('GET /api/v1/billing/tenants/[tenantId]/invoices/[invoiceId]', () => {
   it('returns 404 when billing is disabled', async () => {
-    process.env.NEXT_PUBLIC_ENABLE_BILLING = 'false';
+    isBillingEnabled.mockResolvedValueOnce(false);
     const { GET } = await loadHandler();
 
     const response = await GET(
@@ -45,7 +49,7 @@ describe('GET /api/v1/billing/tenants/[tenantId]/invoices/[invoiceId]', () => {
   });
 
   it('returns invoice payload', async () => {
-    process.env.NEXT_PUBLIC_ENABLE_BILLING = 'true';
+    isBillingEnabled.mockResolvedValueOnce(true);
     const { GET } = await loadHandler();
 
     const invoice: SubscriptionInvoiceResponse = {

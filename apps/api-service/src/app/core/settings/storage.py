@@ -88,9 +88,13 @@ class StorageSettingsMixin(BaseModel):
     )
 
     # GCS
-    gcs_project_id: str | None = Field(
+    gcp_project_id: str | None = Field(
         default=None,
-        description="GCP project ID for GCS operations.",
+        description=(
+            "Default GCP project ID for storage operations and Secret Manager "
+            "fallbacks when GCP_SM_PROJECT_ID is unset."
+        ),
+        alias="GCP_PROJECT_ID",
     )
     gcs_bucket: str | None = Field(
         default=None,
@@ -161,7 +165,7 @@ class StorageSettingsMixin(BaseModel):
     @property
     def gcs_settings(self) -> GCSProviderConfig:
         return GCSProviderConfig(
-            project_id=self.gcs_project_id,
+            project_id=self.gcp_project_id,
             bucket=self.gcs_bucket,
             credentials_json=self.gcs_credentials_json,
             credentials_path=self.gcs_credentials_path,

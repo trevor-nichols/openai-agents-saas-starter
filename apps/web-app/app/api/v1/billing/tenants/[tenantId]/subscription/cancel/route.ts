@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
-import { billingEnabled } from '@/lib/config/features';
+import { isBillingEnabled } from '@/lib/server/features';
 import { cancelTenantSubscription } from '@/lib/server/services/billing';
 import {
   mapBillingErrorToStatus,
@@ -11,7 +11,7 @@ import {
 } from '../../../_utils';
 
 export async function POST(request: NextRequest, context: BillingTenantRouteContext) {
-  if (!billingEnabled) {
+  if (!(await isBillingEnabled())) {
     return NextResponse.json({ success: false, error: 'Billing is disabled.' }, { status: 404 });
   }
   const tenantId = await resolveTenantId(context);

@@ -1,3 +1,4 @@
+import 'server-only';
 /** Normalize errors thrown by the HeyAPI client (which throws parsed JSON objects when throwOnError=true)
  * into a { status, body } tuple suitable for NextResponse.json.
  */

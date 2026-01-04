@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { fetchBillingHistory } from '@/lib/api/billingHistory';
 import { readClientSessionMeta } from '@/lib/auth/clientMeta';
 import type { BillingEvent, BillingEventHistoryResponse, BillingEventProcessingStatus } from '@/types/billing';
-import { billingEnabled } from '@/lib/config/features';
+import { useFeatureFlags } from '@/lib/queries/featureFlags';
 import { queryKeys } from './keys';
 
 interface UseBillingHistoryOptions {
@@ -23,6 +23,8 @@ interface UseBillingHistoryResult {
 }
 
 export function useBillingHistory(options?: UseBillingHistoryOptions): UseBillingHistoryResult {
+  const { flags } = useFeatureFlags();
+  const billingEnabled = Boolean(flags?.billingEnabled);
   const meta = readClientSessionMeta();
   const tenantId = meta?.tenantId ?? null;
   const pageSize = options?.pageSize ?? 25;

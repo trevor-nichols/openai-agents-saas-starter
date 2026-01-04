@@ -1,8 +1,8 @@
-'use server';
+import 'server-only';
 
 import { cacheLife, cacheTag } from 'next/cache';
 
-import { getPlatformStatusApiV1StatusGet } from '@/lib/api/client/sdk.gen';
+import { getPlatformStatusApiV1StatusGet, getPlatformStatusRssApiV1StatusRssGet } from '@/lib/api/client/sdk.gen';
 import type { PlatformStatusResponse } from '@/lib/api/client/types.gen';
 import { createApiClient } from '@/lib/server/apiClient';
 
@@ -33,4 +33,41 @@ export async function fetchPlatformStatusSnapshot(): Promise<PlatformStatusRespo
   }
 
   return payload;
+}
+
+export interface StatusRssResponse {
+  status: number;
+  body: string;
+  contentType: string;
+}
+
+function resolveRssBody(error: unknown): string {
+  if (!error) return '';
+  if (typeof error === 'string') return error;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return '';
+  }
+}
+
+export async function fetchStatusRss(): Promise<StatusRssResponse> {
+  const client = createApiClient();
+  const response = await getPlatformStatusRssApiV1StatusRssGet({
+    client,
+    responseStyle: 'fields',
+    throwOnError: false,
+    parseAs: 'text',
+    cache: 'no-store',
+  });
+
+  const body = response.data ?? resolveRssBody('error' in response ? response.error : undefined);
+  const contentType =
+    response.response?.headers.get('content-type') ?? 'application/rss+xml; charset=utf-8';
+
+  return {
+    status: response.response?.status ?? 502,
+    body,
+    contentType,
+  };
 }

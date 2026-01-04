@@ -8,7 +8,6 @@ from .catalog import (
 from .env import (
     load_backend_env_files,
     update_backend_env,
-    update_frontend_env,
 )
 from .provisioner import (
     ProvisionedPlan,
@@ -28,7 +27,6 @@ __all__ = [
     "parse_plan_overrides",
     "load_backend_env_files",
     "update_backend_env",
-    "update_frontend_env",
     "ProvisionResult",
     "ProvisionedPlan",
     "StripeClient",

@@ -13,8 +13,8 @@ afterEach(() => {
 });
 
 describe('robots route', () => {
-  it('builds sitemap and host from SITE_URL', () => {
-    process.env.SITE_URL = 'https://example.com';
+  it('builds sitemap and host from APP_PUBLIC_URL', () => {
+    process.env.APP_PUBLIC_URL = 'https://example.com';
 
     const result = robots();
 
@@ -23,7 +23,7 @@ describe('robots route', () => {
   });
 
   it('disallows sensitive app and api routes', () => {
-    process.env.SITE_URL = 'https://example.com';
+    process.env.APP_PUBLIC_URL = 'https://example.com';
 
     const result = robots();
     const rule = Array.isArray(result.rules) ? result.rules[0] : result.rules;

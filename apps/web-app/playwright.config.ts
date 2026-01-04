@@ -45,9 +45,6 @@ export default defineConfig({
           url: realBaseUrl,
           reuseExistingServer: !isCI,
           timeout: 120_000,
-          env: {
-            NEXT_PUBLIC_ENABLE_BILLING: 'true',
-          },
         },
         {
           name: 'web-app-mock',
@@ -56,7 +53,6 @@ export default defineConfig({
           reuseExistingServer: !isCI,
           timeout: 120_000,
           env: {
-            AGENT_API_MOCK: 'true',
             NEXT_PUBLIC_AGENT_API_MOCK: 'true',
             NEXT_DIST_DIR: '.next-mock',
           },

@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
-import { billingEnabled } from '@/lib/config/features';
+import { isBillingEnabled } from '@/lib/server/features';
 import { listTenantBillingEvents } from '@/lib/server/services/billing';
 import type { StripeEventStatus } from '@/lib/api/client/types.gen';
 import {
@@ -23,7 +23,7 @@ function normalizeProcessingStatus(value: string | null): StripeEventStatus | nu
 }
 
 export async function GET(request: NextRequest, context: BillingTenantRouteContext) {
-  if (!billingEnabled) {
+  if (!(await isBillingEnabled())) {
     return NextResponse.json({ success: false, error: 'Billing is disabled.' }, { status: 404 });
   }
   const tenantId = await resolveTenantId(context);

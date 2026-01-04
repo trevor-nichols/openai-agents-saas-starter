@@ -40,7 +40,7 @@ Tenant-scoped object storage orchestration that fronts the provider (MinIO, S3, 
 - MinIO: `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_REGION`, `MINIO_SECURE`.
 - S3: `S3_BUCKET`, optional `S3_REGION`, `S3_ENDPOINT_URL`, `S3_FORCE_PATH_STYLE` (credentials resolved via the AWS SDK chain).
 - Azure Blob: `AZURE_BLOB_CONTAINER` plus `AZURE_BLOB_CONNECTION_STRING` or `AZURE_BLOB_ACCOUNT_URL`.
-- GCS: `GCS_PROJECT_ID`, `GCS_BUCKET`, `GCS_CREDENTIALS_JSON` or `GCS_CREDENTIALS_PATH`, optional `GCS_SIGNING_EMAIL`, `GCS_UNIFORM_ACCESS`.
+- GCS: `GCP_PROJECT_ID`, `GCS_BUCKET`, `GCS_CREDENTIALS_JSON` or `GCS_CREDENTIALS_PATH`, optional `GCS_SIGNING_EMAIL`, `GCS_UNIFORM_ACCESS`.
 
 ## Developing against it
 - Prefer resolving via the container (`wire_storage_service`) so the shared session factory and settings are reused; tests can inject a `MemoryStorageProvider` by setting `STORAGE_PROVIDER=memory`.

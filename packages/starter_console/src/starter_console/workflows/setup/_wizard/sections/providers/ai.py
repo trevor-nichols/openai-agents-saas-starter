@@ -20,7 +20,7 @@ def collect_ai_providers(context: WizardContext, provider: InputProvider) -> Non
     ):
         default_enabled = bool(context.current(key))
         if provider.prompt_bool(
-            key=f"ENABLE_{key}",
+            key=f"CONFIGURE_{key}",
             prompt=f"Configure {label}?",
             default=default_enabled,
         ):

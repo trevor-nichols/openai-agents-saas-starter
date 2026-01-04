@@ -1,25 +1,29 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const listBillingPlans = vi.hoisted(() => vi.fn());
+const isBillingEnabled = vi.hoisted(() => vi.fn());
 
 vi.mock('@/lib/server/services/billing', () => ({
   listBillingPlans,
 }));
+vi.mock('@/lib/server/features', () => ({
+  isBillingEnabled,
+}));
 
 async function loadHandler() {
-  // Re-import the module after adjusting env flags so billingEnabled is recomputed.
+  // Re-import the module after adjusting feature flags.
   vi.resetModules();
   return import('./route');
 }
 
 beforeEach(() => {
-  delete process.env.NEXT_PUBLIC_ENABLE_BILLING;
   listBillingPlans.mockReset();
+  isBillingEnabled.mockReset();
 });
 
 describe('GET /api/billing/plans', () => {
   it('returns 404 when billing is disabled', async () => {
-    process.env.NEXT_PUBLIC_ENABLE_BILLING = 'false';
+    isBillingEnabled.mockResolvedValueOnce(false);
     const { GET } = await loadHandler();
 
     const response = await GET();
@@ -28,7 +32,7 @@ describe('GET /api/billing/plans', () => {
   });
 
   it('returns plans when billing is enabled', async () => {
-    process.env.NEXT_PUBLIC_ENABLE_BILLING = 'true';
+    isBillingEnabled.mockResolvedValueOnce(true);
     const { GET } = await loadHandler();
     listBillingPlans.mockResolvedValueOnce([{ code: 'starter' }]);
 

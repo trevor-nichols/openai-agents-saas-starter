@@ -14,17 +14,26 @@ vi.mock('@/lib/api/billingPlans', () => ({
   fetchBillingPlans: (...args: unknown[]) => fetchBillingPlans(...args),
 }));
 
+const mockUseFeatureFlags = vi.fn();
+vi.mock('@/lib/queries/featureFlags', () => ({
+  useFeatureFlags: () => mockUseFeatureFlags(),
+}));
+
 describe('billing query guards', () => {
   afterEach(() => {
     vi.resetModules();
     mockedUseQuery.mockReset();
     fetchBillingPlans.mockReset();
-    delete process.env.NEXT_PUBLIC_ENABLE_BILLING;
+    mockUseFeatureFlags.mockReset();
   });
 
   it('disables billing plans query when billing is off', async () => {
-    process.env.NEXT_PUBLIC_ENABLE_BILLING = 'false';
-    vi.doMock('@/lib/config/features', () => ({ billingEnabled: false }));
+    mockUseFeatureFlags.mockReturnValue({
+      flags: { billingEnabled: false, billingStreamEnabled: false },
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
     const { useBillingPlans } = await import('../billingPlans');
 
     mockedUseQuery.mockReturnValue({});
@@ -38,8 +47,12 @@ describe('billing query guards', () => {
   });
 
   it('enables billing plans query when billing is on', async () => {
-    process.env.NEXT_PUBLIC_ENABLE_BILLING = 'true';
-    vi.doMock('@/lib/config/features', () => ({ billingEnabled: true }));
+    mockUseFeatureFlags.mockReturnValue({
+      flags: { billingEnabled: true, billingStreamEnabled: true },
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
     const { useBillingPlans } = await import('../billingPlans');
 
     mockedUseQuery.mockReturnValue({});

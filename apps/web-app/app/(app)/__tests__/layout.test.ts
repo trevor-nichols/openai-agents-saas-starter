@@ -4,17 +4,15 @@ import type { AppNavItem } from '@/components/shell/AppNavLinks';
 describe('App layout navigation guards', () => {
   beforeEach(() => {
     vi.resetModules();
-    delete process.env.NEXT_PUBLIC_ENABLE_BILLING;
   });
 
   it(
     'omits Billing nav when billing is disabled',
     { timeout: 10_000 },
     async () => {
-      process.env.NEXT_PUBLIC_ENABLE_BILLING = 'false';
       const { buildPrimaryNav } = await import('../nav');
 
-      const nav: AppNavItem[] = buildPrimaryNav();
+      const nav: AppNavItem[] = buildPrimaryNav({ billingEnabled: false });
       expect(nav.some((item) => item.href === '/billing')).toBe(false);
     },
   );
@@ -23,10 +21,9 @@ describe('App layout navigation guards', () => {
     'includes Billing nav when billing is enabled',
     { timeout: 10_000 },
     async () => {
-      process.env.NEXT_PUBLIC_ENABLE_BILLING = 'true';
       const { buildPrimaryNav } = await import('../nav');
 
-      const nav: AppNavItem[] = buildPrimaryNav();
+      const nav: AppNavItem[] = buildPrimaryNav({ billingEnabled: true });
       expect(nav.some((item) => item.href === '/billing')).toBe(true);
     },
   );

@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
 
-import { completeSsoApiV1AuthSsoProviderCallbackPost } from '@/lib/api/client/sdk.gen';
 import type { SsoCallbackRequest, UserSessionResponse } from '@/lib/api/client/types.gen';
 import { isMfaChallengeResponse, resolveSafeRedirect } from '@/lib/auth/sso';
 import { clearSsoRedirectCookie, readSsoRedirectCookie } from '@/lib/auth/ssoCookies';
 import { persistSessionFromResponse } from '@/lib/auth/session';
-import { createApiClient } from '@/lib/server/apiClient';
 import { normalizeApiError } from '@/lib/server/apiError';
+import { completeSso } from '@/lib/server/services/auth/sso';
 
 export async function POST(request: Request, context: { params: Promise<{ provider: string }> }) {
   const { provider } = await context.params;
@@ -23,15 +22,7 @@ export async function POST(request: Request, context: { params: Promise<{ provid
   }
 
   try {
-    const client = createApiClient();
-    const response = await completeSsoApiV1AuthSsoProviderCallbackPost({
-      client,
-      responseStyle: 'fields',
-      throwOnError: true,
-      path: { provider },
-      body: payload,
-    });
-
+    const response = await completeSso(provider, payload);
     const data = response.data;
     if (!data) {
       return NextResponse.json({ message: 'SSO callback returned empty response.' }, { status: 502 });
@@ -48,7 +39,7 @@ export async function POST(request: Request, context: { params: Promise<{ provid
           redirect_to: redirectTarget,
           mfa: data,
         },
-        { status: response.response?.status ?? 202 },
+        { status: response.status ?? 202 },
       );
     }
 

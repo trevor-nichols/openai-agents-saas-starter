@@ -203,8 +203,8 @@ jobs:
       STARTER_CONSOLE_SKIP_VAULT_PROBE: "true"
       ENABLE_BILLING: "false"
       ENABLE_BILLING_RETRY_WORKER: "false"
-      ENABLE_RESEND_EMAIL_DELIVERY: "false"
-      ALLOW_PUBLIC_SIGNUP: "true"
+      RESEND_EMAIL_ENABLED: "false"
+      SIGNUP_ACCESS_POLICY: "public"
       OPENAI_API_KEY: "dummy-smoke-key"
     services:
       redis:
@@ -259,8 +259,8 @@ jobs:
       AUTO_RUN_MIGRATIONS: "true"
       ENABLE_BILLING: "false"
       ENABLE_BILLING_RETRY_WORKER: "false"
-      ENABLE_RESEND_EMAIL_DELIVERY: "false"
-      ALLOW_PUBLIC_SIGNUP: "true"
+      RESEND_EMAIL_ENABLED: "false"
+      SIGNUP_ACCESS_POLICY: "public"
       SMOKE_ENABLE_BILLING: "0"
       SMOKE_ENABLE_AI: "1"
       SMOKE_ENABLE_VECTOR: "0"

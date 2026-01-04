@@ -102,7 +102,7 @@ def _aws_sm_probe(ctx: ProbeContext, provider_raw: str | None) -> ProbeResult:
 
 
 def _azure_kv_probe(ctx: ProbeContext, provider_raw: str | None) -> ProbeResult:
-    vault_url = ctx.env.get("AZURE_KEY_VAULT_URL") or ctx.env.get("AZURE_KEY_VAULT_NAME")
+    vault_url = ctx.env.get("AZURE_KEY_VAULT_URL")
     client_id = ctx.env.get("AZURE_CLIENT_ID")
     client_secret = ctx.env.get("AZURE_CLIENT_SECRET")
     tenant_id = ctx.env.get("AZURE_TENANT_ID")

@@ -29,7 +29,7 @@ Give every Redis-backed subsystem (rate limiting, auth/session caches, nonce + t
 4. **Docs & validation** — Document rollout guidance, update ISSUE_TRACKER + CLI inventory, and add tests covering fallbacks + wizard prompts.
 
 ## Deliverables
-- New env contract documented in `.env.local.example`, CLI inventory, and operator docs.
+- New env contract documented in `.env.example`, CLI inventory, and operator docs.
 - Redis client factory with per-purpose handles + shutdown path.
 - Auth/security/billing subsystems consuming their dedicated pools with explicit fallbacks.
 - Tracker + ISSUE entry updated with closure details once merged.

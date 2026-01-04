@@ -53,10 +53,10 @@ def export_openapi(
 
     sys.path.insert(0, str(api_service_dir / "src"))
 
-    if enable_billing:
-        os.environ["ENABLE_BILLING"] = "true"
-    if enable_test_fixtures:
-        os.environ["USE_TEST_FIXTURES"] = "true"
+    _set_env_flag("ENABLE_BILLING", enable_billing)
+    _set_env_flag("ENABLE_BILLING_STREAM", enable_billing)
+    _set_env_flag("ENABLE_FRONTEND_LOG_INGEST", True)
+    _set_env_flag("USE_TEST_FIXTURES", enable_test_fixtures)
 
     from main import create_application
 
@@ -85,6 +85,10 @@ def export_openapi(
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(json.dumps(schema, indent=2), encoding="utf-8")
     return destination
+
+
+def _set_env_flag(name: str, enabled: bool) -> None:
+    os.environ[name] = "true" if enabled else "false"
 
 
 def _resolve_repo_root(value: str | None) -> Path:

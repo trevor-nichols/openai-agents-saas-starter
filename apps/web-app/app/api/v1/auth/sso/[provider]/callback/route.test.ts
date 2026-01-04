@@ -2,13 +2,13 @@ import { vi } from 'vitest';
 
 import { POST } from './route';
 
-const completeSsoApiV1AuthSsoProviderCallbackPost = vi.hoisted(() => vi.fn());
+const completeSso = vi.hoisted(() => vi.fn());
 const readSsoRedirectCookie = vi.hoisted(() => vi.fn());
 const clearSsoRedirectCookie = vi.hoisted(() => vi.fn());
 const persistSessionFromResponse = vi.hoisted(() => vi.fn());
 
-vi.mock('@/lib/api/client/sdk.gen', () => ({
-  completeSsoApiV1AuthSsoProviderCallbackPost,
+vi.mock('@/lib/server/services/auth/sso', () => ({
+  completeSso,
 }));
 
 vi.mock('@/lib/auth/ssoCookies', () => ({
@@ -18,10 +18,6 @@ vi.mock('@/lib/auth/ssoCookies', () => ({
 
 vi.mock('@/lib/auth/session', () => ({
   persistSessionFromResponse,
-}));
-
-vi.mock('@/lib/server/apiClient', () => ({
-  createApiClient: () => ({}),
 }));
 
 describe('POST /api/v1/auth/sso/[provider]/callback', () => {
@@ -46,9 +42,9 @@ describe('POST /api/v1/auth/sso/[provider]/callback', () => {
   });
 
   it('returns MFA challenge when required', async () => {
-    completeSsoApiV1AuthSsoProviderCallbackPost.mockResolvedValue({
+    completeSso.mockResolvedValue({
       data: { challenge_token: 'token', methods: [{ id: 'm1', method_type: 'totp' }] },
-      response: { status: 202 },
+      status: 202,
     });
 
     const request = new Request('http://localhost/api/v1/auth/sso/google/callback', {
@@ -70,7 +66,7 @@ describe('POST /api/v1/auth/sso/[provider]/callback', () => {
   });
 
   it('persists session and returns redirect target on success', async () => {
-    completeSsoApiV1AuthSsoProviderCallbackPost.mockResolvedValue({
+    completeSso.mockResolvedValue({
       data: {
         access_token: 'access',
         refresh_token: 'refresh',
@@ -102,7 +98,7 @@ describe('POST /api/v1/auth/sso/[provider]/callback', () => {
   });
 
   it('surfaces backend errors', async () => {
-    completeSsoApiV1AuthSsoProviderCallbackPost.mockRejectedValue({
+    completeSso.mockRejectedValue({
       status: 401,
       detail: 'Invalid code',
       message: 'Invalid code',

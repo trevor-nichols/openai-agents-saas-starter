@@ -1,4 +1,4 @@
-'use server';
+import 'server-only';
 
 import {
   getGuardrailApiV1GuardrailsGuardrailKeyGet,

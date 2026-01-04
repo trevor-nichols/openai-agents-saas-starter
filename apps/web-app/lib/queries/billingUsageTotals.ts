@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { fetchBillingUsageTotals } from '@/lib/api/billingUsageTotals';
 import { readClientSessionMeta } from '@/lib/auth/clientMeta';
-import { billingEnabled } from '@/lib/config/features';
+import { useFeatureFlags } from '@/lib/queries/featureFlags';
 import type { BillingUsageTotal } from '@/types/billing';
 import { queryKeys } from './keys';
 
@@ -30,6 +30,8 @@ function normalizeFeatureKeys(featureKeys?: string[] | null): string[] {
 export function useBillingUsageTotals(
   options?: UseBillingUsageTotalsOptions,
 ): UseBillingUsageTotalsResult {
+  const { flags } = useFeatureFlags();
+  const billingEnabled = Boolean(flags?.billingEnabled);
   const meta = readClientSessionMeta();
   const tenantId = meta?.tenantId ?? null;
   const normalizedFeatureKeys = normalizeFeatureKeys(options?.featureKeys);

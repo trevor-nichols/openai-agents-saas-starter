@@ -31,7 +31,7 @@ locals {
       AUTH_KEY_STORAGE_PROVIDER = local.auth_key_storage_provider
       STORAGE_PROVIDER          = var.storage_provider
       GCS_BUCKET                = var.storage_bucket_name
-      GCS_PROJECT_ID            = var.project_id
+      GCP_PROJECT_ID            = var.project_id
       APP_PUBLIC_URL            = local.app_public_url
       ALLOWED_HOSTS             = local.api_allowed_hosts
       ALLOWED_ORIGINS           = local.app_public_url

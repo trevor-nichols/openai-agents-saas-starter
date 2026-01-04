@@ -26,7 +26,6 @@ from starter_console.services.stripe import (
 from starter_console.services.stripe.env import (
     load_backend_env_files,
     update_backend_env,
-    update_frontend_env,
 )
 from starter_console.services.stripe.provisioner import StripeProvisioner
 
@@ -117,15 +116,6 @@ def run_stripe_setup(ctx: CLIContext, config: StripeSetupConfig) -> StripeSetupR
         webhook_secret=webhook_secret,
         price_map=result.price_map,
     )
-
-    frontend_updated = update_frontend_env(ctx.project_root)
-    if frontend_updated:
-        ctx.console.success("Updated web-app/.env.local", topic="stripe")
-    else:
-        ctx.console.warn(
-            "Frontend directory missing; skipped web-app/.env.local.",
-            topic="stripe",
-        )
 
     ctx.console.success(
         "Stripe configuration captured in apps/api-service/.env.local",

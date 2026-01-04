@@ -1,4 +1,4 @@
-'use server';
+import 'server-only';
 
 import { submitContactApiV1ContactPost } from '@/lib/api/client/sdk.gen';
 import type { ContactSubmissionRequest } from '@/lib/api/client/types.gen';
