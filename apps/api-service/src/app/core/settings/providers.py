@@ -230,7 +230,7 @@ class SecretsProviderSettingsMixin(BaseModel):
         )
 
     def resolve_gcp_sm_project_id(self) -> str | None:
-        candidate = self.gcp_sm_project_id or getattr(self, "gcs_project_id", None)
+        candidate = self.gcp_sm_project_id or getattr(self, "gcp_project_id", None)
         if not candidate:
             return None
         cleaned = str(candidate).strip()
