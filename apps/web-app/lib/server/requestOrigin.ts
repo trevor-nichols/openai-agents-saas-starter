@@ -14,7 +14,19 @@ function firstForwardedHeader(value: string | null): string | null {
 }
 
 function hostWithoutPort(host: string): string {
-  return host.split(':')[0] ?? host;
+  const trimmed = host.trim();
+  if (!trimmed) return trimmed;
+  if (trimmed.startsWith('[')) {
+    const end = trimmed.indexOf(']');
+    if (end > 0) {
+      return trimmed.slice(1, end);
+    }
+  }
+  const colonCount = (trimmed.match(/:/g) ?? []).length;
+  if (colonCount > 1) {
+    return trimmed;
+  }
+  return trimmed.split(':')[0] ?? trimmed;
 }
 
 function isLocalHost(host: string): boolean {
