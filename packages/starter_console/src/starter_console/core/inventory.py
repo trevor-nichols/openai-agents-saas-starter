@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from typing import Final
 
+CONSOLE_ENV_INVENTORY_PATH: Final[str] = (
+    "docs/contracts/inventories/console-env-inventory.md"
+)
+
 # Environment variables that the setup wizard currently prompts operators to
 # populate. Keeping this list centralized allows the config commands and any
 # reporting utilities to reason about coverage without duplicating literals.

@@ -8,6 +8,7 @@ from textual.containers import Grid, Horizontal, Vertical
 from textual.widgets import Button, DataTable, Input, RadioButton, RadioSet, Static
 
 from starter_console.core import CLIContext
+from starter_console.core.inventory import CONSOLE_ENV_INVENTORY_PATH
 from starter_console.services.config.inventory import (
     collect_field_specs,
     format_default,
@@ -43,7 +44,7 @@ class ConfigInventoryPane(Vertical):
             yield Static("Inventory path", classes="wizard-control-label")
             yield Input(
                 id="config-inventory-path",
-                value="docs/trackers/CONSOLE_ENV_INVENTORY.md",
+                value=CONSOLE_ENV_INVENTORY_PATH,
             )
         with Horizontal(classes="ops-actions"):
             yield Button("Dump Schema", id="config-dump", variant="primary")

@@ -67,7 +67,7 @@ If you use Infisical or Vault for signing or key storage, `SECRETS_PROVIDER` and
 ### Web (minimal)
 - `API_BASE_URL` (API URL)
 
-For the full list, see `docs/trackers/CONSOLE_ENV_INVENTORY.md`.
+For the full list, see `docs/contracts/inventories/console-env-inventory.md`.
 
 ### Terraform → Env Mapping (core)
 

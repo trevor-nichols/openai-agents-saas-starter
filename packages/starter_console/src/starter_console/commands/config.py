@@ -7,6 +7,7 @@ from pathlib import Path
 from starter_contracts.config import get_settings_class
 
 from starter_console.core import CLIContext
+from starter_console.core.inventory import CONSOLE_ENV_INVENTORY_PATH
 from starter_console.ports.console import ConsolePort
 from starter_console.services.config.inventory import (
     FieldSpec,
@@ -38,10 +39,10 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     )
     inventory_parser.add_argument(
         "--path",
-        default="docs/trackers/CONSOLE_ENV_INVENTORY.md",
+        default=CONSOLE_ENV_INVENTORY_PATH,
         help=(
             "Destination path for the Markdown inventory "
-            "(defaults to docs/trackers/CONSOLE_ENV_INVENTORY.md)."
+            f"(defaults to {CONSOLE_ENV_INVENTORY_PATH})."
         ),
     )
     inventory_parser.set_defaults(handler=handle_write_inventory)

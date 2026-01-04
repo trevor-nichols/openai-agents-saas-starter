@@ -60,7 +60,7 @@ to `false`, enable the APIs above manually before running `terraform apply`.
 - Use Workload Identity or service account bindings.
 - If needed for local tooling, set `GOOGLE_APPLICATION_CREDENTIALS` to a service account key file.
 
-For the full list, see `docs/trackers/CONSOLE_ENV_INVENTORY.md`.
+For the full list, see `docs/contracts/inventories/console-env-inventory.md`.
 
 ### Terraform -> Env Mapping (core)
 
