@@ -16,7 +16,7 @@ These names are the stack-wide canonical knobs referenced across services:
 - `API_BASE_URL` -- Backend base URL for BFF and tooling.
 - `APP_PUBLIC_URL` -- Public site URL used for SEO, links, and callbacks.
 - `ENABLE_BILLING` -- Backend billing feature flag; UI reads `/health/features`.
-- `GCP_PROJECT_ID` -- Default GCP project scope for storage and secrets.
+- `GCP_PROJECT_ID` -- Default GCP project scope for storage and Secret Manager fallback.
 - `LOG_ROOT` -- Root directory for logs (API + console + web dev logs).
 - `LOGGING_DATADOG_API_KEY` / `LOGGING_DATADOG_SITE` -- Datadog logging config.
 - `SIGNUP_ACCESS_POLICY` -- `public` | `invite_only` | `approval`.
@@ -212,7 +212,7 @@ must be supplied when that feature is enabled.
 | `FILE_SEARCH_LOCAL_FILE` | no default |  | internal | Local file path for file search upload test. |
 | `FORCE_PROVIDER_SESSION_REBIND` | no default |  | internal | Policy flag to force provider session rebinding |
 | `FRONTEND_LOG_SHARED_SECRET` | optional (default) | null | secret | Shared secret for anonymous frontend logs / Shared secret for signing frontend logs. |
-| `GCP_PROJECT_ID` | no default |  | internal | GCP Project ID for storage and default Secret Manager scope. |
+| `GCP_PROJECT_ID` | no default |  | internal | Default GCP project ID for storage and Secret Manager fallback when `GCP_SM_PROJECT_ID` is unset. |
 | `GCP_SM_CACHE_TTL_SECONDS` | optional (default) | 60 | internal | Cache TTL for GCP Secret Manager. |
 | `GCP_SM_PROJECT_ID` | optional (default) | null | internal | GCP Project ID for Secret Manager. / GCP Project ID. / ... |
 | `GCP_SM_SIGNING_SECRET_NAME` | optional (default) | null | secret | GCP Secret Manager secret name containing the signing secret. / Name of the signing secret in GCP Secret Manager. / ... |

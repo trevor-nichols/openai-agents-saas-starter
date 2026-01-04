@@ -112,7 +112,7 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | ENABLE_VECTOR_STORE_SYNC_WORKER | bool | True |  |  | Run background sync worker to refresh vector store/file status and expiry. Set false only for constrained/local dev. |
 | ENVIRONMENT | str | development |  | ✅ | Deployment environment label (development, staging, production, etc.) |
 | FRONTEND_LOG_SHARED_SECRET | str \| NoneType | — |  |  | Shared secret for signed anonymous frontend logs. |
-| GCP_PROJECT_ID | str \| NoneType | — |  | ✅ | GCP project ID for GCS operations. |
+| GCP_PROJECT_ID | str \| NoneType | — |  | ✅ | Default GCP project ID for storage operations and Secret Manager fallback when `GCP_SM_PROJECT_ID` is unset. |
 | GCP_SM_CACHE_TTL_SECONDS | int | 60 |  | ✅ | TTL (seconds) for cached Secret Manager values. |
 | GCP_SM_PROJECT_ID | str \| NoneType | — |  | ✅ | GCP project ID for Secret Manager requests. |
 | GCP_SM_SIGNING_SECRET_NAME | str \| NoneType | — |  | ✅ | Secret Manager secret name containing the signing secret value. |
