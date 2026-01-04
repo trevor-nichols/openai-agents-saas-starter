@@ -27,7 +27,7 @@ export function getApiBaseUrl(): string {
 
 const baseConfig = createConfig({
   baseUrl: normalizedBaseUrl,
-  responseStyle: 'data',
+  responseStyle: 'fields',
   throwOnError: true,
 });
 

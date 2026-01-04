@@ -28,7 +28,12 @@ async function fetchJson<T>(url: string): Promise<{ data: T | null; status: numb
 
 export async function getBackendFeatureFlags(): Promise<FeatureFlags> {
   const client = createApiClient();
-  const payload = await featureFlagsHealthFeaturesGet({ client });
+  const response = await featureFlagsHealthFeaturesGet({
+    client,
+    responseStyle: 'fields',
+    throwOnError: true,
+  });
+  const payload = response.data;
   if (!payload) {
     throw new Error('Feature flags endpoint returned an empty payload.');
   }

@@ -80,6 +80,7 @@ export async function deleteContainer(containerId: string): Promise<void> {
     client,
     auth,
     throwOnError: true,
+    responseStyle: 'fields',
     path: { container_id: containerId },
   });
 }
@@ -113,6 +114,7 @@ export async function unbindAgentContainer(agentKey: string): Promise<void> {
     client,
     auth,
     throwOnError: true,
+    responseStyle: 'fields',
     path: { agent_key: agentKey },
   });
 }

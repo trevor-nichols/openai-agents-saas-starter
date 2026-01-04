@@ -19,6 +19,7 @@ export async function listUsage(options?: UsageListOptions): Promise<UsageCounte
     client,
     auth,
     throwOnError: true,
+    responseStyle: 'fields',
     headers,
   });
 

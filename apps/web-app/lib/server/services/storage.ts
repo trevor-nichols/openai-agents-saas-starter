@@ -92,6 +92,7 @@ export async function deleteStorageObject(objectId: string): Promise<void> {
     client,
     auth,
     throwOnError: true,
+    responseStyle: 'fields',
     path: { object_id: objectId },
   });
 }

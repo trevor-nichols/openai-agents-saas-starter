@@ -164,6 +164,7 @@ export async function revokeStatusSubscription(subscriptionId: string): Promise<
     client,
     auth,
     throwOnError: true,
+    responseStyle: 'fields',
     path: { subscription_id: subscriptionId },
   });
 }

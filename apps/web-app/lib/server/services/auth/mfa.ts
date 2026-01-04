@@ -25,6 +25,7 @@ export async function listMfaMethods(): Promise<MfaMethodView[]> {
     client,
     auth,
     throwOnError: true,
+    responseStyle: 'fields',
   });
 
   return response.data ?? [];

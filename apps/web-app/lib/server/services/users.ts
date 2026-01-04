@@ -192,6 +192,7 @@ export async function listConsents(): Promise<ConsentView[]> {
     client,
     auth,
     throwOnError: true,
+    responseStyle: 'fields',
   });
 
   return response.data ?? [];
@@ -203,6 +204,7 @@ export async function recordConsent(payload: ConsentRequest): Promise<SuccessNoD
     client,
     auth,
     throwOnError: true,
+    responseStyle: 'fields',
     body: payload,
   });
 
@@ -222,6 +224,7 @@ export async function listNotificationPreferences(options?: {
     client,
     auth,
     throwOnError: true,
+    responseStyle: 'fields',
     headers,
   });
 
@@ -241,6 +244,7 @@ export async function upsertNotificationPreference(
     client,
     auth,
     throwOnError: true,
+    responseStyle: 'fields',
     body: payload,
     headers,
   });

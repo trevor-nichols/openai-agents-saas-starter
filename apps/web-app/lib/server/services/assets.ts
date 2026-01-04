@@ -108,6 +108,7 @@ export async function deleteAsset(assetId: string): Promise<void> {
     client,
     auth,
     throwOnError: true,
+    responseStyle: 'fields',
     path: { asset_id: assetId },
   });
 }
