@@ -14,7 +14,7 @@
     "type-check": "tsc --noEmit",
     "validate": "pnpm lint && pnpm lint:arch && pnpm lint:knip && pnpm type-check && pnpm lint:test-placement",
     "generate": "openapi-ts",
-    "generate:fixtures": "OPENAPI_INPUT=../api-service/.artifacts/openapi-fixtures.json pnpm generate",
+    "generate:fixtures": "OPENAPI_FIXTURES_INPUT=../api-service/.artifacts/openapi-fixtures.json openapi-ts --file openapi-ts.fixtures.config.ts",
     "test": "pnpm test:unit",
     "test:seed": "node ./scripts/test-seed.js",
     "test:e2e": "playwright test",

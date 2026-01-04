@@ -64,8 +64,8 @@ just openapi-export
 # Generate from the repo-level OpenAPI artifact
 pnpm generate
 
-# If you need fixture endpoints for tests
-OPENAPI_INPUT=../api-service/.artifacts/openapi-fixtures.json pnpm generate:fixtures
+# Generate the fixture-only SDK (outputs to lib/api/fixtures-client)
+pnpm generate:fixtures
 ```
 
 Never hand-edit generated files.

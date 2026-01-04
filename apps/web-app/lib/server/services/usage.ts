@@ -1,4 +1,4 @@
-'use server';
+import 'server-only';
 
 import { listUsageApiV1UsageGet } from '@/lib/api/client/sdk.gen';
 import type { UsageCounterView } from '@/lib/api/client/types.gen';

@@ -1,4 +1,4 @@
-'use server';
+import 'server-only';
 
 import { listAvailableToolsApiV1ToolsGet } from '@/lib/api/client/sdk.gen';
 import type { ToolRegistry } from '@/types/tools';

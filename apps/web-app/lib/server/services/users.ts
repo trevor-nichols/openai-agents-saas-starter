@@ -1,4 +1,4 @@
-'use server';
+import 'server-only';
 
 import {
   changeCurrentUserEmailApiV1UsersMeEmailPatch,

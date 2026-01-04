@@ -1,3 +1,4 @@
+import 'server-only';
 import {
   getTenantSettingsApiV1TenantsSettingsGet,
   updateTenantSettingsApiV1TenantsSettingsPut,

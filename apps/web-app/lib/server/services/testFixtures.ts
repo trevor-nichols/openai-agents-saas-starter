@@ -1,16 +1,16 @@
-'use server';
+import 'server-only';
 
 import {
   applyTestFixturesApiV1TestFixturesApplyPost,
   issueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPost,
-} from '@/lib/api/client/sdk.gen';
+} from '@/lib/api/fixtures-client/sdk.gen';
 import type {
   EmailVerificationTokenRequest,
   EmailVerificationTokenResponse,
   FixtureApplyResult,
   PlaywrightFixtureSpec,
-} from '@/lib/api/client/types.gen';
-import { createApiClient } from '../apiClient';
+} from '@/lib/api/fixtures-client/types.gen';
+import { createFixturesApiClient } from '../fixturesApiClient';
 
 export interface TestFixtureProxyResult {
   status: number;
@@ -68,7 +68,7 @@ function resolveBodySerializer(payload: unknown) {
 export async function applyTestFixtures(
   payload: PlaywrightFixtureSpec | string,
 ): Promise<TestFixtureProxyResult> {
-  const client = createApiClient();
+  const client = createFixturesApiClient();
   const response = (await applyTestFixturesApiV1TestFixturesApplyPost({
     client,
     responseStyle: 'fields',
@@ -85,7 +85,7 @@ export async function applyTestFixtures(
 export async function issueEmailVerificationToken(
   payload: EmailVerificationTokenRequest | string,
 ): Promise<TestFixtureProxyResult> {
-  const client = createApiClient();
+  const client = createFixturesApiClient();
   const response = (await issueEmailVerificationTokenApiV1TestFixturesEmailVerificationTokenPost({
     client,
     responseStyle: 'fields',

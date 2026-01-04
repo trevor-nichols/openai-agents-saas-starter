@@ -1,3 +1,4 @@
+import 'server-only';
 export class MarketingServiceError extends Error {
   status: number;
 

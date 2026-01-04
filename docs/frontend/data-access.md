@@ -60,11 +60,12 @@ Any backend API/schema change must refresh OpenAPI artifacts and the generated w
    cd apps/web-app && pnpm generate
    ```
 
-If you need fixture-only endpoints for local testing, you can temporarily generate from the fixtures artifact:
+Generate the fixture-only SDK (separate output path) when you need fixture endpoints:
 ```
-cd apps/web-app && OPENAPI_INPUT=../api-service/.artifacts/openapi-fixtures.json pnpm generate:fixtures
+cd apps/web-app && pnpm generate:fixtures
 ```
-Do not commit SDK output generated from fixtures; the committed SDK must come from `openapi.json`.
+The production SDK remains under `lib/api/client` (from `openapi.json`). The fixture SDK lives under
+`lib/api/fixtures-client` (from `openapi-fixtures.json`) and may be committed alongside the main SDK.
 
 Do not hand-edit `apps/web-app/lib/api/client/*`. Generated files must come from the commands above.
 

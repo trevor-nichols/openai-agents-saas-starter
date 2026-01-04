@@ -1,4 +1,4 @@
-'use server';
+import 'server-only';
 
 import type { Client } from '@/lib/api/client/client';
 

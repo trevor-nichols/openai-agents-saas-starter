@@ -1,4 +1,4 @@
-'use server';
+import 'server-only';
 
 import { streamChat } from '@/lib/api/chat';
 import type { StreamChatParams, StreamChunk } from '@/lib/chat/types';

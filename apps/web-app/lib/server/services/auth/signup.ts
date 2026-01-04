@@ -1,4 +1,4 @@
-'use server';
+import 'server-only';
 
 import { registerTenantApiV1AuthRegisterPost } from '@/lib/api/client/sdk.gen';
 import type { UserRegisterRequest, UserRegisterResponse } from '@/lib/api/client/types.gen';

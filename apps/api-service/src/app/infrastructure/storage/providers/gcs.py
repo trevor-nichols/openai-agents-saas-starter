@@ -7,8 +7,8 @@ import json
 from datetime import timedelta
 from typing import Any
 
+import google.cloud.storage as storage
 from google.api_core import exceptions as gcs_exceptions
-from google.cloud import storage  # type: ignore[import-untyped]
 from google.oauth2 import service_account
 
 from app.domain.storage import (
