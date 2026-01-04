@@ -51,14 +51,20 @@ To prevent bypassing the BFF boundary, we enforce route-layer constraints in lin
 
 Any backend API/schema change must refresh OpenAPI artifacts and the generated web SDK **before** touching frontend code. Run from repo root:
 
-1. Export the superset schema (billing + test fixtures):
+1. Export the canonical OpenAPI artifacts (billing-enabled, fixtures included in the superset):
    ```
-   cd packages/starter_console && starter-console api export-openapi --output apps/api-service/.artifacts/openapi-fixtures.json --enable-billing --enable-test-fixtures
+   just openapi-export
    ```
-2. Regenerate the frontend SDK from the exported fixtures:
+2. Regenerate the frontend SDK from the canonical spec:
    ```
-   cd apps/web-app && OPENAPI_INPUT=../api-service/.artifacts/openapi-fixtures.json pnpm generate:fixtures
+   cd apps/web-app && pnpm generate
    ```
+
+If you need fixture-only endpoints for local testing, you can temporarily generate from the fixtures artifact:
+```
+cd apps/web-app && OPENAPI_INPUT=../api-service/.artifacts/openapi-fixtures.json pnpm generate:fixtures
+```
+Do not commit SDK output generated from fixtures; the committed SDK must come from `openapi.json`.
 
 Do not hand-edit `apps/web-app/lib/api/client/*`. Generated files must come from the commands above.
 

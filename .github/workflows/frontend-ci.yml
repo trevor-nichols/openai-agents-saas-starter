@@ -34,6 +34,9 @@ jobs:
       - name: Verify billing OpenAPI artifact
         run: node tools/assert-billing-openapi.js
 
+      - name: Verify OpenAPI artifacts
+        run: node tools/assert-openapi-artifacts.js
+
       - name: Use pnpm 10.15.0
         run: corepack prepare pnpm@10.15.0 --activate
 
