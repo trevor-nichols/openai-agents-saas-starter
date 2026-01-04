@@ -6,10 +6,12 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "stripe:setup": "cd packages/starter_console && python -m starter_console.app stripe setup"
+    "stripe:setup": "cd packages/starter_console && python -m starter_console.app stripe setup",
+    "lint:jscpd": "jscpd --config .jscpd.json"
   },
   "devDependencies": {
     "@types/node": "^20.11.24",
+    "jscpd": "^4.0.5",
     "tsx": "^4.15.7",
     "typescript": "^5.6.3"
   },
