@@ -1,0 +1,8 @@
+id: bff-no-fetch
+language: TypeScript
+severity: error
+message: BFF routes must call server services; do not call fetch directly.
+rule:
+  any:
+    - pattern: "fetch($$$)"
+    - pattern: "globalThis.fetch($$$)"

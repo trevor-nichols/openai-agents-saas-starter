@@ -21,6 +21,10 @@ const normalizedBaseUrl = API_BASE_URL.endsWith('/')
   ? API_BASE_URL.slice(0, -1)
   : API_BASE_URL;
 
+export function getApiBaseUrl(): string {
+  return normalizedBaseUrl;
+}
+
 const baseConfig = createConfig({
   baseUrl: normalizedBaseUrl,
   responseStyle: 'data',

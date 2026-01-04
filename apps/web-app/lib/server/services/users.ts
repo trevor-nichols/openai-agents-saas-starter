@@ -4,11 +4,20 @@ import {
   changeCurrentUserEmailApiV1UsersMeEmailPatch,
   disableCurrentUserAccountApiV1UsersMeDisablePost,
   getCurrentUserProfileApiV1UsersMeGet,
+  listConsentsApiV1UsersConsentsGet,
+  listNotificationPreferencesApiV1UsersNotificationPreferencesGet,
+  recordConsentApiV1UsersConsentsPost,
   updateCurrentUserProfileApiV1UsersMeProfilePatch,
+  upsertNotificationPreferenceApiV1UsersNotificationPreferencesPut,
 } from '@/lib/api/client/sdk.gen';
 import type {
+  ConsentRequest,
+  ConsentView,
   CurrentUserProfileResponseData,
   CurrentUserProfileSuccessResponse,
+  NotificationPreferenceRequest,
+  NotificationPreferenceView,
+  SuccessNoDataResponse,
   UserAccountDisableRequest,
   UserAccountDisableResponseData,
   UserAccountDisableSuccessResponse,
@@ -175,4 +184,70 @@ export async function disableCurrentUserAccount(
   assertSuccess(response, 'Unable to disable account.');
 
   return requireData<UserAccountDisableResponseData>(response, 'Unable to disable account.');
+}
+
+export async function listConsents(): Promise<ConsentView[]> {
+  const { client, auth } = await getServerApiClient();
+  const response = await listConsentsApiV1UsersConsentsGet({
+    client,
+    auth,
+    throwOnError: true,
+  });
+
+  return response.data ?? [];
+}
+
+export async function recordConsent(payload: ConsentRequest): Promise<SuccessNoDataResponse> {
+  const { client, auth } = await getServerApiClient();
+  const response = await recordConsentApiV1UsersConsentsPost({
+    client,
+    auth,
+    throwOnError: true,
+    body: payload,
+  });
+
+  return response.data ?? { success: true, message: 'Consent recorded', data: null };
+}
+
+export async function listNotificationPreferences(options?: {
+  tenantId?: string | null;
+  tenantRole?: string | null;
+}): Promise<NotificationPreferenceView[]> {
+  const headers: Record<string, string> = {};
+  if (options?.tenantId) headers['X-Tenant-Id'] = options.tenantId;
+  if (options?.tenantRole) headers['X-Tenant-Role'] = options.tenantRole;
+
+  const { client, auth } = await getServerApiClient();
+  const response = await listNotificationPreferencesApiV1UsersNotificationPreferencesGet({
+    client,
+    auth,
+    throwOnError: true,
+    headers,
+  });
+
+  return response.data ?? [];
+}
+
+export async function upsertNotificationPreference(
+  payload: NotificationPreferenceRequest,
+  options?: { tenantId?: string | null; tenantRole?: string | null },
+): Promise<NotificationPreferenceView> {
+  const headers: Record<string, string> = {};
+  if (options?.tenantId) headers['X-Tenant-Id'] = options.tenantId;
+  if (options?.tenantRole) headers['X-Tenant-Role'] = options.tenantRole;
+
+  const { client, auth } = await getServerApiClient();
+  const response = await upsertNotificationPreferenceApiV1UsersNotificationPreferencesPut({
+    client,
+    auth,
+    throwOnError: true,
+    body: payload,
+    headers,
+  });
+
+  if (!response.data) {
+    throw new UserProfileApiError(500, 'Notification preference response missing data.');
+  }
+
+  return response.data;
 }

@@ -1,6 +1,6 @@
 # Frontend Data Access Guidelines
 
-_Last updated: November 10, 2025_
+_Last updated: January 3, 2026_
 
 This document codifies how the Next.js frontend talks to the FastAPI backend. Every new feature must follow this layering to keep auth boundaries clear, maximize reuse, and make it obvious where to plug in caching, logging, or mocks.
 
@@ -30,6 +30,22 @@ This document codifies how the Next.js frontend talks to the FastAPI backend. Ev
    - Expose `isLoading`, `error`, `refetch` for consistent UX.  
    - Set sensible `staleTime` per domain (streams: 0, lists: minutes).  
    - Non-React consumers should reuse the fetch helpers.
+
+## Architecture Guardrails (Lint)
+
+To prevent bypassing the BFF boundary, we enforce route-layer constraints in lint tooling:
+
+- **ESLint (primary guardrail)**  
+  - `no-restricted-imports` blocks `@/lib/api/client/**` and `@/lib/config/server` inside `app/api/**/route.ts(x)`.  
+  - `eslint-plugin-boundaries` backs this with an explicit BFF element rule.
+  - `no-restricted-syntax` blocks direct `fetch(...)` calls inside BFF routes.
+- **ast-grep (secondary guardrail)**  
+  - `pnpm lint:arch` scans `app/api/**/route.ts` for SDK imports or `process.env.*API_BASE_URL` access.  
+  - It also flags direct `fetch(...)` usage to keep all network access inside server services.
+  - Run locally from `apps/web-app` whenever you add or refactor BFF routes.
+  - Requires the pinned `@ast-grep/cli` devDependency (enabled in the pnpm build allow-list).
+- **CI**  
+  - Frontend CI runs `pnpm lint:arch` to prevent regressions.
 
 ## OpenAPI + SDK Regeneration (Required)
 
@@ -95,6 +111,12 @@ Do not hand-edit `apps/web-app/lib/api/client/*`. Generated files must come from
 - Browser-accessible streams (billing events, chat fallback) live behind `/app/api/...` proxy routes that pipe the SSE response and enforce cookie auth.  
 - Client-side streaming utilities (`lib/api/streaming.ts`) only talk to our API routes to avoid leaking tokens.
 - Hooks exposed to client components must come from `lib/queries/*`. For example, import `useBillingStream` from `lib/queries/billing` and `useSilentRefresh` from `lib/queries/session`; the legacy `hooks/*` versions have been removed to keep a single source of truth.
+
+## Proxy-Style Routes (Downloads, Logs, RSS)
+
+- When a route must pass through non-JSON payloads (file streams, RSS, log ingestion), keep the handler thin and route through a server service.  
+- Services own auth/header handling and any response-shape normalization (e.g., `lib/server/services/openaiFiles.ts`, `status.ts`, `frontendLogs.ts`, `testFixtures.ts`).  
+- Route handlers should avoid direct SDK or `fetch` usage; they simply adapt HTTP semantics for the browser response.
 
 ## Chat Data Flow
 

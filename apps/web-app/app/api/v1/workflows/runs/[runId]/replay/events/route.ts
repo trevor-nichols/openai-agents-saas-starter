@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { getWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGet } from '@/lib/api/client/sdk.gen';
-import { getServerApiClient } from '@/lib/server/apiClient';
 import { normalizeApiError } from '@/lib/server/apiError';
+import { getWorkflowRunReplayEvents } from '@/lib/server/services/workflows';
 
 export async function GET(request: NextRequest, context: { params: Promise<{ runId: string }> }) {
   const { runId } = await context.params;
@@ -12,31 +11,19 @@ export async function GET(request: NextRequest, context: { params: Promise<{ run
   const limit = limitRaw ? Number(limitRaw) : undefined;
 
   try {
-    const { client, auth } = await getServerApiClient();
-    const response = await getWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayEventsGet({
-      client,
-      auth,
-      responseStyle: 'fields',
-      throwOnError: false,
-      path: { run_id: runId },
-      query: {
-        cursor,
-        limit,
-      },
+    const response = await getWorkflowRunReplayEvents({
+      runId,
+      cursor: cursor ?? undefined,
+      limit,
     });
 
-    const status = response.response?.status ?? (response.error ? 500 : 204);
-    if (response.error || status >= 400) {
-      const err = response.error;
-      const detail =
-        typeof err === 'string'
-          ? err
-          : err && typeof err === 'object' && 'detail' in err && typeof (err as any).detail === 'string'
-            ? (err as any).detail
-            : undefined;
+    if (response.error || response.status >= 400) {
       return NextResponse.json(
-        { message: detail ?? 'Failed to load workflow run replay', detail },
-        { status },
+        {
+          message: response.error?.message ?? 'Failed to load workflow run replay',
+          detail: response.error?.detail,
+        },
+        { status: response.status },
       );
     }
 
@@ -50,4 +37,3 @@ export async function GET(request: NextRequest, context: { params: Promise<{ run
     return NextResponse.json(body, { status });
   }
 }
-

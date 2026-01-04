@@ -1,18 +1,18 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
-const getServerApiClient = vi.hoisted(() => vi.fn());
-const bindAgentToVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyPost = vi.hoisted(() => vi.fn());
-const unbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDelete = vi.hoisted(
-  () => vi.fn(),
-);
+const bindAgentToVectorStore = vi.hoisted(() => vi.fn());
+const unbindAgentFromVectorStore = vi.hoisted(() => vi.fn());
+class VectorStoreServiceError extends Error {
+  constructor(message: string, public readonly status: number) {
+    super(message);
+    this.name = 'VectorStoreServiceError';
+  }
+}
 
-vi.mock('@/lib/server/apiClient', () => ({
-  getServerApiClient,
-}));
-
-vi.mock('@/lib/api/client/sdk.gen', () => ({
-  bindAgentToVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyPost,
-  unbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDelete,
+vi.mock('@/lib/server/services/vectorStores', () => ({
+  bindAgentToVectorStore,
+  unbindAgentFromVectorStore,
+  VectorStoreServiceError,
 }));
 
 async function loadHandlers() {
@@ -28,23 +28,18 @@ describe('/api/v1/vector-stores/[vectorStoreId]/bindings/[agentKey]', () => {
   });
 
   it('POST binds agent to vector store', async () => {
-    getServerApiClient.mockResolvedValue({ client: 'client', auth: vi.fn() });
-    bindAgentToVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyPost.mockResolvedValue({ data: undefined });
+    bindAgentToVectorStore.mockResolvedValue(undefined);
     const { POST } = await loadHandlers();
 
     const res = await POST({} as Request, params);
 
-    expect(bindAgentToVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyPost).toHaveBeenCalledWith(
-      expect.objectContaining({
-        path: { vector_store_id: 'vs-1', agent_key: 'agent-1' },
-      }),
-    );
+    expect(bindAgentToVectorStore).toHaveBeenCalledWith('vs-1', 'agent-1');
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({ success: true });
   });
 
   it('POST maps missing token to 401', async () => {
-    getServerApiClient.mockRejectedValue(new Error('Missing access token'));
+    bindAgentToVectorStore.mockRejectedValue(new VectorStoreServiceError('Missing access token', 401));
     const { POST } = await loadHandlers();
 
     const res = await POST({} as Request, params);
@@ -54,8 +49,7 @@ describe('/api/v1/vector-stores/[vectorStoreId]/bindings/[agentKey]', () => {
   });
 
   it('POST maps not found to 404', async () => {
-    getServerApiClient.mockResolvedValue({ client: 'client', auth: vi.fn() });
-    bindAgentToVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyPost.mockRejectedValue(new Error('Not found'));
+    bindAgentToVectorStore.mockRejectedValue(new VectorStoreServiceError('Not found', 404));
     const { POST } = await loadHandlers();
 
     const res = await POST({} as Request, params);
@@ -65,23 +59,18 @@ describe('/api/v1/vector-stores/[vectorStoreId]/bindings/[agentKey]', () => {
   });
 
   it('DELETE unbinds agent from vector store', async () => {
-    getServerApiClient.mockResolvedValue({ client: 'client', auth: vi.fn() });
-    unbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDelete.mockResolvedValue({ data: undefined });
+    unbindAgentFromVectorStore.mockResolvedValue(undefined);
     const { DELETE } = await loadHandlers();
 
     const res = await DELETE({} as Request, params);
 
-    expect(unbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDelete).toHaveBeenCalledWith(
-      expect.objectContaining({
-        path: { vector_store_id: 'vs-1', agent_key: 'agent-1' },
-      }),
-    );
+    expect(unbindAgentFromVectorStore).toHaveBeenCalledWith('vs-1', 'agent-1');
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({ success: true });
   });
 
   it('DELETE maps missing token to 401', async () => {
-    getServerApiClient.mockRejectedValue(new Error('Missing access token'));
+    unbindAgentFromVectorStore.mockRejectedValue(new VectorStoreServiceError('Missing access token', 401));
     const { DELETE } = await loadHandlers();
 
     const res = await DELETE({} as Request, params);
@@ -91,10 +80,7 @@ describe('/api/v1/vector-stores/[vectorStoreId]/bindings/[agentKey]', () => {
   });
 
   it('DELETE maps not found to 404', async () => {
-    getServerApiClient.mockResolvedValue({ client: 'client', auth: vi.fn() });
-    unbindAgentFromVectorStoreApiV1VectorStoresVectorStoreIdBindingsAgentKeyDelete.mockRejectedValue(
-      new Error('Not found'),
-    );
+    unbindAgentFromVectorStore.mockRejectedValue(new VectorStoreServiceError('Not found', 404));
     const { DELETE } = await loadHandlers();
 
     const res = await DELETE({} as Request, params);

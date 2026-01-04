@@ -65,6 +65,10 @@ jobs:
       - name: Lint
         run: just web-lint
 
+      - name: Architecture lint
+        working-directory: apps/web-app
+        run: pnpm lint:arch
+
       - name: Type check
         run: just web-typecheck
 

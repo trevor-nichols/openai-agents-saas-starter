@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { revokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDelete } from '@/lib/api/client/sdk.gen';
-import { unsubscribeStatusSubscriptionViaToken } from '@/lib/server/services/statusSubscriptions';
-import { getServerApiClient } from '@/lib/server/apiClient';
+import { revokeStatusSubscription, unsubscribeStatusSubscriptionViaToken } from '@/lib/server/services/statusSubscriptions';
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ subscriptionId: string }> }) {
   const { subscriptionId } = await params;
@@ -18,13 +16,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       return NextResponse.json({ success: true }, { status: 200 });
     }
 
-    const { client, auth } = await getServerApiClient();
-    await revokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDelete({
-      client,
-      auth,
-      throwOnError: true,
-      path: { subscription_id: subscriptionId },
-    });
+    await revokeStatusSubscription(subscriptionId);
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to revoke subscription.';

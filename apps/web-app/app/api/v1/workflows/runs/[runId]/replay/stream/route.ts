@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 
-import { streamWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayStreamGet } from '@/lib/api/client/sdk.gen';
-import { getServerApiClient } from '@/lib/server/apiClient';
+import { openWorkflowReplayStream } from '@/lib/server/services/workflows';
 
 export async function GET(request: Request, context: { params: Promise<{ runId: string }> }) {
   const { runId } = await context.params;
@@ -9,27 +8,11 @@ export async function GET(request: Request, context: { params: Promise<{ runId: 
   const cursor = searchParams.get('cursor') ?? undefined;
 
   try {
-    const { client, auth } = await getServerApiClient();
-
-    const upstream = await streamWorkflowRunReplayEventsApiV1WorkflowsRunsRunIdReplayStreamGet({
-      client,
-      auth,
+    const upstream = await openWorkflowReplayStream({
+      runId,
+      cursor,
       signal: request.signal,
-      cache: 'no-store',
-      responseStyle: undefined,
-      throwOnError: true,
-      path: { run_id: runId },
-      query: { cursor },
-      headers: {
-        Accept: 'text/event-stream',
-      },
-      parseAs: 'stream',
     });
-
-    const stream = upstream.response?.body;
-    if (!stream || !upstream.response) {
-      return NextResponse.json({ message: 'Workflow replay stream missing body' }, { status: 500 });
-    }
 
     const headers = new Headers({
       'Content-Type': 'text/event-stream',
@@ -37,14 +20,13 @@ export async function GET(request: Request, context: { params: Promise<{ runId: 
       'Cache-Control': 'no-cache',
     });
 
-    const contentType = upstream.response.headers.get('Content-Type');
+    const contentType = upstream.contentType;
     if (contentType) {
       headers.set('Content-Type', contentType);
     }
 
-    return new Response(stream, {
-      status: upstream.response.status,
-      statusText: upstream.response.statusText,
+    return new Response(upstream.stream, {
+      status: upstream.status,
       headers,
     });
   } catch (error) {
@@ -53,4 +35,3 @@ export async function GET(request: Request, context: { params: Promise<{ runId: 
     return NextResponse.json({ message }, { status });
   }
 }
-

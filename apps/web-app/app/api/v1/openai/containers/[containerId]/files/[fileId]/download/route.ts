@@ -1,48 +1,31 @@
 import { NextResponse } from 'next/server';
 
-import { API_BASE_URL } from '@/lib/config/server';
-import { getAccessTokenFromCookies } from '@/lib/auth/cookies';
+import { downloadOpenAiContainerFile } from '@/lib/server/services/openaiFiles';
 
 type RouteParams = { params: Promise<{ containerId: string; fileId: string }> };
 
 export async function GET(request: Request, { params }: RouteParams) {
-  const token = await getAccessTokenFromCookies();
-  if (!token) {
-    return NextResponse.json({ message: 'Missing access token.' }, { status: 401 });
-  }
-
   const { containerId, fileId } = await params;
   if (!containerId || !fileId) {
     return NextResponse.json({ message: 'containerId and fileId are required.' }, { status: 400 });
   }
 
-  const baseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
-  const search = new URL(request.url).search;
+  try {
+    const search = new URL(request.url).search;
+    const result = await downloadOpenAiContainerFile({ containerId, fileId, search });
 
-  const upstream = await fetch(
-    `${baseUrl}/api/v1/openai/containers/${containerId}/files/${fileId}/download${search}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+    if (!result.ok || !result.stream) {
+      const message = `Failed to download container file (${result.status})`;
+      return NextResponse.json({ message }, { status: result.status || 502 });
     }
-  );
 
-  if (!upstream.ok || !upstream.body) {
-    const message = `Failed to download container file (${upstream.status})`;
-    return NextResponse.json({ message }, { status: upstream.status || 502 });
+    return new NextResponse(result.stream, {
+      status: result.status,
+      headers: result.headers,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to download container file.';
+    const status = message.toLowerCase().includes('missing access token') ? 401 : 502;
+    return NextResponse.json({ message }, { status });
   }
-
-  const headers = new Headers();
-  const contentType = upstream.headers.get('content-type');
-  const disposition = upstream.headers.get('content-disposition');
-  if (contentType) headers.set('content-type', contentType);
-  if (disposition) headers.set('content-disposition', disposition);
-  const cacheControl = upstream.headers.get('cache-control');
-  if (cacheControl) headers.set('cache-control', cacheControl);
-
-  return new NextResponse(upstream.body, {
-    status: upstream.status,
-    headers,
-  });
 }

@@ -1,17 +1,15 @@
 import { NextResponse } from 'next/server';
 
-import { API_BASE_URL } from '@/lib/config/server';
+import { fetchStatusRss } from '@/lib/server/services/status';
 
 export async function GET() {
   try {
-    const upstream = await fetch(`${API_BASE_URL}/api/v1/status/rss`, { cache: 'no-store' });
-    const body = await upstream.text();
-    const contentType = upstream.headers.get('content-type') ?? 'application/rss+xml; charset=utf-8';
+    const rss = await fetchStatusRss();
 
-    return new Response(body, {
-      status: upstream.status,
+    return new Response(rss.body, {
+      status: rss.status,
       headers: {
-        'Content-Type': contentType,
+        'Content-Type': rss.contentType,
       },
     });
   } catch (error) {

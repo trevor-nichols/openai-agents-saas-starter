@@ -1,4 +1,7 @@
+'use server';
+
 import {
+  confirmWebhookChallengeApiV1StatusSubscriptionsChallengePost,
   createStatusSubscriptionApiV1StatusSubscriptionsPost,
   listStatusSubscriptionsApiV1StatusSubscriptionsGet,
   resendStatusIncidentApiV1StatusIncidentsIncidentIdResendPost,
@@ -6,6 +9,7 @@ import {
   verifyStatusSubscriptionApiV1StatusSubscriptionsVerifyPost,
 } from '@/lib/api/client/sdk.gen';
 import type {
+  StatusSubscriptionChallengeRequest,
   StatusIncidentResendRequest,
   StatusIncidentResendResponse,
   StatusSubscriptionCreateRequest,
@@ -98,6 +102,29 @@ export async function verifyStatusSubscriptionToken(
 }
 
 /**
+ * Confirm a webhook challenge during status subscription setup.
+ */
+export async function confirmStatusSubscriptionChallenge(
+  payload: StatusSubscriptionChallengeRequest,
+): Promise<{ data: StatusSubscriptionResponse; status: number }> {
+  const client = createApiClient();
+  const response = await confirmWebhookChallengeApiV1StatusSubscriptionsChallengePost({
+    client,
+    responseStyle: 'fields',
+    throwOnError: true,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: payload,
+  });
+
+  return {
+    data: (response.data ?? {}) as StatusSubscriptionResponse,
+    status: response.response?.status ?? 200,
+  };
+}
+
+/**
  * Unsubscribe a status subscription using the signed email token.
  */
 export async function unsubscribeStatusSubscriptionViaToken(params: {
@@ -122,6 +149,23 @@ export async function unsubscribeStatusSubscriptionViaToken(params: {
   })) as ApiFieldsResult<void>;
 
   assertNoError(result, 'Unable to unsubscribe from alerts.');
+}
+
+/**
+ * Revoke a status subscription using session authentication.
+ */
+export async function revokeStatusSubscription(subscriptionId: string): Promise<void> {
+  if (!subscriptionId) {
+    throw new StatusSubscriptionServiceError('Subscription id is required.', 400);
+  }
+
+  const { client, auth } = await getServerApiClient();
+  await revokeStatusSubscriptionApiV1StatusSubscriptionsSubscriptionIdDelete({
+    client,
+    auth,
+    throwOnError: true,
+    path: { subscription_id: subscriptionId },
+  });
 }
 
 type CreateSubscriptionAuthMode = 'public' | 'session';

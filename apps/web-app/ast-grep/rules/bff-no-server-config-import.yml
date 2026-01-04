@@ -1,0 +1,12 @@
+id: bff-no-server-config-import
+language: TypeScript
+severity: error
+message: BFF routes must not import server config; use server services instead.
+rule:
+  any:
+    - pattern: "import $A from '$MODULE'"
+    - pattern: "import { $$$ } from '$MODULE'"
+    - pattern: "import * as $A from '$MODULE'"
+constraints:
+  MODULE:
+    regex: "lib/config/server"

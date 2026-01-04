@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { API_BASE_URL } from '@/lib/config/server';
+import { applyTestFixtures } from '@/lib/server/services/testFixtures';
 
 export async function POST(req: NextRequest) {
   if (process.env.NODE_ENV === 'production') {
@@ -8,20 +8,11 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.text();
-  const response = await fetch(`${API_BASE_URL}/api/v1/test-fixtures/apply`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body,
-    cache: 'no-store',
-  });
+  const response = await applyTestFixtures(body);
+  const isJson = response.contentType.includes('application/json');
+  const payload = response.body || response.statusText || '';
 
-  const text = await response.text();
-  const contentType = response.headers.get('content-type') || '';
-  const isJson = contentType.includes('application/json');
-
-  return new NextResponse(isJson ? text : text || response.statusText, {
+  return new NextResponse(isJson ? response.body : payload, {
     status: response.status,
     headers: {
       'content-type': isJson ? 'application/json' : 'text/plain',

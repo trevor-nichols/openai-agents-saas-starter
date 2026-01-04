@@ -1,13 +1,11 @@
 import { NextResponse } from 'next/server';
 
-import { listMfaMethodsApiV1AuthMfaGet } from '@/lib/api/client/sdk.gen';
-import { getServerApiClient } from '@/lib/server/apiClient';
+import { listMfaMethods } from '@/lib/server/services/auth/mfa';
 
 export async function GET() {
   try {
-    const { client, auth } = await getServerApiClient();
-    const res = await listMfaMethodsApiV1AuthMfaGet({ client, auth, throwOnError: true });
-    return NextResponse.json(res.data ?? []);
+    const res = await listMfaMethods();
+    return NextResponse.json(res ?? []);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to load MFA methods.';
     const status = message.toLowerCase().includes('missing access token') ? 401 : 500;

@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 
 import {
-  deleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDelete,
-  getFileApiV1VectorStoresVectorStoreIdFilesFileIdGet,
-} from '@/lib/api/client/sdk.gen';
-import { getServerApiClient } from '@/lib/server/apiClient';
+  deleteVectorStoreFile,
+  getVectorStoreFile,
+  VectorStoreServiceError,
+} from '@/lib/server/services/vectorStores';
 
 export async function GET(
   _req: Request,
@@ -12,21 +12,12 @@ export async function GET(
 ) {
   const { vectorStoreId, fileId } = await params;
   try {
-    const { client, auth } = await getServerApiClient();
-    const res = await getFileApiV1VectorStoresVectorStoreIdFilesFileIdGet({
-      client,
-      auth,
-      throwOnError: true,
-      responseStyle: 'fields',
-      path: { vector_store_id: vectorStoreId, file_id: fileId },
-    });
-
-    if (!res.data) {
-      return NextResponse.json({ message: 'Vector store file not found' }, { status: 404 });
-    }
-
-    return NextResponse.json(res.data);
+    const res = await getVectorStoreFile(vectorStoreId, fileId);
+    return NextResponse.json(res);
   } catch (error) {
+    if (error instanceof VectorStoreServiceError) {
+      return NextResponse.json({ message: error.message }, { status: error.status });
+    }
     const message = error instanceof Error ? error.message : 'Failed to load vector store file';
     const normalized = message.toLowerCase();
     if (normalized.includes('missing access token')) {
@@ -45,15 +36,12 @@ export async function DELETE(
 ) {
   const { vectorStoreId, fileId } = await params;
   try {
-    const { client, auth } = await getServerApiClient();
-    await deleteFileApiV1VectorStoresVectorStoreIdFilesFileIdDelete({
-      client,
-      auth,
-      throwOnError: true,
-      path: { vector_store_id: vectorStoreId, file_id: fileId },
-    });
+    await deleteVectorStoreFile(vectorStoreId, fileId);
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (error instanceof VectorStoreServiceError) {
+      return NextResponse.json({ message: error.message }, { status: error.status });
+    }
     const message = error instanceof Error ? error.message : 'Failed to delete vector store file';
     const normalized = message.toLowerCase();
     if (normalized.includes('missing access token')) {
