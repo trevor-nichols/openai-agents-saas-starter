@@ -12,7 +12,7 @@ export async function GET(request: Request, { params }: RouteParams) {
 
   try {
     const search = new URL(request.url).search;
-    const result = await downloadOpenAiFile({ fileId, search });
+    const result = await downloadOpenAiFile({ fileId, search, signal: request.signal });
 
     if (!result.ok || !result.stream) {
       const message = `Failed to download file (${result.status})`;

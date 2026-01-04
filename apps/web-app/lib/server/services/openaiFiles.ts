@@ -20,12 +20,17 @@ function buildDownloadHeaders(response: Response): Headers {
   return headers;
 }
 
-async function proxyDownload(url: string): Promise<OpenAiDownloadResult> {
+async function proxyDownload(
+  url: string,
+  options?: { signal?: AbortSignal },
+): Promise<OpenAiDownloadResult> {
   const { auth } = await getServerApiClient();
   const response = await fetch(url, {
     headers: {
       Authorization: `Bearer ${auth()}`,
     },
+    cache: 'no-store',
+    signal: options?.signal,
   });
 
   return {
@@ -39,6 +44,7 @@ async function proxyDownload(url: string): Promise<OpenAiDownloadResult> {
 export async function downloadOpenAiFile(params: {
   fileId: string;
   search?: string;
+  signal?: AbortSignal;
 }): Promise<OpenAiDownloadResult> {
   if (!params.fileId) {
     throw new Error('fileId is required.');
@@ -47,13 +53,14 @@ export async function downloadOpenAiFile(params: {
   const baseUrl = getApiBaseUrl();
   const search = params.search ?? '';
   const url = `${baseUrl}/api/v1/openai/files/${params.fileId}/download${search}`;
-  return proxyDownload(url);
+  return proxyDownload(url, { signal: params.signal });
 }
 
 export async function downloadOpenAiContainerFile(params: {
   containerId: string;
   fileId: string;
   search?: string;
+  signal?: AbortSignal;
 }): Promise<OpenAiDownloadResult> {
   if (!params.containerId || !params.fileId) {
     throw new Error('containerId and fileId are required.');
@@ -62,5 +69,5 @@ export async function downloadOpenAiContainerFile(params: {
   const baseUrl = getApiBaseUrl();
   const search = params.search ?? '';
   const url = `${baseUrl}/api/v1/openai/containers/${params.containerId}/files/${params.fileId}/download${search}`;
-  return proxyDownload(url);
+  return proxyDownload(url, { signal: params.signal });
 }
