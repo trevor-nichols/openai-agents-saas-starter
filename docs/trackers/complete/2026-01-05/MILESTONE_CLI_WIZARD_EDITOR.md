@@ -2,7 +2,7 @@
 # Milestone: CLI Wizard Editor (Curses)
 
 _Last updated: 2026-01-05_  
-**Status:** In Progress  
+**Status:** Complete  
 **Owner:** Platform Foundations  
 **Domain:** Console  
 **ID / Links:** [TBD], [packages/starter_console], [docs/trackers/templates/MILESTONE_TEMPLATE.md]
@@ -51,10 +51,10 @@ review current values, edit only what they need, and then save or save+run autom
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| Architecture/design | ⏳ | Curses editor design drafted, implementation pending. |
-| Implementation | ⏳ | CLI editor not yet implemented. |
-| Tests & QA | ⚠️ | Will need manual smoke + console lint/typecheck. |
-| Docs & runbooks | ⚠️ | README updates required after implementation. |
+| Architecture/design | ✅ | Curses editor design implemented with search, scrolling, and inline affordances. |
+| Implementation | ✅ | CLI editor shipped with save/save+automation flows. |
+| Tests & QA | ✅ | Console lint/typecheck run locally. |
+| Docs & runbooks | ✅ | Console and root README updated for CLI editor flow. |
 
 ---
 
@@ -62,10 +62,11 @@ review current values, edit only what they need, and then save or save+run autom
 ## Architecture / Design Snapshot
 
 - New curses UI replaces the prompt-by-prompt CLI for `setup wizard --cli`.
-- Editor is non-linear: left section navigation + right field editor.
+- Editor is non-linear: left section navigation + right field editor with search/filter.
 - Field metadata derived from wizard prompt calls; values sourced from env files.
 - Save-only path writes env + audit artifacts without automation.
 - Save+automation path runs infra/migrations/dev-user when required inputs exist.
+- UX affordances: scroll indicators, fixed value column, env-key styling, unsaved badge.
 
 ---
 
@@ -76,17 +77,17 @@ review current values, edit only what they need, and then save or save+run autom
 
 | ID | Area | Description | Status |
 |----|------|-------------|-------|
-| A1 | Console | Build curses editor layout + navigation | ⏳ |
-| A2 | Console | Build field model from wizard prompt definitions | ⏳ |
-| A3 | Console | Edit controls for string/bool/choice/secret | ⏳ |
+| A1 | Console | Build curses editor layout + navigation | ✅ |
+| A2 | Console | Build field model from wizard prompt definitions | ✅ |
+| A3 | Console | Edit controls for string/bool/choice/secret | ✅ |
 
 ### Workstream B – Save + Automation Paths
 
 | ID | Area | Description | Status |
 |----|------|-------------|-------|
-| B1 | Console | Save-only: env files + reports/snapshots | ⏳ |
-| B2 | Console | Save+automation: infra/migrate/dev-user gating | ⏳ |
-| B3 | Console | Update CLI wiring + docs | ⏳ |
+| B1 | Console | Save-only: env files + reports/snapshots | ✅ |
+| B2 | Console | Save+automation: infra/migrate/dev-user gating | ✅ |
+| B3 | Console | Update CLI wiring + docs | ✅ |
 
 ---
 
@@ -132,3 +133,4 @@ review current values, edit only what they need, and then save or save+run autom
 ## Changelog
 
 - 2026-01-05 — Milestone created; implementation starting.
+- 2026-01-05 — CLI editor delivered with search, UX polish, and docs updates. Advanced gating removed for the editor/TUI flow to match non-linear navigation.
