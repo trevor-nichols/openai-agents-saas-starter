@@ -1,7 +1,7 @@
 # Starter Console Environment Inventory
 
 This file is generated via `starter-console config write-inventory`.
-Last updated: 2026-01-05 14:46:18 UTC
+Last updated: 2026-01-05 14:48:20 UTC
 
 Legend: `✅` = wizard prompts for it, blank = requires manual population.
 
