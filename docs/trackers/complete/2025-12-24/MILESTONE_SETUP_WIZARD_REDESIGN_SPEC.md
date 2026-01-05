@@ -124,7 +124,6 @@ Behavior:
 
 ### 6) AI Providers
 - `OPENAI_API_KEY` required
-- optional `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `XAI_API_KEY`
 
 ### 7) Storage
 - `STORAGE_PROVIDER`, `STORAGE_BUCKET_PREFIX`
@@ -177,4 +176,3 @@ Behavior:
 - Preset engine should inject defaults before prompt evaluation (schema‑aware).
 - Resume uses `wizard-state.json`; new snapshot/diff drive setup menu status.
 - TUI should show preset badge + “advanced prompts enabled” indicator.
-

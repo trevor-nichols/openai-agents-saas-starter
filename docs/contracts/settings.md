@@ -98,7 +98,6 @@ must be supplied when that feature is enabled.
 | `ALLOWED_HOSTS` | no default |  | internal | Comma-separated list of allowed hostnames. / Trusted hosts for middleware / ... |
 | `ALLOWED_METHODS` | no default |  | internal | CORS allowed methods / Comma-separated list of allowed HTTP methods. |
 | `ALLOWED_ORIGINS` | no default |  | internal | CORS allowed origins / Comma-separated list of allowed CORS origins. / ... |
-| `ANTHROPIC_API_KEY` | no default |  | secret | API key for Anthropic models / API key for Anthropic models. |
 | `API_BASE_URL` | no default |  | internal | Base URL of the backend API. / Server-side fallback URL for the backend API. / ... |
 | `APP_DESCRIPTION` | no default |  | internal | API service description / Application description for docs/metadata. |
 | `APP_NAME` | no default |  | internal | API service name / Application display name. |
@@ -222,7 +221,6 @@ must be supplied when that feature is enabled.
 | `GCS_CREDENTIALS_PATH` | no default |  | secret | Path to GCS credentials file / Path to GCS credentials JSON file. |
 | `GCS_SIGNING_EMAIL` | no default |  | internal | GCS Service Account Email for signing / Service account email for signed URLs. |
 | `GCS_UNIFORM_ACCESS` | no default |  | internal | Use Uniform Bucket Level Access for GCS. / Use uniform bucket-level access |
-| `GEMINI_API_KEY` | no default |  | secret | API key for Google Gemini. / Google Gemini API key |
 | `GEOIP_CACHE_MAX_ENTRIES` | optional (default) | 4096 | internal | Max entries in GeoIP cache / Max entries in GeoIP cache. |
 | `GEOIP_CACHE_TTL_SECONDS` | optional (default) | 900.0 | internal | GeoIP cache TTL / TTL for GeoIP cache. |
 | `GEOIP_HTTP_TIMEOUT_SECONDS` | optional (default) | 2.0 | internal | HTTP timeout for GeoIP lookups. / Timeout for GeoIP APIs / ... |
@@ -446,4 +444,3 @@ must be supplied when that feature is enabled.
 | `VERCEL_GIT_COMMIT_TIMESTAMP` | no default |  | internal | Git commit timestamp provided by Vercel. / Used to determine the `lastModified` date for sitemap entries. / ... |
 | `WORKERS` | no default |  | internal | Number of Uvicorn workers |
 | `WORKFLOW_MIN_PURGE_AGE_HOURS` | optional (default) | 0 | internal | Minimum age for hard deleting workflows |
-| `XAI_API_KEY` | no default |  | secret | API key for xAI. / xAI API Key |

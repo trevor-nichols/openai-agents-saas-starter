@@ -77,9 +77,6 @@ def _local_headless_answers() -> dict[str, str]:
         "AWS_PROFILE": "prod-profile",
         "AWS_REGION": "us-east-1",
         "OPENAI_API_KEY": "sk-openai",
-        "CONFIGURE_ANTHROPIC_API_KEY": "false",
-        "CONFIGURE_GEMINI_API_KEY": "false",
-        "CONFIGURE_XAI_API_KEY": "false",
         "REDIS_URL": "redis://localhost:6379/0",
         "RATE_LIMIT_REDIS_URL": "",
         "AUTH_CACHE_REDIS_URL": "",
@@ -148,7 +145,6 @@ def test_wizard_headless_local_generates_env(temp_ctx: CLIContext) -> None:
     assert "LOGGING_SINKS=stdout" in env_body
     assert "SIGNUP_ACCESS_POLICY=public" in env_body
     assert "BILLING_RETRY_DEPLOYMENT_MODE=inline" in env_body
-    assert 'ANTHROPIC_API_KEY=""' in env_body
     _cleanup_env(snapshot)
 
 
@@ -448,9 +444,6 @@ def test_wizard_writes_dedicated_worker_artifacts(temp_ctx: CLIContext) -> None:
         "AWS_PROFILE": "prod-profile",
         "AWS_REGION": "us-east-1",
         "OPENAI_API_KEY": "sk-openai",
-        "CONFIGURE_ANTHROPIC_API_KEY": "false",
-        "CONFIGURE_GEMINI_API_KEY": "false",
-        "CONFIGURE_XAI_API_KEY": "false",
         "REDIS_URL": "rediss://:secret@redis.example.com:6379/0",
         "RATE_LIMIT_REDIS_URL": "",
         "AUTH_CACHE_REDIS_URL": "",
@@ -526,9 +519,6 @@ def test_wizard_refreshes_cached_settings(temp_ctx: CLIContext) -> None:
         "ROTATE_SIGNING_KEYS": "false",
         "VAULT_VERIFY_ENABLED": "false",
         "OPENAI_API_KEY": "sk-openai",
-        "CONFIGURE_ANTHROPIC_API_KEY": "false",
-        "CONFIGURE_GEMINI_API_KEY": "false",
-        "CONFIGURE_XAI_API_KEY": "false",
         "REDIS_URL": "redis://localhost:6379/0",
         "RATE_LIMIT_REDIS_URL": "",
         "AUTH_CACHE_REDIS_URL": "",
@@ -570,78 +560,6 @@ def test_wizard_refreshes_cached_settings(temp_ctx: CLIContext) -> None:
     _cleanup_env(snapshot)
 
 
-def test_wizard_clears_optional_provider_keys(temp_ctx: CLIContext) -> None:
-    env_file = backend_env_path(temp_ctx)
-    env_file.write_text(
-        "\n".join(
-            [
-                "ANTHROPIC_API_KEY=sk-ant",
-                "GEMINI_API_KEY=sk-gem",
-                "XAI_API_KEY=sk-xai",
-            ]
-        ),
-        encoding="utf-8",
-    )
-
-    snapshot = dict(os.environ)
-    answers = {
-        "ENVIRONMENT": "development",
-        "DEBUG": "true",
-        "PORT": "8000",
-        "APP_PUBLIC_URL": "http://localhost:3000",
-        "ALLOWED_HOSTS": "localhost",
-        "ALLOWED_ORIGINS": "http://localhost:3000",
-        "AUTO_RUN_MIGRATIONS": "false",
-        "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@localhost:5432/saas_starter_db",
-        "API_BASE_URL": "http://127.0.0.1:8000",
-        "ROTATE_SIGNING_KEYS": "false",
-        "VAULT_VERIFY_ENABLED": "false",
-        "OPENAI_API_KEY": "sk-openai",
-        "CONFIGURE_ANTHROPIC_API_KEY": "false",
-        "CONFIGURE_GEMINI_API_KEY": "false",
-        "CONFIGURE_XAI_API_KEY": "false",
-        "REDIS_URL": "redis://localhost:6379/0",
-        "RATE_LIMIT_REDIS_URL": "",
-        "AUTH_CACHE_REDIS_URL": "",
-        "SECURITY_TOKEN_REDIS_URL": "",
-        "BILLING_EVENTS_REDIS_URL": "",
-        "ENABLE_BILLING": "false",
-        "ENABLE_BILLING_STREAM": "false",
-        "RESEND_EMAIL_ENABLED": "false",
-        "RESEND_BASE_URL": "https://api.resend.com",
-        "RUN_MIGRATIONS_NOW": "false",
-        "TENANT_DEFAULT_SLUG": "local",
-        "LOGGING_SINKS": "stdout",
-        "GEOIP_PROVIDER": "none",
-        "SIGNUP_ACCESS_POLICY": "public",
-        "ALLOW_SIGNUP_TRIAL_OVERRIDE": "false",
-        "SIGNUP_RATE_LIMIT_PER_HOUR": "15",
-        "SIGNUP_RATE_LIMIT_PER_IP_DAY": "90",
-        "SIGNUP_RATE_LIMIT_PER_EMAIL_DAY": "3",
-        "SIGNUP_RATE_LIMIT_PER_DOMAIN_DAY": "20",
-        "SIGNUP_CONCURRENT_REQUESTS_LIMIT": "2",
-        "SIGNUP_DEFAULT_PLAN_CODE": "starter",
-        "SIGNUP_DEFAULT_TRIAL_DAYS": "21",
-        "BILLING_RETRY_DEPLOYMENT_MODE": "inline",
-        "ENABLE_BILLING_RETRY_WORKER": "true",
-        "ENABLE_BILLING_STREAM_REPLAY": "false",
-    }
-
-    wizard = _create_setup_wizard(
-        ctx=temp_ctx,
-        profile="demo",
-        output_format="summary",
-        input_provider=HeadlessInputProvider(answers=answers),
-    )
-    wizard.execute()
-
-    env_body = env_file.read_text(encoding="utf-8")
-    assert 'ANTHROPIC_API_KEY=""' in env_body
-    assert 'GEMINI_API_KEY=""' in env_body
-    assert 'XAI_API_KEY=""' in env_body
-    _cleanup_env(snapshot)
-
-
 def test_wizard_does_not_leak_env_values(temp_ctx: CLIContext) -> None:
     baseline_snapshot = dict(os.environ)
 
@@ -658,9 +576,6 @@ def test_wizard_does_not_leak_env_values(temp_ctx: CLIContext) -> None:
         "ROTATE_SIGNING_KEYS": "false",
         "VAULT_VERIFY_ENABLED": "false",
         "OPENAI_API_KEY": "sk-openai",
-        "CONFIGURE_ANTHROPIC_API_KEY": "false",
-        "CONFIGURE_GEMINI_API_KEY": "false",
-        "CONFIGURE_XAI_API_KEY": "false",
         "REDIS_URL": "redis://localhost:6379/0",
         "RATE_LIMIT_REDIS_URL": "",
         "AUTH_CACHE_REDIS_URL": "",
@@ -731,9 +646,6 @@ def test_wizard_rotates_new_peppers(monkeypatch, temp_ctx: CLIContext) -> None:
         "ROTATE_SIGNING_KEYS": "false",
         "VAULT_VERIFY_ENABLED": "false",
         "OPENAI_API_KEY": "sk-openai",
-        "CONFIGURE_ANTHROPIC_API_KEY": "false",
-        "CONFIGURE_GEMINI_API_KEY": "false",
-        "CONFIGURE_XAI_API_KEY": "false",
         "REDIS_URL": "redis://localhost:6379/0",
         "RATE_LIMIT_REDIS_URL": "",
         "AUTH_CACHE_REDIS_URL": "",
@@ -801,9 +713,6 @@ def test_wizard_staging_verifies_vault(
         "AWS_PROFILE": "staging-profile",
         "AWS_REGION": "us-east-1",
         "OPENAI_API_KEY": "sk-openai",
-        "CONFIGURE_ANTHROPIC_API_KEY": "false",
-        "CONFIGURE_GEMINI_API_KEY": "false",
-        "CONFIGURE_XAI_API_KEY": "false",
         "REDIS_URL": "rediss://:secret@redis.example:6380/0",
         "RATE_LIMIT_REDIS_URL": "rediss://:secret@redis.example:6380/2",
         "AUTH_CACHE_REDIS_URL": "rediss://:secret@redis.example:6380/3",
