@@ -274,21 +274,21 @@ vault-up:
     @echo "Starting Vault dev signer on {{vault_dev_host_addr}}"
     {{env_runner}} -- bash -c '\
         VAULT_DEV_PORT={{vault_dev_port}} VAULT_DEV_ROOT_TOKEN_ID={{vault_dev_root_token_id}} \
-        docker compose -f {{vault_compose_file}} up -d; \
+        cd {{repo_root}} && docker compose -f {{vault_compose_file}} up -d; \
     '
     VAULT_ADDR={{vault_dev_host_addr}} tools/vault/wait-for-dev.sh
     {{env_runner}} -- bash -c '\
         HOST_VAULT_ADDR={{vault_dev_host_addr}} \
         VAULT_DEV_ROOT_TOKEN_ID={{vault_dev_root_token_id}} \
         VAULT_TRANSIT_KEY={{vault_transit_key}} \
-        docker compose -f {{vault_compose_file}} exec vault-dev /vault/dev-init.sh; \
+        cd {{repo_root}} && docker compose -f {{vault_compose_file}} exec vault-dev /vault/dev-init.sh; \
     '
 
 vault-down:
-    {{env_runner}} -- bash -c 'docker compose -f {{vault_compose_file}} down'
+    {{env_runner}} -- bash -c 'cd {{repo_root}} && docker compose -f {{vault_compose_file}} down'
 
 vault-logs:
-    {{env_runner}} -- bash -c 'docker compose -f {{vault_compose_file}} logs -f --tail=200'
+    {{env_runner}} -- bash -c 'cd {{repo_root}} && docker compose -f {{vault_compose_file}} logs -f --tail=200'
 
 verify-vault: vault-up _check_env
     @echo "Running service-account issuance via starter-console (ensure FastAPI is reachable)."
