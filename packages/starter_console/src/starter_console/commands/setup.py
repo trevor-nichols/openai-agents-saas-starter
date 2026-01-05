@@ -4,6 +4,12 @@ import argparse
 from pathlib import Path
 
 from starter_console.core import CLIContext, CLIError
+from starter_console.core.profiles import (
+    load_frontend_env,
+    load_profile_registry,
+    select_profile,
+    write_profile_manifest,
+)
 from starter_console.workflows.setup import (
     HeadlessInputProvider,
     SetupWizard,
@@ -12,7 +18,6 @@ from starter_console.workflows.setup import (
 )
 from starter_console.workflows.setup.automation import AutomationPhase
 from starter_console.workflows.setup.inputs import InputProvider
-from starter_console.workflows.setup.wizard import PROFILE_CHOICES
 from starter_console.workflows.setup_menu.controller import SetupMenuController
 
 
@@ -43,9 +48,13 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     )
     wizard_parser.add_argument(
         "--profile",
-        choices=PROFILE_CHOICES,
-        default="demo",
-        help="Target deployment profile. Influences required checks and defaults.",
+        default=None,
+        help="Target deployment profile. Defaults to auto-detect and config files.",
+    )
+    wizard_parser.add_argument(
+        "--profiles-path",
+        metavar="PATH",
+        help="Optional profile config file path (defaults to config/starter-console.profile.yaml).",
     )
     wizard_parser.add_argument(
         "--strict",
@@ -251,12 +260,27 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
 
 
 def handle_setup_wizard(args: argparse.Namespace, ctx: CLIContext) -> int:
+    registry = load_profile_registry(
+        project_root=ctx.project_root,
+        override_path=Path(args.profiles_path).expanduser()
+        if args.profiles_path
+        else None,
+    )
+    selection = select_profile(registry, explicit=args.profile)
+    profile_id = selection.profile.profile_id
     if getattr(args, "strict", False):
-        if args.profile != "production":
+        if profile_id != "production":
             raise CLIError("--strict is only supported with --profile production.")
         if not args.answers_file and not args.var:
             raise CLIError("--strict requires --answers-file or --var overrides.")
         args.non_interactive = True
+    args.profile = profile_id
+    frontend_env = load_frontend_env(project_root=ctx.project_root)
+    write_profile_manifest(
+        selection,
+        project_root=ctx.project_root,
+        frontend_env=frontend_env,
+    )
     if args.export_answers and args.report_only:
         raise CLIError("--export-answers cannot be combined with --report-only.")
 
@@ -308,6 +332,9 @@ def handle_setup_wizard(args: argparse.Namespace, ctx: CLIContext) -> int:
             if args.export_answers
             else None,
             automation_overrides=automation_overrides,
+            profiles_path=Path(args.profiles_path).expanduser()
+            if args.profiles_path
+            else None,
             auto_start=True,
         )
         load_ui_module().StarterTUI(
@@ -318,6 +345,7 @@ def handle_setup_wizard(args: argparse.Namespace, ctx: CLIContext) -> int:
     wizard = SetupWizard(
         ctx=ctx,
         profile=args.profile,
+        profile_policy=selection.profile,
         output_format=args.output,
         input_provider=provider,
         export_answers_path=Path(args.export_answers).expanduser() if args.export_answers else None,

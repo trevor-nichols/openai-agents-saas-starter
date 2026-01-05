@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from textual.app import ComposeResult
 from textual.containers import Grid, Horizontal, Vertical
 from textual.widgets import (
@@ -18,18 +20,26 @@ from textual.widgets import (
 from starter_console.workflows.setup.automation import ALL_AUTOMATION_PHASES
 from starter_console.workflows.setup.section_specs import SECTION_SPECS
 
+from .models import ProfileOption
 
-def compose_wizard_layout() -> ComposeResult:
+
+def compose_wizard_layout(profile_options: Sequence[ProfileOption]) -> ComposeResult:
     yield Static("Setup Wizard", classes="section-title")
     yield Static("", id="wizard-summary", classes="section-summary")
     with Grid(id="wizard-controls", classes="form-grid"):
         yield Static("Profile", id="wizard-profile-label", classes="wizard-control-label")
         yield RadioSet(
-            RadioButton("Demo", id="profile-demo"),
-            RadioButton("Staging", id="profile-staging"),
-            RadioButton("Production", id="profile-production"),
+            *(RadioButton(option.label, id=option.widget_id) for option in profile_options),
             id="wizard-profile",
         )
+        yield Static("Profile hint", id="wizard-profile-hint-label", classes="wizard-control-label")
+        yield Static("", id="wizard-profile-hint", classes="wizard-control-hint")
+        yield Static(
+            "Policy locks",
+            id="wizard-profile-locks-label",
+            classes="wizard-control-label",
+        )
+        yield Static("", id="wizard-profile-locks", classes="wizard-control-hint")
         yield Static("Hosting", id="wizard-preset-label", classes="wizard-control-label")
         yield RadioSet(
             RadioButton("Local Docker", id="preset-local"),

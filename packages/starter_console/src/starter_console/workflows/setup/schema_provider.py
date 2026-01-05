@@ -121,10 +121,31 @@ class SchemaAwareInputProvider:
     # Helpers
     # ------------------------------------------------------------------
     def _decide(self, key: str):
+        policy_decision = self._policy_decision(key)
+        if policy_decision is not None:
+            return policy_decision
         if not self._schema:
             return SchemaDecision(should_prompt=True)
         lookup = ValueLookup(self._value_sources)
         return self._schema.decision(key, lookup)
+
+    def _policy_decision(self, key: str) -> SchemaDecision | None:
+        if not hasattr(self._context, "profile_policy"):
+            return None
+        scope = self._context.policy_scope_for_key(key)
+        locked_value = self._context.policy_locked_value(key, scope=scope)
+        if locked_value is not None:
+            return SchemaDecision(
+                should_prompt=False,
+                reason="Locked by profile policy.",
+                fallback=locked_value,
+            )
+        if self._context.policy_hidden(key, scope=scope):
+            return SchemaDecision(
+                should_prompt=False,
+                reason="Hidden by profile policy.",
+            )
+        return None
 
     @property
     def _value_sources(self) -> tuple[Mapping[str, str], ...]:

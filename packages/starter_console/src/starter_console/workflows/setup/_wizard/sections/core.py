@@ -31,20 +31,16 @@ def run(context: WizardContext, provider: InputProvider) -> None:
     _configure_setup_preferences(context, provider)
     apply_hosting_preset(context)
 
-    env_default = {
-        "demo": "development",
-        "staging": "staging",
-        "production": "production",
-    }[context.profile]
+    env_default = context.policy_env_default("ENVIRONMENT", fallback=context.profile)
     environment = provider.prompt_string(
         key="ENVIRONMENT",
         prompt="Environment label (ENVIRONMENT)",
-        default=context.current("ENVIRONMENT") or env_default,
+        default=env_default or context.profile,
         required=True,
     )
     context.set_backend("ENVIRONMENT", environment)
 
-    debug_default = context.current_bool("DEBUG", default=context.profile == "demo")
+    debug_default = context.policy_env_default_bool("DEBUG", fallback=False)
     debug = provider.prompt_bool(
         key="DEBUG",
         prompt="Enable FastAPI debug mode?",
@@ -55,7 +51,7 @@ def run(context: WizardContext, provider: InputProvider) -> None:
     port = provider.prompt_string(
         key="PORT",
         prompt="FastAPI port (PORT)",
-        default=context.current("PORT") or "8000",
+        default=context.policy_env_default("PORT", fallback="8000"),
         required=True,
     )
     context.set_backend("PORT", port)
@@ -63,7 +59,9 @@ def run(context: WizardContext, provider: InputProvider) -> None:
     app_public_url = provider.prompt_string(
         key="APP_PUBLIC_URL",
         prompt="Public site base URL (APP_PUBLIC_URL)",
-        default=context.current("APP_PUBLIC_URL") or "http://localhost:3000",
+        default=context.policy_env_default(
+            "APP_PUBLIC_URL", fallback="http://localhost:3000"
+        ),
         required=True,
     )
     context.set_backend("APP_PUBLIC_URL", app_public_url)
@@ -71,8 +69,10 @@ def run(context: WizardContext, provider: InputProvider) -> None:
     allowed_hosts = provider.prompt_string(
         key="ALLOWED_HOSTS",
         prompt="Allowed hosts (comma-separated)",
-        default=context.current("ALLOWED_HOSTS")
-        or "localhost,localhost:8000,127.0.0.1,testserver,testclient",
+        default=context.policy_env_default(
+            "ALLOWED_HOSTS",
+            fallback="localhost,localhost:8000,127.0.0.1,testserver,testclient",
+        ),
         required=True,
     )
     context.set_backend("ALLOWED_HOSTS", allowed_hosts)
@@ -80,8 +80,10 @@ def run(context: WizardContext, provider: InputProvider) -> None:
     allowed_origins = provider.prompt_string(
         key="ALLOWED_ORIGINS",
         prompt="Allowed origins (comma-separated)",
-        default=context.current("ALLOWED_ORIGINS")
-        or "http://localhost:3000,http://localhost:8000",
+        default=context.policy_env_default(
+            "ALLOWED_ORIGINS",
+            fallback="http://localhost:3000,http://localhost:8000",
+        ),
         required=True,
     )
     context.set_backend("ALLOWED_ORIGINS", allowed_origins)
@@ -91,7 +93,10 @@ def run(context: WizardContext, provider: InputProvider) -> None:
         provider,
         key="ALLOWED_METHODS",
         prompt="Allowed HTTP methods (comma-separated)",
-        default=context.current("ALLOWED_METHODS") or "GET,POST,PUT,DELETE,OPTIONS",
+        default=context.policy_env_default(
+            "ALLOWED_METHODS", fallback="GET,POST,PUT,DELETE,OPTIONS"
+        )
+        or "GET,POST,PUT,DELETE,OPTIONS",
     )
     context.set_backend("ALLOWED_METHODS", allowed_methods)
 
@@ -100,14 +105,14 @@ def run(context: WizardContext, provider: InputProvider) -> None:
         provider,
         key="ALLOWED_HEADERS",
         prompt="Allowed headers (comma-separated)",
-        default=context.current("ALLOWED_HEADERS") or "*",
+        default=context.policy_env_default("ALLOWED_HEADERS", fallback="*") or "*",
     )
     context.set_backend("ALLOWED_HEADERS", allowed_headers)
 
     auto_run = provider.prompt_bool(
         key="AUTO_RUN_MIGRATIONS",
         prompt="Automatically run migrations on startup?",
-        default=context.current_bool("AUTO_RUN_MIGRATIONS", default=context.profile == "demo"),
+        default=context.policy_env_default_bool("AUTO_RUN_MIGRATIONS", fallback=False),
     )
     context.set_backend_bool("AUTO_RUN_MIGRATIONS", auto_run)
 
@@ -115,7 +120,9 @@ def run(context: WizardContext, provider: InputProvider) -> None:
     api_base_url = provider.prompt_string(
         key="API_BASE_URL",
         prompt="API base URL for frontend + tooling",
-        default=context.current("API_BASE_URL") or f"http://127.0.0.1:{port_int}",
+        default=context.policy_env_default(
+            "API_BASE_URL", fallback=f"http://127.0.0.1:{port_int}"
+        ),
         required=True,
     )
     context.api_base_url = api_base_url
@@ -128,8 +135,10 @@ def run(context: WizardContext, provider: InputProvider) -> None:
 
 
 def _configure_setup_preferences(context: WizardContext, provider: InputProvider) -> None:
-    preset_default = _state_default(context, "SETUP_HOSTING_PRESET") or (
-        "local_docker" if context.profile == "demo" else "cloud_managed"
+    preset_default = (
+        _state_default(context, "SETUP_HOSTING_PRESET")
+        or context.profile_policy.wizard.hosting_preset_default
+        or "local_docker"
     )
     hosting_preset = provider.prompt_choice(
         key="SETUP_HOSTING_PRESET",
@@ -141,7 +150,11 @@ def _configure_setup_preferences(context: WizardContext, provider: InputProvider
 
     cloud_provider = None
     if hosting_preset == "cloud_managed":
-        cloud_default = _state_default(context, "SETUP_CLOUD_PROVIDER") or "aws"
+        cloud_default = (
+            _state_default(context, "SETUP_CLOUD_PROVIDER")
+            or context.profile_policy.wizard.cloud_provider_default
+            or "aws"
+        )
         cloud_provider = provider.prompt_choice(
             key="SETUP_CLOUD_PROVIDER",
             prompt="Cloud provider (if using cloud managed hosting)",
@@ -153,7 +166,7 @@ def _configure_setup_preferences(context: WizardContext, provider: InputProvider
     advanced_default = _state_bool_default(
         context,
         "SETUP_SHOW_ADVANCED",
-        default=context.profile in {"staging", "production"},
+        default=context.profile_policy.wizard.show_advanced_default or False,
     )
     show_advanced = provider.prompt_bool(
         key="SETUP_SHOW_ADVANCED",
@@ -173,7 +186,7 @@ def _configure_branding(context: WizardContext, provider: InputProvider) -> None
         provider,
         key="APP_NAME",
         prompt="Application name",
-        default=context.current("APP_NAME") or "api-service",
+        default=context.policy_env_default("APP_NAME", fallback="api-service") or "api-service",
     )
     context.set_backend("APP_NAME", app_name)
 
@@ -182,7 +195,10 @@ def _configure_branding(context: WizardContext, provider: InputProvider) -> None
         provider,
         key="APP_DESCRIPTION",
         prompt="Application description",
-        default=context.current("APP_DESCRIPTION") or "api-service FastAPI microservice",
+        default=context.policy_env_default(
+            "APP_DESCRIPTION", fallback="api-service FastAPI microservice"
+        )
+        or "api-service FastAPI microservice",
     )
     context.set_backend("APP_DESCRIPTION", app_description)
 
@@ -191,7 +207,7 @@ def _configure_branding(context: WizardContext, provider: InputProvider) -> None
         provider,
         key="APP_VERSION",
         prompt="Application version",
-        default=context.current("APP_VERSION") or "1.0.0",
+        default=context.policy_env_default("APP_VERSION", fallback="1.0.0") or "1.0.0",
     )
     context.set_backend("APP_VERSION", app_version)
 
@@ -200,11 +216,14 @@ def _configure_authentication(context: WizardContext, provider: InputProvider) -
     require_email = provider.prompt_bool(
         key="REQUIRE_EMAIL_VERIFICATION",
         prompt="Require verified email before accessing protected APIs?",
-        default=context.current_bool("REQUIRE_EMAIL_VERIFICATION", True),
+        default=context.policy_env_default_bool("REQUIRE_EMAIL_VERIFICATION", fallback=True),
     )
     context.set_backend_bool("REQUIRE_EMAIL_VERIFICATION", require_email)
 
-    audience_default = context.current("AUTH_AUDIENCE") or _DEFAULT_AUTH_AUDIENCE
+    audience_default = (
+        context.policy_env_default("AUTH_AUDIENCE", fallback=_DEFAULT_AUTH_AUDIENCE)
+        or _DEFAULT_AUTH_AUDIENCE
+    )
     raw_audience = prompt_nonempty_string(
         context,
         provider,
@@ -219,25 +238,32 @@ def _configure_authentication(context: WizardContext, provider: InputProvider) -
         provider,
         key="JWT_ALGORITHM",
         prompt="JWT algorithm",
-        default=context.current("JWT_ALGORITHM") or "HS256",
+        default=context.policy_env_default("JWT_ALGORITHM", fallback="HS256") or "HS256",
     )
     context.set_backend("JWT_ALGORITHM", jwt_algorithm)
 
-    if context.profile in {"staging", "production"}:
-        backend_choice = "secret-manager"
+    locked_backend = context.policy_locked_value("AUTH_KEY_STORAGE_BACKEND")
+    if locked_backend:
+        backend_choice = locked_backend
         context.console.info(
-            "Key storage backend is forced to secret-manager for staging/production.",
+            f"Key storage backend locked to {locked_backend} by profile policy.",
             topic="wizard",
         )
+        context.set_backend("AUTH_KEY_STORAGE_BACKEND", backend_choice)
     else:
+        backend_choices = set(
+            context.policy_choice("key_storage_backend", fallback=_KEY_STORAGE_CHOICES)
+        )
         backend_choice = _prompt_choice(
             context,
             provider,
             key="AUTH_KEY_STORAGE_BACKEND",
             prompt="Key storage backend (file or secret-manager)",
-            default=context.current("AUTH_KEY_STORAGE_BACKEND") or "file",
-            choices=_KEY_STORAGE_CHOICES,
+            default=context.policy_env_default("AUTH_KEY_STORAGE_BACKEND", fallback="file")
+            or "file",
+            choices=backend_choices,
         )
+        context.set_backend("AUTH_KEY_STORAGE_BACKEND", backend_choice)
     context.set_backend("AUTH_KEY_STORAGE_BACKEND", backend_choice)
 
     if backend_choice == "file":
@@ -246,7 +272,10 @@ def _configure_authentication(context: WizardContext, provider: InputProvider) -
             provider,
             key="AUTH_KEY_STORAGE_PATH",
             prompt="Key storage path",
-            default=context.current("AUTH_KEY_STORAGE_PATH") or "var/keys/keyset.json",
+            default=context.policy_env_default(
+                "AUTH_KEY_STORAGE_PATH", fallback="var/keys/keyset.json"
+            )
+            or "var/keys/keyset.json",
         )
         context.set_backend("AUTH_KEY_STORAGE_PATH", storage_path)
         context.unset_backend("AUTH_KEY_STORAGE_PROVIDER")
@@ -254,12 +283,13 @@ def _configure_authentication(context: WizardContext, provider: InputProvider) -
         context.unset_backend("AUTH_KEY_STORAGE_PATH")
         provider_default = (
             context.current("AUTH_KEY_STORAGE_PROVIDER")
+            or context.policy_env_default("AUTH_KEY_STORAGE_PROVIDER")
             or context.current("SECRETS_PROVIDER")
-            or (
-                SecretsProviderLiteral.VAULT_DEV.value
-                if context.profile == "demo"
-                else SecretsProviderLiteral.AWS_SM.value
-            )
+            or context.policy_env_default("SECRETS_PROVIDER")
+            or SecretsProviderLiteral.AWS_SM.value
+        )
+        provider_choices = set(
+            context.policy_choice("secrets_provider", fallback=_KEY_STORAGE_PROVIDER_CHOICES)
         )
         provider_choice = _prompt_choice(
             context,
@@ -267,7 +297,7 @@ def _configure_authentication(context: WizardContext, provider: InputProvider) -
             key="AUTH_KEY_STORAGE_PROVIDER",
             prompt="Key storage provider (vault/infisical/aws/azure/gcp)",
             default=provider_default,
-            choices=_KEY_STORAGE_PROVIDER_CHOICES,
+            choices=provider_choices,
         )
         context.set_backend("AUTH_KEY_STORAGE_PROVIDER", provider_choice)
 
@@ -299,7 +329,7 @@ def _configure_database(context: WizardContext, provider: InputProvider) -> None
     database_echo = provider.prompt_bool(
         key="DATABASE_ECHO",
         prompt="Enable SQLAlchemy echo logging?",
-        default=context.current_bool("DATABASE_ECHO", False),
+        default=context.policy_env_default_bool("DATABASE_ECHO", fallback=False),
     )
     context.set_backend_bool("DATABASE_ECHO", database_echo)
 
@@ -308,35 +338,35 @@ def _configure_database(context: WizardContext, provider: InputProvider) -> None
         provider,
         key="DATABASE_POOL_SIZE",
         prompt="Database pool size",
-        default=context.current("DATABASE_POOL_SIZE") or "5",
+        default=context.policy_env_default("DATABASE_POOL_SIZE", fallback="5") or "5",
     )
     _prompt_positive_int(
         context,
         provider,
         key="DATABASE_MAX_OVERFLOW",
         prompt="Database pool max overflow",
-        default=context.current("DATABASE_MAX_OVERFLOW") or "10",
+        default=context.policy_env_default("DATABASE_MAX_OVERFLOW", fallback="10") or "10",
     )
     _prompt_positive_int(
         context,
         provider,
         key="DATABASE_POOL_RECYCLE",
         prompt="Database pool recycle seconds",
-        default=context.current("DATABASE_POOL_RECYCLE") or "1800",
+        default=context.policy_env_default("DATABASE_POOL_RECYCLE", fallback="1800") or "1800",
     )
     _prompt_positive_float(
         context,
         provider,
         key="DATABASE_POOL_TIMEOUT",
         prompt="Database pool timeout (seconds)",
-        default=context.current("DATABASE_POOL_TIMEOUT") or "30.0",
+        default=context.policy_env_default("DATABASE_POOL_TIMEOUT", fallback="30.0") or "30.0",
     )
     _prompt_positive_float(
         context,
         provider,
         key="DATABASE_HEALTH_TIMEOUT",
         prompt="Database health check timeout (seconds)",
-        default=context.current("DATABASE_HEALTH_TIMEOUT") or "5.0",
+        default=context.policy_env_default("DATABASE_HEALTH_TIMEOUT", fallback="5.0") or "5.0",
     )
 
 
@@ -346,7 +376,7 @@ def _configure_logging(context: WizardContext, provider: InputProvider) -> None:
         provider,
         key="LOG_LEVEL",
         prompt="Logging level",
-        default=context.current("LOG_LEVEL") or "INFO",
+        default=context.policy_env_default("LOG_LEVEL", fallback="INFO") or "INFO",
     )
     context.set_backend("LOG_LEVEL", log_level)
 

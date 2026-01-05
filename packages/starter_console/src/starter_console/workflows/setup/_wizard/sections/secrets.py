@@ -33,7 +33,9 @@ def run(context: WizardContext, provider: InputProvider) -> None:
     telemetry = provider.prompt_bool(
         key="ENABLE_SECRETS_PROVIDER_TELEMETRY",
         prompt="Opt into secrets-provider telemetry?",
-        default=context.current_bool("ENABLE_SECRETS_PROVIDER_TELEMETRY", False),
+        default=context.policy_env_default_bool(
+            "ENABLE_SECRETS_PROVIDER_TELEMETRY", fallback=False
+        ),
     )
     context.set_backend_bool("ENABLE_SECRETS_PROVIDER_TELEMETRY", telemetry)
 
@@ -69,7 +71,7 @@ def _collect_secrets(context: WizardContext, provider: InputProvider) -> None:
         label="Session encryption key",
         length=64,
     )
-    salt_default = context.current("AUTH_SESSION_IP_HASH_SALT") or ""
+    salt_default = context.policy_env_default("AUTH_SESSION_IP_HASH_SALT", fallback="")
     salt_value = provider.prompt_string(
         key="AUTH_SESSION_IP_HASH_SALT",
         prompt="Session IP hash salt (optional)",
@@ -84,7 +86,9 @@ def _collect_provider_choice(
     context: WizardContext,
     provider: InputProvider,
 ) -> SecretsProviderLiteral:
-    default_provider = context.current("SECRETS_PROVIDER") or SecretsProviderLiteral.VAULT_DEV.value
+    default_provider = context.policy_env_default(
+        "SECRETS_PROVIDER", fallback=SecretsProviderLiteral.VAULT_DEV.value
+    )
     while True:
         choice = (
             provider.prompt_string(
@@ -121,7 +125,7 @@ def _run_provider_workflow(
             namespace = provider.prompt_string(
                 key="VAULT_NAMESPACE",
                 prompt="Vault namespace (optional)",
-                default=context.current("VAULT_NAMESPACE") or "",
+                default=context.policy_env_default("VAULT_NAMESPACE", fallback=""),
                 required=False,
             )
             if namespace:
@@ -205,7 +209,7 @@ def _collect_vault_kv(context: WizardContext, provider: InputProvider) -> None:
     namespace = provider.prompt_string(
         key="VAULT_NAMESPACE",
         prompt="Vault namespace (optional)",
-        default=context.current("VAULT_NAMESPACE") or "",
+        default=context.policy_env_default("VAULT_NAMESPACE", fallback=""),
         required=False,
     )
     context.set_backend("VAULT_ADDR", addr)
@@ -218,13 +222,13 @@ def _collect_aws_key_storage(context: WizardContext, provider: InputProvider) ->
     region = provider.prompt_string(
         key="AWS_REGION",
         prompt="AWS region",
-        default=context.current("AWS_REGION") or "us-east-1",
+        default=context.policy_env_default("AWS_REGION", fallback="us-east-1"),
         required=True,
     )
     use_profile = provider.prompt_bool(
         key="AWS_USE_PROFILE",
         prompt="Use a named AWS profile?",
-        default=bool(context.current("AWS_PROFILE")),
+        default=bool(context.policy_env_default("AWS_PROFILE", fallback="")),
     )
     profile = ""
     access_key = ""
@@ -234,14 +238,14 @@ def _collect_aws_key_storage(context: WizardContext, provider: InputProvider) ->
         profile = provider.prompt_string(
             key="AWS_PROFILE",
             prompt="Profile name",
-            default=context.current("AWS_PROFILE") or "",
+            default=context.policy_env_default("AWS_PROFILE", fallback=""),
             required=True,
         )
     else:
         access_key = provider.prompt_string(
             key="AWS_ACCESS_KEY_ID",
             prompt="AWS access key ID (optional if using instance profile)",
-            default=context.current("AWS_ACCESS_KEY_ID") or "",
+            default=context.policy_env_default("AWS_ACCESS_KEY_ID", fallback=""),
             required=False,
         )
         if access_key:
@@ -254,7 +258,7 @@ def _collect_aws_key_storage(context: WizardContext, provider: InputProvider) ->
             session_token = provider.prompt_string(
                 key="AWS_SESSION_TOKEN",
                 prompt="AWS session token (optional)",
-                default=context.current("AWS_SESSION_TOKEN") or "",
+                default=context.policy_env_default("AWS_SESSION_TOKEN", fallback=""),
                 required=False,
             )
         elif not is_headless_provider(provider):
@@ -282,19 +286,19 @@ def _collect_azure_key_storage(context: WizardContext, provider: InputProvider) 
     vault_url = provider.prompt_string(
         key="AZURE_KEY_VAULT_URL",
         prompt="Key Vault URL (https://<name>.vault.azure.net/)",
-        default=context.current("AZURE_KEY_VAULT_URL") or "",
+        default=context.policy_env_default("AZURE_KEY_VAULT_URL", fallback=""),
         required=True,
     )
     tenant_id = provider.prompt_string(
         key="AZURE_TENANT_ID",
         prompt="Tenant ID (optional)",
-        default=context.current("AZURE_TENANT_ID") or "",
+        default=context.policy_env_default("AZURE_TENANT_ID", fallback=""),
         required=False,
     )
     client_id = provider.prompt_string(
         key="AZURE_CLIENT_ID",
         prompt="Client ID (optional)",
-        default=context.current("AZURE_CLIENT_ID") or "",
+        default=context.policy_env_default("AZURE_CLIENT_ID", fallback=""),
         required=False,
     )
     client_secret = provider.prompt_secret(
@@ -306,7 +310,7 @@ def _collect_azure_key_storage(context: WizardContext, provider: InputProvider) 
     managed_identity_client_id = provider.prompt_string(
         key="AZURE_MANAGED_IDENTITY_CLIENT_ID",
         prompt="Managed identity client ID (optional)",
-        default=context.current("AZURE_MANAGED_IDENTITY_CLIENT_ID") or "",
+        default=context.policy_env_default("AZURE_MANAGED_IDENTITY_CLIENT_ID", fallback=""),
         required=False,
     )
 
@@ -325,10 +329,10 @@ def _collect_gcp_key_storage(context: WizardContext, provider: InputProvider) ->
     project_id = provider.prompt_string(
         key="GCP_SM_PROJECT_ID",
         prompt="GCP project ID (optional if AUTH_KEY_SECRET_NAME is fully qualified)",
-        default=context.current("GCP_SM_PROJECT_ID") or "",
+        default=context.policy_env_default("GCP_SM_PROJECT_ID", fallback=""),
         required=False,
     )
-    secret_name = context.current("AUTH_KEY_SECRET_NAME") or ""
+    secret_name = context.policy_env_default("AUTH_KEY_SECRET_NAME", fallback="") or ""
     if not project_id and secret_name and not secret_name.startswith("projects/"):
         raise CLIError(
             "GCP_SM_PROJECT_ID is required when AUTH_KEY_SECRET_NAME is not fully qualified."
@@ -350,7 +354,7 @@ def _collect_infisical_key_storage(
     base_url = provider.prompt_string(
         key="INFISICAL_BASE_URL",
         prompt="Infisical base URL",
-        default=context.current("INFISICAL_BASE_URL") or default_base,
+        default=context.policy_env_default("INFISICAL_BASE_URL", fallback=default_base),
         required=True,
     )
     service_token = provider.prompt_secret(
@@ -362,25 +366,25 @@ def _collect_infisical_key_storage(
     project_id = provider.prompt_string(
         key="INFISICAL_PROJECT_ID",
         prompt="Infisical project/workspace ID",
-        default=context.current("INFISICAL_PROJECT_ID") or "",
+        default=context.policy_env_default("INFISICAL_PROJECT_ID", fallback=""),
         required=True,
     )
     environment = provider.prompt_string(
         key="INFISICAL_ENVIRONMENT",
         prompt="Infisical environment slug",
-        default=context.current("INFISICAL_ENVIRONMENT") or "dev",
+        default=context.policy_env_default("INFISICAL_ENVIRONMENT", fallback="dev"),
         required=True,
     )
     secret_path = provider.prompt_string(
         key="INFISICAL_SECRET_PATH",
         prompt="Secret path (e.g., /backend)",
-        default=context.current("INFISICAL_SECRET_PATH") or "/",
+        default=context.policy_env_default("INFISICAL_SECRET_PATH", fallback="/"),
         required=True,
     )
     ca_bundle = provider.prompt_string(
         key="INFISICAL_CA_BUNDLE_PATH",
         prompt="Custom CA bundle path (optional)",
-        default=context.current("INFISICAL_CA_BUNDLE_PATH") or "",
+        default=context.policy_env_default("INFISICAL_CA_BUNDLE_PATH", fallback=""),
         required=False,
     )
 
@@ -434,7 +438,7 @@ def _verify_vault_transit(context: WizardContext) -> None:
 
 
 def _collect_vault(context: WizardContext, provider: InputProvider) -> bool:
-    require_vault = context.profile in {"staging", "production"}
+    require_vault = context.policy_rule_bool("require_vault", fallback=False)
     enable_vault = provider.prompt_bool(
         key="VAULT_VERIFY_ENABLED",
         prompt="Enforce Vault Transit verification?",
@@ -447,7 +451,9 @@ def _collect_vault(context: WizardContext, provider: InputProvider) -> bool:
         addr = provider.prompt_string(
             key="VAULT_ADDR",
             prompt="Vault address",
-            default=context.current("VAULT_ADDR") or "https://vault.example.com",
+            default=context.policy_env_default(
+                "VAULT_ADDR", fallback="https://vault.example.com"
+            ),
             required=True,
         )
         token = provider.prompt_secret(
@@ -459,7 +465,7 @@ def _collect_vault(context: WizardContext, provider: InputProvider) -> bool:
         transit = provider.prompt_string(
             key="VAULT_TRANSIT_KEY",
             prompt="Vault Transit key name",
-            default=context.current("VAULT_TRANSIT_KEY") or "auth-service",
+            default=context.policy_env_default("VAULT_TRANSIT_KEY", fallback="auth-service"),
             required=True,
         )
         context.set_backend("VAULT_ADDR", addr)
@@ -469,7 +475,7 @@ def _collect_vault(context: WizardContext, provider: InputProvider) -> bool:
 
 
 def _force_verification_flag(context: WizardContext) -> None:
-    require_vault = context.profile in {"staging", "production"}
+    require_vault = context.policy_rule_bool("require_vault", fallback=False)
     if require_vault:
         context.set_backend_bool("VAULT_VERIFY_ENABLED", True)
     elif context.current("VAULT_VERIFY_ENABLED") is None:

@@ -136,6 +136,11 @@ class StarterTUI(App[None]):
         color: $text-muted;
     }
 
+    .form-grid .wizard-control-hint {
+        color: $text-muted;
+        height: auto;
+    }
+
     .form-grid Input,
     .form-grid RadioSet {
         width: 1fr;

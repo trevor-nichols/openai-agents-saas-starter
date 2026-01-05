@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from starter_contracts.profiles import load_profiles, resolve_profile
 from starter_console.adapters.env import EnvFile
 from starter_console.core import CLIContext
 from starter_console.workflows.setup._wizard.context import WizardContext
@@ -16,9 +17,11 @@ def _build_context(tmp_path: Path) -> WizardContext:
     frontend_env_path.parent.mkdir(parents=True, exist_ok=True)
     frontend_env_path.write_text("", encoding="utf-8")
     ctx = CLIContext(project_root=tmp_path, env_files=(backend_env_path,))
+    policy = resolve_profile(load_profiles(), "demo")
     return WizardContext(
         cli_ctx=ctx,
         profile="demo",
+        profile_policy=policy,
         backend_env=EnvFile(backend_env_path),
         frontend_env=EnvFile(frontend_env_path),
         frontend_path=frontend_env_path,

@@ -6,13 +6,15 @@ from ...context import WizardContext
 
 
 def collect_redis(context: WizardContext, provider: InputProvider) -> None:
+    require_tls = context.policy_rule_bool("redis_tls_required", fallback=True)
+    warn_on_shared = require_tls
     primary = provider.prompt_string(
         key="REDIS_URL",
         prompt="Primary Redis URL",
-        default=context.current("REDIS_URL") or "redis://localhost:6379/0",
+        default=context.policy_env_default("REDIS_URL", fallback="redis://localhost:6379/0"),
         required=True,
     )
-    validate_redis_url(primary, require_tls=context.profile != "demo", role="Primary")
+    validate_redis_url(primary, require_tls=require_tls, role="Primary")
     context.set_backend("REDIS_URL", primary)
     redis_targets: dict[str, str] = {"Primary": primary}
 
@@ -24,12 +26,12 @@ def collect_redis(context: WizardContext, provider: InputProvider) -> None:
             required=False,
         )
         if value:
-            validate_redis_url(value, require_tls=context.profile != "demo", role=label)
+            validate_redis_url(value, require_tls=require_tls, role=label)
             context.set_backend(key, value)
             redis_targets[label] = value
         else:
             context.set_backend(key, "")
-            if context.profile != "demo":
+            if warn_on_shared:
                 context.console.warn(
                     f"{label} Redis workloads will reuse the primary Redis instance. "
                     "Provision a dedicated pool in production.",
@@ -47,12 +49,12 @@ def collect_redis(context: WizardContext, provider: InputProvider) -> None:
         required=False,
     )
     if billing:
-        validate_redis_url(billing, require_tls=context.profile != "demo", role="Billing events")
+        validate_redis_url(billing, require_tls=require_tls, role="Billing events")
         context.set_backend("BILLING_EVENTS_REDIS_URL", billing)
         redis_targets["Billing events"] = billing
     else:
         context.set_backend("BILLING_EVENTS_REDIS_URL", "")
-        if context.profile != "demo":
+        if warn_on_shared:
             context.console.warn(
                 "Using the primary Redis instance for billing streams. Provision a dedicated "
                 "instance for production.",

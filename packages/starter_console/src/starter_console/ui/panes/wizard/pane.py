@@ -7,10 +7,11 @@ from textual.containers import Vertical
 from textual.widgets import Button, Input, OptionList, ProgressBar, RadioSet, Static
 
 from starter_console.core import CLIContext, CLIError
+from starter_console.core.profiles import load_profile_registry, select_profile
 from starter_console.ui.action_runner import ActionResult, ActionRunner
 from starter_console.ui.prompt_controller import PromptController
 
-from .controls import WizardControls
+from .controls import WizardControls, build_profile_options
 from .layout import compose_wizard_layout
 from .models import WizardLaunchConfig
 from .renderer import (
@@ -30,7 +31,20 @@ class WizardPane(Vertical):
         super().__init__(id="wizard", classes="section-pane")
         self._ctx = ctx
         self._config = config or WizardLaunchConfig()
-        self._controls = WizardControls(self, self._config)
+        self._profile_registry = load_profile_registry(
+            project_root=ctx.project_root,
+            override_path=self._config.profiles_path,
+        )
+        self._auto_selection = select_profile(self._profile_registry, explicit=None)
+        self._profile_options = build_profile_options(self._profile_registry)
+        self._controls = WizardControls(
+            self,
+            self._config,
+            ctx=self._ctx,
+            profile_registry=self._profile_registry,
+            auto_selection=self._auto_selection,
+            profile_options=self._profile_options,
+        )
         self._session: WizardSession | None = None
         self._prompt_controller = PromptController(self, prefix="wizard")
         self._headless_runner = ActionRunner(
@@ -43,11 +57,12 @@ class WizardPane(Vertical):
         self._runner = WizardRunService()
 
     def compose(self) -> ComposeResult:
-        yield from compose_wizard_layout()
+        yield from compose_wizard_layout(self._profile_options)
 
     def on_mount(self) -> None:
         self._controls.configure_profile()
         self._controls.configure_presets()
+        self._controls.update_summary_preview()
         state = self._session.state.snapshot() if self._session else empty_state()
         configure_tables(self, state)
         self._controls.configure_options()
@@ -71,9 +86,11 @@ class WizardPane(Vertical):
             self._prompt_controller.submit_current()
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
-        if event.option_list.id != "wizard-options":
+        if event.option_list.id == "wizard-options":
+            self._prompt_controller.submit_choice(event.option_index)
             return
-        self._prompt_controller.submit_choice(event.option_index)
+        self._controls.update_profile_context()
+        self._controls.update_summary_preview()
 
     def on_radio_set_changed(self, event: RadioSet.Changed) -> None:
         if event.radio_set.id in {
@@ -84,6 +101,7 @@ class WizardPane(Vertical):
         }:
             self._controls.sync_preset_controls()
             if not self._session:
+                self._controls.update_profile_context()
                 self._controls.update_summary_preview()
 
     # ------------------------------------------------------------------
@@ -174,6 +192,7 @@ class WizardPane(Vertical):
 
         run = WizardHeadlessRun(
             profile=self._controls.selected_profile(),
+            profiles_path=self._config.profiles_path,
             output_format=self._controls.selected_output_format(),
             summary_path=self._controls.path_value("wizard-summary-path"),
             markdown_summary_path=self._controls.path_value("wizard-markdown-summary-path"),

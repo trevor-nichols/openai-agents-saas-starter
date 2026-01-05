@@ -6,6 +6,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+from starter_contracts.profiles import load_profiles, resolve_profile
 from starter_console.core import CLIContext, CLIError
 from starter_console.ports.console import StdConsole
 from starter_console.presenters import build_headless_presenter
@@ -20,6 +21,9 @@ from starter_console.workflows.setup._wizard.sections import providers as provid
 from starter_console.workflows.setup.automation import AutomationPhase, AutomationStatus
 from starter_console.workflows.setup.models import CheckResult, SectionResult
 from starter_console.workflows.setup.validators import set_vault_probe_request
+from starter_console.core.profiles import load_profile_registry, select_profile, write_profile_manifest
+
+_PROFILE_DOC = load_profiles()
 
 
 @pytest.fixture()
@@ -120,6 +124,8 @@ def _local_headless_answers() -> dict[str, str]:
 
 
 def _create_setup_wizard(**kwargs) -> SetupWizard:
+    profile_id = kwargs.get("profile", "demo")
+    kwargs.setdefault("profile_policy", resolve_profile(_PROFILE_DOC, profile_id))
     kwargs.setdefault("enable_tui", False)
     kwargs.setdefault(
         "automation_overrides", {phase: False for phase in AutomationPhase}
@@ -145,6 +151,61 @@ def test_wizard_headless_local_generates_env(temp_ctx: CLIContext) -> None:
     assert "LOGGING_SINKS=stdout" in env_body
     assert "SIGNUP_ACCESS_POLICY=public" in env_body
     assert "BILLING_RETRY_DEPLOYMENT_MODE=inline" in env_body
+    _cleanup_env(snapshot)
+
+
+def test_wizard_headless_manifest_records_locked_override(temp_ctx: CLIContext) -> None:
+    snapshot = dict(os.environ)
+    config_dir = temp_ctx.project_root / "config"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    (config_dir / "starter-console.profile.yaml").write_text(
+        """
+version: 1
+active_profile: custom
+profiles:
+  custom:
+    extends: demo
+    label: Custom Demo
+    description: Demo defaults with locked key backend
+    env:
+      defaults:
+        backend:
+          AUTH_KEY_STORAGE_BACKEND: secret-manager
+      locked:
+        backend: [AUTH_KEY_STORAGE_BACKEND]
+""".lstrip(),
+        encoding="utf-8",
+    )
+    backend_env = backend_env_path(temp_ctx)
+    backend_env.write_text("AUTH_KEY_STORAGE_BACKEND=file\n", encoding="utf-8")
+    temp_ctx.load_environment(verbose=False)
+
+    registry = load_profile_registry(project_root=temp_ctx.project_root)
+    selection = select_profile(registry, explicit="custom")
+    write_profile_manifest(selection, project_root=temp_ctx.project_root)
+
+    answers = _local_headless_answers() | {"AUTH_KEY_SECRET_NAME": "auth-key-prod"}
+    wizard = SetupWizard(
+        ctx=temp_ctx,
+        profile="custom",
+        profile_policy=selection.profile,
+        output_format="summary",
+        input_provider=HeadlessInputProvider(answers=answers),
+        enable_tui=False,
+        automation_overrides={phase: False for phase in AutomationPhase},
+    )
+    wizard.execute()
+
+    manifest_path = temp_ctx.project_root / "var/reports/profile-manifest.json"
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert payload["locked"]["overrides"] == [
+        {
+            "scope": "backend",
+            "key": "AUTH_KEY_STORAGE_BACKEND",
+            "expected": "secret-manager",
+            "actual": "file",
+        }
+    ]
     _cleanup_env(snapshot)
 
 
@@ -915,6 +976,7 @@ def test_interactive_wizard_runs_tui_alongside_shell(
     wizard = SetupWizard(
         ctx=temp_ctx,
         profile="demo",
+        profile_policy=resolve_profile(_PROFILE_DOC, "demo"),
         output_format="summary",
         input_provider=provider,
         enable_tui=True,

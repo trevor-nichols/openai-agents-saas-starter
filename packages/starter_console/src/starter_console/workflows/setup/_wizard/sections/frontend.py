@@ -13,7 +13,10 @@ def configure(context: WizardContext, provider: InputProvider) -> None:
         "Finalize Next.js environment variables and local testing hooks.",
     )
     context.set_frontend("API_BASE_URL", context.api_base_url)
-    public_url = context.current("APP_PUBLIC_URL") or "http://localhost:3000"
+    public_url = (
+        context.policy_env_default("APP_PUBLIC_URL", fallback="http://localhost:3000")
+        or "http://localhost:3000"
+    )
     context.set_frontend("APP_PUBLIC_URL", public_url)
     playwright_default = context.frontend_env.get("PLAYWRIGHT_BASE_URL") or "http://localhost:3000"
     playwright = provider.prompt_string(
@@ -34,9 +37,8 @@ def configure(context: WizardContext, provider: InputProvider) -> None:
     force_secure = provider.prompt_bool(
         key="AGENT_FORCE_SECURE_COOKIES",
         prompt="Force secure cookies on the frontend?",
-        default=context.current_frontend_bool(
-            "AGENT_FORCE_SECURE_COOKIES",
-            context.profile != "demo",
+        default=context.policy_env_default_bool(
+            "AGENT_FORCE_SECURE_COOKIES", scope="frontend", fallback=True
         ),
     )
     context.set_frontend_bool("AGENT_FORCE_SECURE_COOKIES", force_secure)
@@ -44,9 +46,8 @@ def configure(context: WizardContext, provider: InputProvider) -> None:
     allow_insecure = provider.prompt_bool(
         key="AGENT_ALLOW_INSECURE_COOKIES",
         prompt="Allow insecure cookies (helps demo/dev without HTTPS)?",
-        default=context.current_frontend_bool(
-            "AGENT_ALLOW_INSECURE_COOKIES",
-            context.profile == "demo",
+        default=context.policy_env_default_bool(
+            "AGENT_ALLOW_INSECURE_COOKIES", scope="frontend", fallback=False
         ),
     )
     context.set_frontend_bool("AGENT_ALLOW_INSECURE_COOKIES", allow_insecure)
@@ -59,9 +60,8 @@ def configure(context: WizardContext, provider: InputProvider) -> None:
     ).lower()
     context.set_frontend("NEXT_PUBLIC_LOG_LEVEL", log_level)
 
-    ingest_enabled = context.current_bool(
-        "ENABLE_FRONTEND_LOG_INGEST",
-        default=context.profile in {"demo", "staging"},
+    ingest_enabled = context.policy_env_default_bool(
+        "ENABLE_FRONTEND_LOG_INGEST", fallback=False
     )
     sink_default = context.frontend_env.get("NEXT_PUBLIC_LOG_SINK") or (
         "beacon" if ingest_enabled else "console"

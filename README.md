@@ -36,6 +36,12 @@ Headless/CI: `starter-console setup wizard --non-interactive --answers-file ./an
 Repo shortcuts: `just setup-staging` and `just setup-production`.
 Alternate startup: `starter-console start dev --detached` (or `just start-dev`) after env files exist.
 
+#### Setup profiles (advanced)
+- Default profiles: `demo`, `staging`, `production`.
+- Override/extend with `config/starter-console.profile.yaml` (portable, versioned).
+- Selection precedence: `--profile` → `active_profile` in config → `STARTER_PROFILE` → auto-detect → `demo`.
+- Audit trail: `var/reports/profile-manifest.json` records the selected profile and any locked overrides.
+
 ### 3) Just browse the repo
 If you only want to read the code/docs, clone and explore:
 `README.md`, `SNAPSHOT.md`, and `packages/starter_console/README.md`.

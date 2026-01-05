@@ -38,6 +38,13 @@ Operator console for the OpenAI Agents SaaS starter stack. It is the single entr
 - Start/stop stack: `starter-console start dev --detached` then `starter-console stop`.
 - Health report: `starter-console doctor --strict --json var/reports/operator-dashboard.json`.
 
+## Setup profiles
+- Default profiles: `demo`, `staging`, `production` (policy-driven defaults + requirements).
+- Override/extend via `config/starter-console.profile.yaml` (portable, versionable).
+- Selection precedence: `--profile` → `active_profile` in config → `STARTER_PROFILE` → auto-detect → `demo`.
+- Custom profile file path: `--profiles-path <path>`.
+- Audit trail: `var/reports/profile-manifest.json` records the selected profile and any locked overrides.
+
 ## Command catalog (high-level)
 - `setup menu|wizard`: setup hub + milestone wizard with hosting presets, automation toggles, and audit summaries.
 - `infra deps|compose|vault`: verify prerequisites and manage Docker Compose + Vault dev signer.
