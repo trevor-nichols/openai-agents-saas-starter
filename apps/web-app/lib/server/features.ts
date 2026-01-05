@@ -1,15 +1,36 @@
 'use server';
 
-import { featureFlagsHealthFeaturesGet } from '@/lib/api/client/sdk.gen';
+import { getFeatureSnapshotApiV1FeaturesGet } from '@/lib/api/client/sdk.gen';
 import { DEFAULT_FEATURE_FLAGS } from '@/lib/features/constants';
-import { createApiClient } from '@/lib/server/apiClient';
-import { getRequestOrigin } from '@/lib/server/requestOrigin';
+import { getServerApiClient, type ServerApiClientContext } from '@/lib/server/apiClient';
 import type { FeatureFlags } from '@/types/features';
 
 type BackendFeatureFlags = {
   billing_enabled?: boolean;
   billing_stream_enabled?: boolean;
 };
+
+type SdkFieldsResult<T> =
+  | {
+      data: T;
+      error: undefined;
+      response: Response;
+    }
+  | {
+      data: undefined;
+      error: unknown;
+      response: Response;
+    };
+
+export class FeatureFlagsApiError extends Error {
+  constructor(
+    public readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'FeatureFlagsApiError';
+  }
+}
 
 function toFeatureFlags(payload: BackendFeatureFlags | null): FeatureFlags {
   if (!payload) return DEFAULT_FEATURE_FLAGS;
@@ -19,38 +40,58 @@ function toFeatureFlags(payload: BackendFeatureFlags | null): FeatureFlags {
   };
 }
 
-async function fetchJson<T>(url: string): Promise<{ data: T | null; status: number }> {
-  const response = await fetch(url, { cache: 'no-store' });
-  if (!response.ok) return { data: null, status: response.status };
-  const data = (await response.json()) as T | null;
-  return { data, status: response.status };
+function mapErrorMessage(payload: unknown): string {
+  if (payload instanceof Error) {
+    return payload.message;
+  }
+  if (typeof payload === 'string') {
+    return payload;
+  }
+  if (!payload || typeof payload !== 'object') {
+    return 'Feature flags request failed.';
+  }
+  const record = payload as Record<string, unknown>;
+  if (typeof record.detail === 'string') return record.detail;
+  if (typeof record.message === 'string') return record.message;
+  if (typeof record.error === 'string') return record.error;
+  return 'Feature flags request failed.';
 }
 
 export async function getBackendFeatureFlags(): Promise<FeatureFlags> {
-  const client = createApiClient();
-  const response = await featureFlagsHealthFeaturesGet({
-    client,
-    responseStyle: 'fields',
-    throwOnError: true,
-  });
-  const payload = response.data;
-  if (!payload) {
-    throw new Error('Feature flags endpoint returned an empty payload.');
+  let clientContext: ServerApiClientContext;
+  try {
+    clientContext = await getServerApiClient();
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Missing access token';
+    const status = message.toLowerCase().includes('missing access token') ? 401 : 500;
+    throw new FeatureFlagsApiError(status, message);
   }
-  return toFeatureFlags(payload as BackendFeatureFlags);
+
+  const result = await getFeatureSnapshotApiV1FeaturesGet({
+    client: clientContext.client,
+    auth: clientContext.auth,
+    responseStyle: 'fields',
+    throwOnError: false,
+  });
+  const { data, error, response } = result as SdkFieldsResult<BackendFeatureFlags>;
+  if (error) {
+    throw new FeatureFlagsApiError(response.status || 502, mapErrorMessage(error));
+  }
+  if (!data) {
+    throw new FeatureFlagsApiError(
+      response.status || 502,
+      'Feature flags endpoint returned an empty payload.',
+    );
+  }
+  return toFeatureFlags(data);
 }
 
 export async function getFeatureFlags(): Promise<FeatureFlags> {
   try {
-    const origin = await getRequestOrigin();
-    const { data, status } = await fetchJson<FeatureFlags>(`${origin}/api/health/features`);
-    if (!data) {
-      console.warn(`[features] Feature flags BFF returned ${status}.`);
-      return DEFAULT_FEATURE_FLAGS;
-    }
-    return data;
+    return await getBackendFeatureFlags();
   } catch (error) {
-    console.warn('[features] Failed to load feature flags via BFF.', error);
+    console.warn('[features] Failed to load backend feature flags.', error);
     return DEFAULT_FEATURE_FLAGS;
   }
 }
@@ -58,4 +99,18 @@ export async function getFeatureFlags(): Promise<FeatureFlags> {
 export async function isBillingEnabled(): Promise<boolean> {
   const flags = await getFeatureFlags();
   return flags.billingEnabled;
+}
+
+export async function requireBillingFeature(): Promise<void> {
+  const flags = await getBackendFeatureFlags();
+  if (!flags.billingEnabled) {
+    throw new FeatureFlagsApiError(403, 'Billing is disabled.');
+  }
+}
+
+export async function requireBillingStreamFeature(): Promise<void> {
+  const flags = await getBackendFeatureFlags();
+  if (!flags.billingStreamEnabled) {
+    throw new FeatureFlagsApiError(403, 'Billing stream is disabled.');
+  }
 }

@@ -2258,6 +2258,24 @@ export type ErrorPayload = {
 };
 
 /**
+ * FeatureSnapshotResponse
+ */
+export type FeatureSnapshotResponse = {
+  /**
+   * Billing Enabled
+   *
+   * Whether billing APIs and UI flows are enabled for this tenant.
+   */
+  billing_enabled: boolean;
+  /**
+   * Billing Stream Enabled
+   *
+   * Whether billing event streaming is enabled for this tenant.
+   */
+  billing_stream_enabled: boolean;
+};
+
+/**
  * FileCitation
  */
 export type FileCitation = {
@@ -2977,26 +2995,6 @@ export type GuardrailSummary = {
    * Whether the guardrail can mask/redact content instead of blocking.
    */
   supports_masking?: boolean;
-};
-
-/**
- * HealthFeaturesResponse
- *
- * Feature flag snapshot returned by health endpoints.
- */
-export type HealthFeaturesResponse = {
-  /**
-   * Billing Enabled
-   *
-   * Whether billing-related APIs and UI flows should be enabled.
-   */
-  billing_enabled: boolean;
-  /**
-   * Billing Stream Enabled
-   *
-   * Whether billing event streaming endpoints are enabled.
-   */
-  billing_stream_enabled: boolean;
 };
 
 /**
@@ -6504,6 +6502,36 @@ export type TenantAccountUpdateRequest = {
 };
 
 /**
+ * TenantFeatureEntitlementsResponse
+ */
+export type TenantFeatureEntitlementsResponse = {
+  /**
+   * Tenant Id
+   */
+  tenant_id: string;
+  /**
+   * Flags
+   */
+  flags: {
+    [key: string]: boolean;
+  };
+};
+
+/**
+ * TenantFeatureEntitlementsUpdateRequest
+ */
+export type TenantFeatureEntitlementsUpdateRequest = {
+  /**
+   * Flags
+   *
+   * Map of feature keys to enable/disable. Use null to clear override.
+   */
+  flags: {
+    [key: string]: boolean | null;
+  };
+};
+
+/**
  * TenantRole
  */
 export type TenantRole = "owner" | "admin" | "member" | "viewer";
@@ -6536,6 +6564,12 @@ export type TenantSettingsResponse = {
   flags: {
     [key: string]: boolean;
   };
+  /**
+   * Version
+   *
+   * Monotonic version for optimistic concurrency.
+   */
+  version: number;
   /**
    * Updated At
    */
@@ -9006,73 +9040,6 @@ export type HealthCheckHealthGetResponses = {
 
 export type HealthCheckHealthGetResponse =
   HealthCheckHealthGetResponses[keyof HealthCheckHealthGetResponses];
-
-export type FeatureFlagsHealthFeaturesGetData = {
-  body?: never;
-  path?: never;
-  query?: never;
-  url: "/health/features";
-};
-
-export type FeatureFlagsHealthFeaturesGetErrors = {
-  /**
-   * Bad Request
-   */
-  400: ErrorResponse;
-  /**
-   * Unauthorized
-   */
-  401: ErrorResponse;
-  /**
-   * Forbidden
-   */
-  403: ErrorResponse;
-  /**
-   * Not Found
-   */
-  404: ErrorResponse;
-  /**
-   * Conflict
-   */
-  409: ErrorResponse;
-  /**
-   * Request Entity Too Large
-   */
-  413: ErrorResponse;
-  /**
-   * Too Many Requests
-   */
-  429: ErrorResponse;
-  /**
-   * Internal Server Error
-   */
-  500: ErrorResponse;
-  /**
-   * Bad Gateway
-   */
-  502: ErrorResponse;
-  /**
-   * Service Unavailable
-   */
-  503: ErrorResponse;
-  /**
-   * Error Response
-   */
-  default: ErrorResponse;
-};
-
-export type FeatureFlagsHealthFeaturesGetError =
-  FeatureFlagsHealthFeaturesGetErrors[keyof FeatureFlagsHealthFeaturesGetErrors];
-
-export type FeatureFlagsHealthFeaturesGetResponses = {
-  /**
-   * Successful Response
-   */
-  200: HealthFeaturesResponse;
-};
-
-export type FeatureFlagsHealthFeaturesGetResponse =
-  FeatureFlagsHealthFeaturesGetResponses[keyof FeatureFlagsHealthFeaturesGetResponses];
 
 export type ReadinessCheckHealthReadyGetData = {
   body?: never;
@@ -15272,6 +15239,95 @@ export type StreamConversationLedgerEventsApiV1ConversationsConversationIdLedger
     200: unknown;
   };
 
+export type GetFeatureSnapshotApiV1FeaturesGetData = {
+  body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
+  };
+  path?: never;
+  query?: never;
+  url: "/api/v1/features";
+};
+
+export type GetFeatureSnapshotApiV1FeaturesGetErrors = {
+  /**
+   * Bad Request
+   */
+  400: ErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ErrorResponse;
+  /**
+   * Request Entity Too Large
+   */
+  413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
+  /**
+   * Too Many Requests
+   */
+  429: ErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse;
+  /**
+   * Bad Gateway
+   */
+  502: ErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ErrorResponse;
+  /**
+   * Error Response
+   */
+  default: ErrorResponse;
+};
+
+export type GetFeatureSnapshotApiV1FeaturesGetError =
+  GetFeatureSnapshotApiV1FeaturesGetErrors[keyof GetFeatureSnapshotApiV1FeaturesGetErrors];
+
+export type GetFeatureSnapshotApiV1FeaturesGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: FeatureSnapshotResponse;
+};
+
+export type GetFeatureSnapshotApiV1FeaturesGetResponse =
+  GetFeatureSnapshotApiV1FeaturesGetResponses[keyof GetFeatureSnapshotApiV1FeaturesGetResponses];
+
 export type ListAvailableToolsApiV1ToolsGetData = {
   body?: never;
   path?: never;
@@ -18764,6 +18820,164 @@ export type DeprovisionTenantApiV1PlatformTenantsTenantIdDeprovisionPostResponse
 export type DeprovisionTenantApiV1PlatformTenantsTenantIdDeprovisionPostResponse =
   DeprovisionTenantApiV1PlatformTenantsTenantIdDeprovisionPostResponses[keyof DeprovisionTenantApiV1PlatformTenantsTenantIdDeprovisionPostResponses];
 
+export type GetTenantFeatureEntitlementsApiV1PlatformTenantsTenantIdFeaturesGetData =
+  {
+    body?: never;
+    path: {
+      /**
+       * Tenant Id
+       */
+      tenant_id: string;
+    };
+    query?: never;
+    url: "/api/v1/platform/tenants/{tenant_id}/features";
+  };
+
+export type GetTenantFeatureEntitlementsApiV1PlatformTenantsTenantIdFeaturesGetErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type GetTenantFeatureEntitlementsApiV1PlatformTenantsTenantIdFeaturesGetError =
+  GetTenantFeatureEntitlementsApiV1PlatformTenantsTenantIdFeaturesGetErrors[keyof GetTenantFeatureEntitlementsApiV1PlatformTenantsTenantIdFeaturesGetErrors];
+
+export type GetTenantFeatureEntitlementsApiV1PlatformTenantsTenantIdFeaturesGetResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: TenantFeatureEntitlementsResponse;
+  };
+
+export type GetTenantFeatureEntitlementsApiV1PlatformTenantsTenantIdFeaturesGetResponse =
+  GetTenantFeatureEntitlementsApiV1PlatformTenantsTenantIdFeaturesGetResponses[keyof GetTenantFeatureEntitlementsApiV1PlatformTenantsTenantIdFeaturesGetResponses];
+
+export type UpdateTenantFeatureEntitlementsApiV1PlatformTenantsTenantIdFeaturesPutData =
+  {
+    body: TenantFeatureEntitlementsUpdateRequest;
+    path: {
+      /**
+       * Tenant Id
+       */
+      tenant_id: string;
+    };
+    query?: never;
+    url: "/api/v1/platform/tenants/{tenant_id}/features";
+  };
+
+export type UpdateTenantFeatureEntitlementsApiV1PlatformTenantsTenantIdFeaturesPutErrors =
+  {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: ErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Request Entity Too Large
+     */
+    413: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: ValidationErrorResponse;
+    /**
+     * Too Many Requests
+     */
+    429: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Error Response
+     */
+    default: ErrorResponse;
+  };
+
+export type UpdateTenantFeatureEntitlementsApiV1PlatformTenantsTenantIdFeaturesPutError =
+  UpdateTenantFeatureEntitlementsApiV1PlatformTenantsTenantIdFeaturesPutErrors[keyof UpdateTenantFeatureEntitlementsApiV1PlatformTenantsTenantIdFeaturesPutErrors];
+
+export type UpdateTenantFeatureEntitlementsApiV1PlatformTenantsTenantIdFeaturesPutResponses =
+  {
+    /**
+     * Successful Response
+     */
+    200: TenantFeatureEntitlementsResponse;
+  };
+
+export type UpdateTenantFeatureEntitlementsApiV1PlatformTenantsTenantIdFeaturesPutResponse =
+  UpdateTenantFeatureEntitlementsApiV1PlatformTenantsTenantIdFeaturesPutResponses[keyof UpdateTenantFeatureEntitlementsApiV1PlatformTenantsTenantIdFeaturesPutResponses];
+
 export type SubmitContactApiV1ContactPostData = {
   body: ContactSubmissionRequest;
   path?: never;
@@ -20607,7 +20821,8 @@ export type GetTenantSettingsApiV1TenantsSettingsGetResponse =
 
 export type UpdateTenantSettingsApiV1TenantsSettingsPutData = {
   body: TenantSettingsUpdateRequest;
-  headers?: {
+  headers: {
+    "If-Match": string;
     /**
      * X-Tenant-Id
      */
@@ -20659,6 +20874,10 @@ export type UpdateTenantSettingsApiV1TenantsSettingsPutErrors = {
    * Validation Error
    */
   422: ValidationErrorResponse;
+  /**
+   * Precondition Required
+   */
+  428: ErrorResponse;
   /**
    * Too Many Requests
    */
@@ -21393,6 +21612,24 @@ export type ListUsageApiV1UsageGetResponse =
 
 export type ListBillingPlansApiV1BillingPlansGetData = {
   body?: never;
+  headers?: {
+    /**
+     * X-Tenant-Id
+     */
+    "X-Tenant-Id"?: string | null;
+    /**
+     * X-Tenant-Role
+     */
+    "X-Tenant-Role"?: string | null;
+    /**
+     * X-Operator-Override
+     */
+    "X-Operator-Override"?: string | null;
+    /**
+     * X-Operator-Reason
+     */
+    "X-Operator-Reason"?: string | null;
+  };
   path?: never;
   query?: never;
   url: "/api/v1/billing/plans";
@@ -21423,6 +21660,10 @@ export type ListBillingPlansApiV1BillingPlansGetErrors = {
    * Request Entity Too Large
    */
   413: ErrorResponse;
+  /**
+   * Validation Error
+   */
+  422: ValidationErrorResponse;
   /**
    * Too Many Requests
    */

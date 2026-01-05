@@ -15,6 +15,7 @@ from tests.utils.contract_env import TEST_TENANT_ID
 
 from app.api.dependencies.auth import require_current_user  # noqa: E402
 from app.api.v1.billing import router as billing_router  # noqa: E402
+from app.services.feature_flags import get_feature_flag_service  # noqa: E402
 from app.domain.billing import (  # noqa: E402
     BillingPlan,
     SubscriptionInvoiceRecord,
@@ -38,6 +39,16 @@ def _stub_owner_user() -> dict[str, Any]:
     return make_user_payload(roles=("owner",))
 
 
+class _StubFeatureFlagService:
+    async def is_enabled(self, tenant_id: str, feature: Any) -> bool:
+        return True
+
+
+class _StubDisabledFeatureFlagService:
+    async def is_enabled(self, tenant_id: str, feature: Any) -> bool:
+        return False
+
+
 @pytest.fixture(scope="function")
 def client() -> Generator[TestClient, None, None]:
     app = FastAPI()
@@ -46,8 +57,23 @@ def client() -> Generator[TestClient, None, None]:
         prefix="/api/v1",
     )
     app.dependency_overrides[require_current_user] = _stub_owner_user
+    app.dependency_overrides[get_feature_flag_service] = lambda: _StubFeatureFlagService()
     with TestClient(app) as test_client:
         yield test_client
+
+
+def test_billing_plans_blocked_when_feature_disabled() -> None:
+    app = FastAPI()
+    app.include_router(billing_router.router, prefix="/api/v1")
+    app.dependency_overrides[require_current_user] = _stub_owner_user
+    app.dependency_overrides[get_feature_flag_service] = (
+        lambda: _StubDisabledFeatureFlagService()
+    )
+    with TestClient(app) as test_client:
+        response = test_client.get("/api/v1/billing/plans")
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "billing feature is disabled for this tenant."
 
 
 def test_list_billing_plans_returns_catalog(

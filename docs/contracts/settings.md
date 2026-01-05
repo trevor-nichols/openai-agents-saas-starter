@@ -15,7 +15,7 @@ These names are the stack-wide canonical knobs referenced across services:
 
 - `API_BASE_URL` -- Backend base URL for BFF and tooling.
 - `APP_PUBLIC_URL` -- Public site URL used for SEO, links, and callbacks.
-- `ENABLE_BILLING` -- Backend billing feature flag; UI reads `/health/features`.
+- `ENABLE_BILLING` -- Backend billing feature flag; UI reads `/api/v1/features` (via the BFF).
 - `GCP_PROJECT_ID` -- Default GCP project scope for storage and Secret Manager fallback.
 - `LOG_ROOT` -- Root directory for logs (API + console + web dev logs).
 - `LOGGING_DATADOG_API_KEY` / `LOGGING_DATADOG_SITE` -- Datadog logging config.
@@ -44,10 +44,12 @@ ship their placeholder secrets to production.
 
 - **API service (FastAPI)**: Configures runtime behavior via `docs/contracts/settings.schema.json`.
   Feature toggles (`ENABLE_BILLING`, `ENABLE_BILLING_STREAM`, etc.) gate backend endpoints and
-  downstream UI visibility through `/health/features`.
+  downstream UI visibility through `/api/v1/features`. Platform operators manage per-tenant
+  entitlements via `/api/v1/platform/tenants/{tenant_id}/features` (stored under `feature.<key>` in
+  tenant settings).
 - **Web app (Next.js)**: Reads `API_BASE_URL` server-side; public/client-exposed values must be
   prefixed with `NEXT_PUBLIC_` (e.g., `NEXT_PUBLIC_AGENT_API_MOCK`). Billing UI gates are derived
-  from `/api/health/features` and must not use frontend env flags.
+  from `/api/v1/features` (via the BFF) and must not use frontend env flags.
 - **Starter Console**: Emits canonical backend envs and uses console-specific logging envs
   (`CONSOLE_*`) for its own runtime. Avoid duplicating backend knobs.
 - **Ops/Infra**: Terraform and collector configs consume the canonical names (e.g., `API_BASE_URL`,
@@ -202,7 +204,6 @@ must be supplied when that feature is enabled.
 | `ENABLE_SECRETS_PROVIDER_TELEMETRY` | optional (default) | false | secret | Emit secrets provider telemetry / Enable telemetry for secrets provider. |
 | `ENABLE_SLACK_STATUS_NOTIFICATIONS` | optional (default) | false | internal | Enable Slack notifications for status incidents. / Enable Slack status alerts |
 | `ENABLE_USAGE_GUARDRAILS` | optional (default) | false | internal | Enable usage guardrails. / Toggles usage quota enforcement. / ... |
-| `ENABLE_VECTOR_LIMIT_ENTITLEMENTS` | no default |  | internal | Add vector storage limits to entitlements. |
 | `ENABLE_VECTOR_STORE_SYNC_WORKER` | no default |  | internal | Enable vector store sync background worker / Enable vector store sync worker (tests). |
 | `ENVIRONMENT` | optional (default) | "development" | internal | Deployment environment (e.g., `production`, `development`). / Deployment environment label. / ... |
 | `EXPECT_API_DOWN` | no default |  | internal | Suppress API probe failure in doctor. |
@@ -280,7 +281,6 @@ must be supplied when that feature is enabled.
 | `NEXT_PUBLIC_LOG_SINK` | no default |  | public | Destination for log events. / Frontend log sink. |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | no default |  | public | Enables Stripe Elements for collecting payment methods. / Public key for Stripe Elements integration. |
 | `NODE_ENV` | no default |  | internal | Determines environment mode. / Used to disable test fixture routes in production environments. / ... |
-| `OPENAI_AGENTS_DISABLE_TRACING` | no default |  | internal | Disable OpenAI agents tracing (tests). / Disables internal tracing in the OpenAI Agents SDK. |
 | `OPENAI_API_KEY` | no default |  | secret | API key for OpenAI. / API key for OpenAI services. / ... |
 | `OTEL_EXPORTER_SENTRY_AUTH_HEADER` | no default |  | internal | Auth header for Sentry OTel exporter. |
 | `OTEL_EXPORTER_SENTRY_ENDPOINT` | no default |  | internal | Sentry OTLP endpoint. |

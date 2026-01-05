@@ -43,6 +43,7 @@ export async function PUT(request: NextRequest) {
     const payload = await request.json();
     const settings = await updateTenantSettingsInApi(payload, {
       tenantRole: resolveTenantRole(request),
+      ifMatch: request.headers.get('if-match'),
     });
     return NextResponse.json(settings, { status: 200 });
   } catch (error) {

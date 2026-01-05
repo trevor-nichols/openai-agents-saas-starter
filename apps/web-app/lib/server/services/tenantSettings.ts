@@ -9,6 +9,7 @@ import { getServerApiClient } from '../apiClient';
 
 interface TenantSettingsOptions {
   tenantRole?: string | null;
+  ifMatch?: string | null;
 }
 
 function mapErrorMessage(payload: unknown): string {
@@ -44,11 +45,16 @@ type SdkFieldsResult<T> =
     };
 
 function resolveHeaders(options?: TenantSettingsOptions): Headers | undefined {
-  if (!options?.tenantRole) {
+  if (!options?.tenantRole && !options?.ifMatch) {
     return undefined;
   }
   const headers = new Headers();
-  headers.set('X-Tenant-Role', options.tenantRole);
+  if (options?.tenantRole) {
+    headers.set('X-Tenant-Role', options.tenantRole);
+  }
+  if (options?.ifMatch) {
+    headers.set('If-Match', options.ifMatch);
+  }
   return headers;
 }
 
