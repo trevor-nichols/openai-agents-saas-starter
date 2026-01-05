@@ -3,6 +3,19 @@ You are a professional engineer and developer in charge of the OpenAI Agent SaaS
 # Overview
 - This is a SaaS starter repo developers can easily clone and quickly set up their own AI Agent SaaS website. It is a pre-release (no data and not yet distributed) which you are responsible for getting production ready for release.
 
+## Development Guidelines
+- You must maintain a professional clean architecture, referring to the documentations of the OpenAI Agents SDK and the `docs/openai-agents-sdk` and `docs/integrations/openai-responses-api` directories during development in order to ensure you abide by the latest API framework. 
+- Avoid feature gates/flags and any backward compatibility changes - since our app is still unreleased
+- **After Your Edits**
+  - **Backend**: Run `hatch run lint` and `hatch run typecheck` (Pyright + Mypy) after all edits in backend; CI blocks merges on `hatch run typecheck`, so keep it green locally.
+  - **Frontend**: Run `pnpm lint` and `pnpm type-check` after all edits in frontend to ensure there are no errors
+  - **Console**: Run `cd packages/starter_console && hatch run lint` and `cd packages/starter_console && hatch run typecheck` after all console edits to keep the package green.
+- When adding or changing API behavior, update both unit tests and the HTTP smoke suite in `apps/api-service/tests/smoke/http` (and keep `COVERAGE_MATRIX.md` aligned).
+- Keep FastAPI routers roughly ≤300 lines by default—split files when workflows/dependencies diverge, but it’s acceptable for a single router to exceed that limit when it embeds tightly coupled security or validation helpers; extract those helpers into shared modules only once they are reused elsewhere.
+- Avoid Pragmatic coupling
+- Repo automation now lives in `justfile`; run `just help` to view tasks and prefer those recipes over ad-hoc commands. Use the Just recipes for infra + DB tasks (e.g., `just migrate`, `just start-backend`, `just test-unit`) instead of invoking alembic/uvicorn/pytest directly.
+- Prior to developing complex features or significant refactors, create a `Milestone Tracker` based on the template in `docs/trackers/templates/MILESTONE_TEMPLATE.md`. A `Milestone Tracker` is the spec-and-execution doc for a deliverable slice of the project: it captures the goal, scope/guardrails, phased task breakdown with owners/status, and clear acceptance criteria/DoD. You use it as the single source of truth to implement and verify the work, and as the progress log to keep everyone aligned and prevent drift. Create active Milestone Trackers in `docs/trackers/current_milestones`. Once complete, they are archived in `docs/trackers/complete/{date}`.
+
 ## Backend
 - Request auth funnels through FastAPI dependencies into JWT-backed services
 - Persistence is Postgres via repository interfaces plus Redis caches
@@ -127,19 +140,6 @@ You are a professional engineer and developer in charge of the OpenAI Agent SaaS
 - **Python install standard (dev vs prod):**
   - Dev: run `just dev-install` once from repo root (performs `pip install -e packages/starter_contracts` and `pip install -e packages/starter_console`). Afterwards, use `starter-console …` from repo root—no `PYTHONPATH` or hatch required.
   - Prod/CI: build wheels and install non-editable (`pip wheel packages/starter_contracts packages/starter_console -w dist` then `pip install dist/starter_contracts-*.whl dist/starter_console-*.whl`).
-
-# Development Guidelines
-- You must maintain a professional clean architecture, referring to the documentations of the OpenAI Agents SDK and the `docs/openai-agents-sdk` and `docs/integrations/openai-responses-api` directories during development in order to ensure you abide by the latest API framework. 
-- Avoid feature gates/flags and any backward compatibility changes - since our app is still unreleased
-- **After Your Edits**
-  - **Backend**: Run `hatch run lint` and `hatch run typecheck` (Pyright + Mypy) after all edits in backend; CI blocks merges on `hatch run typecheck`, so keep it green locally.
-  - **Frontend**: Run `pnpm lint` and `pnpm type-check` after all edits in frontend to ensure there are no errors
-  - **Console**: Run `cd packages/starter_console && hatch run lint` and `cd packages/starter_console && hatch run typecheck` after all console edits to keep the package green.
-- When adding or changing API behavior, update both unit tests and the HTTP smoke suite in `apps/api-service/tests/smoke/http` (and keep `COVERAGE_MATRIX.md` aligned).
-- Keep FastAPI routers roughly ≤300 lines by default—split files when workflows/dependencies diverge, but it’s acceptable for a single router to exceed that limit when it embeds tightly coupled security or validation helpers; extract those helpers into shared modules only once they are reused elsewhere.
-- Avoid Pragmatic coupling
-- Repo automation now lives in `justfile`; run `just help` to view tasks and prefer those recipes over ad-hoc commands. Use the Just recipes for infra + DB tasks (e.g., `just migrate`, `just start-backend`, `just test-unit`) instead of invoking alembic/uvicorn/pytest directly.
-- Prior to developing complex features or significant refactors, create a `Milestone Tracker` based on the template in `docs/trackers/templates/MILESTONE_TEMPLATE.md`. A `Milestone Tracker` is the spec-and-execution doc for a deliverable slice of the project: it captures the goal, scope/guardrails, phased task breakdown with owners/status, and clear acceptance criteria/DoD. You use it as the single source of truth to implement and verify the work, and as the progress log to keep everyone aligned and prevent drift. Create active Milestone Trackers in `docs/trackers/current_milestones`. Once complete, they are archived in `docs/trackers/complete/{date}`.
 
 ## Pre-commit hooks (local)
 - Install with `just pre-commit-install` (auto-installs `pre-commit` if missing).
