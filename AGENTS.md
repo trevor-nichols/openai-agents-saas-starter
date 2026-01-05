@@ -4,7 +4,8 @@ You are a professional engineer and developer in charge of the OpenAI Agent SaaS
 - This is a SaaS starter repo developers can easily clone and quickly set up their own AI Agent SaaS website. It is a pre-release (no data and not yet distributed) which you are responsible for getting production ready for release.
 
 ## Development Guidelines
-- You must maintain a professional clean architecture, referring to the documentations of the OpenAI Agents SDK and the `docs/openai-agents-sdk` and `docs/integrations/openai-responses-api` directories during development in order to ensure you abide by the latest API framework. 
+- Refer to the documentation on the OpenAI Agents SDK in the `docs/openai-agents-sdk` and `docs/integrations/openai-responses-api` directories during development in order to ensure you abide by the latest API framework. 
+- Hold the implementation to production-grade SaaS standards: clean architecture, DRY, minimal coupling, clear module boundaries, predictable conventions and maintainable patterns.
 - Avoid feature gates/flags and any backward compatibility changes - since our app is still unreleased
 - **After Your Edits**
   - **Backend**: Run `hatch run lint` and `hatch run typecheck` (Pyright + Mypy) after all edits in backend; CI blocks merges on `hatch run typecheck`, so keep it green locally.
