@@ -141,7 +141,10 @@ def _run_provider_workflow(
     result = runner(
         context.cli_ctx,
         provider,
-        options=SecretsWorkflowOptions(skip_automation=True),
+        options=SecretsWorkflowOptions(
+            skip_automation=True,
+            skip_verification=context.skip_external_calls,
+        ),
     )
     for key, value in result.env_updates.items():
         context.set_backend(key, value)
@@ -398,6 +401,8 @@ def _collect_infisical_key_storage(
 
 
 def _ensure_vault_infra(context: WizardContext, enable_vault: bool) -> None:
+    if context.skip_external_calls:
+        return
     if context.infra_session:
         context.infra_session.ensure_vault(enabled=enable_vault)
     else:
@@ -412,6 +417,12 @@ def _ensure_vault_infra(context: WizardContext, enable_vault: bool) -> None:
 
 
 def _verify_vault_transit(context: WizardContext) -> None:
+    if context.skip_external_calls:
+        context.console.info(
+            "Skipping Vault transit verification (external calls disabled).",
+            topic="vault",
+        )
+        return
     base_url = context.require_env("VAULT_ADDR")
     token = context.require_env("VAULT_TOKEN")
     key_name = context.require_env("VAULT_TRANSIT_KEY")

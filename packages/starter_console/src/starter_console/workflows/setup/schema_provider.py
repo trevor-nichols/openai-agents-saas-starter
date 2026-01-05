@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from typing import Protocol, runtime_checkable
 
 from .schema import SchemaDecision, ValueLookup, WizardSchema
-from .state import WizardStateStore
+from .state import WizardStateStorePort
 
 
 def _normalize(key: str) -> str:
@@ -28,7 +28,7 @@ class SchemaAwareInputProvider:
         *,
         provider,
         schema: WizardSchema | None,
-        state: WizardStateStore,
+        state: WizardStateStorePort,
         context,
     ) -> None:
         self._provider = provider

@@ -320,6 +320,12 @@ def _maybe_download_maxmind_db(
     license_key: str,
     raw_path: str,
 ) -> None:
+    if context.skip_external_calls:
+        context.console.info(
+            "Skipping GeoIP database download (external calls disabled).",
+            topic="geoip",
+        )
+        return
     console = context.console
     target = _resolve_geoip_path(context, raw_path)
     mode = context.policy_rule_str("geoip_required_mode", fallback="disabled")

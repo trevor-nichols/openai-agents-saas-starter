@@ -116,12 +116,6 @@ class WizardControls:
         cloud_id = self._reverse_map(_CLOUD_OPTIONS).get(cloud, "cloud-aws")
         self._pane.query_one(f"#{cloud_id}", RadioButton).value = True
 
-        advanced = self._config.answers.get("SETUP_SHOW_ADVANCED") if self._config.answers else None
-        is_advanced = self._default_advanced()
-        if advanced is not None:
-            is_advanced = advanced.lower() in {"1", "true", "yes", "y"}
-        advanced_id = "advanced-on" if is_advanced else "advanced-off"
-        self._pane.query_one(f"#{advanced_id}", RadioButton).value = True
         self.sync_preset_controls()
 
     def configure_options(self) -> None:
@@ -155,13 +149,6 @@ class WizardControls:
 
     def selected_cloud(self) -> str:
         return self._radio_selection("wizard-cloud", _CLOUD_OPTIONS, self._default_cloud())
-
-    def selected_advanced(self) -> bool:
-        radio = self._pane.query_one("#wizard-advanced", RadioSet)
-        selected = radio.pressed_button
-        if selected is None:
-            return self._default_advanced()
-        return (selected.id or "") == "advanced-on"
 
     def selected_mode(self) -> str:
         radio = self._pane.query_one("#wizard-mode", RadioSet)
@@ -234,9 +221,6 @@ class WizardControls:
         preset = self.selected_preset()
         answers.setdefault("SETUP_HOSTING_PRESET", preset)
         answers.setdefault("SETUP_CLOUD_PROVIDER", self.selected_cloud())
-        answers.setdefault(
-            "SETUP_SHOW_ADVANCED", "true" if self.selected_advanced() else "false"
-        )
         return answers
 
     def sync_preset_controls(self) -> None:
@@ -254,11 +238,9 @@ class WizardControls:
     def build_setup_summary(self) -> str:
         profile = self.selected_profile()
         preset = self.selected_preset()
-        advanced = "on" if self.selected_advanced() else "off"
         summary = f" | Profile: {profile} | Preset: {preset}"
         if preset == "cloud_managed":
             summary += f" ({self.selected_cloud()})"
-        summary += f" | Advanced: {advanced}"
         return summary
 
     def update_summary_preview(self) -> None:
@@ -267,7 +249,6 @@ class WizardControls:
         summary = f"Profile: {profile} | Preset: {preset}"
         if preset == "cloud_managed":
             summary += f" ({self.selected_cloud()})"
-        summary += f" | Advanced: {'on' if self.selected_advanced() else 'off'}"
         self._pane.query_one("#wizard-summary", Static).update(summary)
 
     def update_profile_context(self) -> None:
@@ -378,10 +359,6 @@ class WizardControls:
     def _default_cloud(self) -> str:
         policy = self._profile_policy()
         return policy.wizard.cloud_provider_default or "aws"
-
-    def _default_advanced(self) -> bool:
-        policy = self._profile_policy()
-        return bool(policy.wizard.show_advanced_default)
 
     def _split_tokens(self, input_id: str) -> list[str]:
         raw = self._pane.query_one(f"#{input_id}", Input).value.strip()

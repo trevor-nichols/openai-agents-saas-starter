@@ -19,9 +19,13 @@ Best for a quick, runnable demo with sensible defaults.
 just python-bootstrap
 just dev-install
 just setup-demo-lite
+# After the wizard completes (exit the TUI), run:
 just api
 ```
 
+Note: `just setup-demo-lite` launches the setup wizard TUI (same as `starter-console setup wizard`) and holds the terminal until you finish/exit.
+Run `just api` in a new terminal, or after you close the wizard.
+Use `starter-console setup wizard --non-interactive --answers-file <path>` (and `--no-tui`) for headless runs.
 Optional: `just setup-demo-full` for all automation toggles, and `just issue-demo-token` after the API is running.
 
 ### 2) Guided wizard (demo / staging / production)

@@ -89,7 +89,7 @@ def run(context: WizardContext, provider: InputProvider) -> None:
     )
     _scrub_recorded_answer(provider, "DEV_USER_PASSWORD")
     if context.state_store:
-        context.state_store.data.get("answers", {}).pop("DEV_USER_PASSWORD", None)
+        context.state_store.forget_answer("DEV_USER_PASSWORD")
 
 
 def _scrub_recorded_answer(provider: InputProvider, key: str) -> None:

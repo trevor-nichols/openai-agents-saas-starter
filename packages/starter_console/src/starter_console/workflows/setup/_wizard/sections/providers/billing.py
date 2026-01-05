@@ -71,6 +71,8 @@ def _maybe_generate_webhook_secret(
     *,
     webhook_capture: StripeWebhookCapturePort | None = None,
 ) -> str | None:
+    if context.skip_external_calls:
+        return None
     allow_auto = context.policy_rule_bool("stripe_webhook_auto_allowed", fallback=False)
     allow_auto = allow_auto and not context.is_headless
     if not allow_auto:

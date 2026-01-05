@@ -80,3 +80,7 @@ def configure(context: WizardContext, provider: InputProvider) -> None:
             topic="frontend-logging",
         )
     context.set_frontend("NEXT_PUBLIC_LOG_SINK", sink)
+
+
+def run(context: WizardContext, provider: InputProvider) -> None:
+    configure(context, provider)

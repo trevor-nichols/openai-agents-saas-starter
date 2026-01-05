@@ -23,8 +23,11 @@ Operator console for the OpenAI Agents SaaS starter stack. It is the single entr
 ## Running the console
 - Default TUI: `starter-console` (no args) launches the Textual home hub.
 - CLI: `starter-console <command> [flags]` for headless execution.
+- Interactive CLI wizard: `starter-console setup wizard --cli` (curses editor with section navigation).
 - Non-interactive runs: `--non-interactive` plus `--answers-file`/`--var` for the setup wizard.
 - Most commands support `--no-tui`, `--json`, or `--markdown` for CI-friendly output.
+
+CLI editor keys: arrows + Tab to navigate, Enter to edit, `S` to save, `A` to save+automation, `Q` to quit.
 
 ## Environment loading
 - Default env files: `.env.compose`, `apps/api-service/.env`, `apps/api-service/.env.local`.
@@ -34,7 +37,7 @@ Operator console for the OpenAI Agents SaaS starter stack. It is the single entr
 - `starter-console util run-with-env` merges explicit env files / `KEY=VALUE` overrides and then execs the command.
 
 ## Quick starts
-- Demo bootstrap: `just setup-demo-lite` → `just api` → `just issue-demo-token`.
+- Demo bootstrap: `just setup-demo-lite` (launches the setup wizard TUI) → `just api` → `just issue-demo-token`.
 - Start/stop stack: `starter-console start dev --detached` then `starter-console stop`.
 - Health report: `starter-console doctor --strict --json var/reports/operator-dashboard.json`.
 

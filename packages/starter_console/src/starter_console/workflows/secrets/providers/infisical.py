@@ -27,6 +27,7 @@ def run_infisical_cloud(
         default_base_url="https://app.infisical.com",
         label="Infisical Cloud",
         prompt_ca_bundle=False,
+        skip_verification=options.skip_verification,
     )
 
 
@@ -43,6 +44,7 @@ def run_infisical_self_hosted(
         default_base_url="http://localhost:8080",
         label="Infisical Self-Hosted",
         prompt_ca_bundle=True,
+        skip_verification=options.skip_verification,
     )
 
 
@@ -54,6 +56,7 @@ def _run_infisical_flow(
     default_base_url: str,
     label: str,
     prompt_ca_bundle: bool,
+    skip_verification: bool,
 ) -> OnboardResult:
     settings = ctx.optional_settings()
     defaults = settings.infisical_settings if settings else None
@@ -121,16 +124,23 @@ def _run_infisical_flow(
     if ca_bundle:
         env_updates["INFISICAL_CA_BUNDLE_PATH"] = ca_bundle
 
-    verified = _probe_infisical_secret(
-        base_url=base_url,
-        service_token=service_token,
-        project_id=project_id,
-        environment=environment,
-        secret_path=secret_path,
-        secret_name=signing_secret,
-        ca_bundle_path=ca_bundle or None,
-        console=console,
-    )
+    verified = False
+    if skip_verification:
+        console.info(
+            "Skipping Infisical verification (external calls disabled).",
+            topic="secrets",
+        )
+    else:
+        verified = _probe_infisical_secret(
+            base_url=base_url,
+            service_token=service_token,
+            project_id=project_id,
+            environment=environment,
+            secret_path=secret_path,
+            secret_name=signing_secret,
+            ca_bundle_path=ca_bundle or None,
+            console=console,
+        )
 
     steps = [
         "Install the Infisical CLI or configure service tokens for CI/CD.",
@@ -148,10 +158,14 @@ def _run_infisical_flow(
             f"Validated that secret `{signing_secret}` exists and is readable.",
         )
     else:
-        warnings.append(
-            "Could not verify the signing secret via the Infisical API. "
-            "Double-check the service token permissions and secret name."
-        )
+        if skip_verification:
+            message = "Infisical verification skipped."
+        else:
+            message = (
+                "Could not verify the signing secret via the Infisical API. "
+                "Double-check the service token permissions and secret name."
+            )
+        warnings.append(message)
 
     provider_literal = (
         SecretsProviderLiteral.INFISICAL_SELF_HOST

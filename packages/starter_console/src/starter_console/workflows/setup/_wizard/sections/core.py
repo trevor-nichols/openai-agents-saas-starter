@@ -163,21 +163,6 @@ def _configure_setup_preferences(context: WizardContext, provider: InputProvider
         )
     context.cloud_provider = cloud_provider
 
-    advanced_default = _state_bool_default(
-        context,
-        "SETUP_SHOW_ADVANCED",
-        default=context.profile_policy.wizard.show_advanced_default or False,
-    )
-    show_advanced = provider.prompt_bool(
-        key="SETUP_SHOW_ADVANCED",
-        prompt="Show advanced tuning prompts?",
-        default=advanced_default,
-    )
-    context.show_advanced_prompts = show_advanced
-    if show_advanced:
-        context.console.info("Advanced prompts enabled.", topic="wizard")
-    else:
-        context.console.info("Advanced prompts hidden (defaults will apply).", topic="wizard")
 
 
 def _configure_branding(context: WizardContext, provider: InputProvider) -> None:
@@ -494,15 +479,3 @@ def _state_default(context: WizardContext, key: str) -> str | None:
     if context.state_store is None:
         return None
     return context.state_store.snapshot().get(key)
-
-
-def _state_bool_default(context: WizardContext, key: str, *, default: bool) -> bool:
-    raw = _state_default(context, key)
-    if raw is None:
-        return default
-    normalized = raw.strip().lower()
-    if normalized in {"1", "true", "yes", "y"}:
-        return True
-    if normalized in {"0", "false", "no", "n"}:
-        return False
-    return default

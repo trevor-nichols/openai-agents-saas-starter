@@ -26,7 +26,7 @@ from ..demo_token import DemoTokenConfig
 from ..inputs import InputProvider
 from ..provider_automation_plan import ProviderAutomationPlan
 from ..schema import WizardSchema
-from ..state import WizardStateStore
+from ..state import WizardStateStorePort
 from ..ui import WizardUIView, automation_status_to_state
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -49,9 +49,10 @@ class WizardContext:
     frontend_path: Path | None
     hosting_preset: str | None = None
     cloud_provider: str | None = None
-    show_advanced_prompts: bool = False
     api_base_url: str = "http://127.0.0.1:8000"
     is_headless: bool = False
+    dry_run: bool = False
+    skip_external_calls: bool = False
     summary_path: Path | None = None
     markdown_summary_path: Path | None = None
     dependency_statuses: list[DependencyStatus] = field(default_factory=list)
@@ -59,7 +60,7 @@ class WizardContext:
     provider_automation_plan: ProviderAutomationPlan = field(default_factory=ProviderAutomationPlan)
     infra_session: InfraSession | None = None
     schema: WizardSchema | None = None
-    state_store: WizardStateStore | None = None
+    state_store: WizardStateStorePort | None = None
     ui: WizardUIView | None = None
     verification_artifacts: list[VerificationArtifact] = field(default_factory=list)
     verification_log_path: Path = field(init=False)
@@ -296,6 +297,12 @@ class WizardContext:
             required=False,
         )
         if not value:
+            if self.dry_run:
+                self.console.info(
+                    f"{key} left unset in dry-run mode; will be generated on save.",
+                    topic="wizard",
+                )
+                return
             value = secrets.token_urlsafe(length)
             self.console.info(f"Generated random value for {key}", topic="wizard")
         self.set_backend(key, value, mask=True)

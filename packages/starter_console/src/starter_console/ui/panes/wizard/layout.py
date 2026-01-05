@@ -55,12 +55,6 @@ def compose_wizard_layout(profile_options: Sequence[ProfileOption]) -> ComposeRe
             RadioButton("Other", id="cloud-other"),
             id="wizard-cloud",
         )
-        yield Static("Advanced", id="wizard-advanced-label", classes="wizard-control-label")
-        yield RadioSet(
-            RadioButton("On", id="advanced-on"),
-            RadioButton("Off", id="advanced-off"),
-            id="wizard-advanced",
-        )
     with Horizontal(classes="ops-actions"):
         yield Button("Start Wizard", id="wizard-start", variant="primary")
     with Collapsible(

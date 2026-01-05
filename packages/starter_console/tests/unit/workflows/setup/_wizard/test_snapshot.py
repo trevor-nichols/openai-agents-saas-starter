@@ -31,7 +31,6 @@ def _build_context(tmp_path: Path) -> WizardContext:
 def test_snapshot_and_diff_capture_changes(tmp_path: Path) -> None:
     context = _build_context(tmp_path)
     context.hosting_preset = "local_docker"
-    context.show_advanced_prompts = False
 
     context.set_backend("ENVIRONMENT", "development")
     context.set_backend("OPENAI_API_KEY", "sk-test", mask=True)

@@ -67,9 +67,17 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         help="Run without prompts (requires --answers-file/--var for required values).",
     )
     wizard_parser.add_argument(
+        "--cli",
+        action="store_true",
+        help="Run the wizard in a curses-based CLI editor (no Textual UI).",
+    )
+    wizard_parser.add_argument(
         "--no-tui",
         action="store_true",
-        help="Disable the Textual wizard UI (requires --non-interactive or --report-only).",
+        help=(
+            "Disable the Textual wizard UI (use with --non-interactive, --report-only, "
+            "or --cli)."
+        ),
     )
     wizard_parser.add_argument(
         "--report-only",
@@ -283,6 +291,10 @@ def handle_setup_wizard(args: argparse.Namespace, ctx: CLIContext) -> int:
     )
     if args.export_answers and args.report_only:
         raise CLIError("--export-answers cannot be combined with --report-only.")
+    if args.cli and args.non_interactive:
+        raise CLIError("--cli cannot be combined with --non-interactive.")
+    if args.cli and args.report_only:
+        raise CLIError("--cli cannot be combined with --report-only.")
 
     answers: dict[str, str] = {}
     if args.answers_file:
@@ -295,8 +307,10 @@ def handle_setup_wizard(args: argparse.Namespace, ctx: CLIContext) -> int:
         ctx.console.info("Report-only mode selected; skipping wizard prompts.", topic="wizard")
     elif args.non_interactive:
         provider = HeadlessInputProvider(answers=answers)
-    elif args.no_tui:
-        raise CLIError("--no-tui is only supported with --non-interactive or --report-only.")
+    elif args.no_tui and not args.cli:
+        raise CLIError(
+            "--no-tui is only supported with --non-interactive, --report-only, or --cli."
+        )
 
     automation_overrides = {
         phase: value
@@ -316,6 +330,33 @@ def handle_setup_wizard(args: argparse.Namespace, ctx: CLIContext) -> int:
 
     interactive_run = not args.non_interactive and not args.report_only
     if interactive_run:
+        if args.cli:
+            from starter_console.ui.panes.wizard.paths import ensure_summary_paths
+            from starter_console.workflows.setup.editor import run_editor
+
+            summary_path, markdown_path = ensure_summary_paths(
+                ctx,
+                Path(args.summary_path).expanduser() if args.summary_path else None,
+                Path(args.markdown_summary_path).expanduser()
+                if args.markdown_summary_path
+                else None,
+            )
+            run_editor(
+                ctx,
+                profile_id=args.profile,
+                profiles_path=Path(args.profiles_path).expanduser()
+                if args.profiles_path
+                else None,
+                answers=dict(answers),
+                output_format=args.output,
+                summary_path=summary_path,
+                markdown_summary_path=markdown_path,
+                export_answers_path=Path(args.export_answers).expanduser()
+                if args.export_answers
+                else None,
+            )
+            return 0
+
         from starter_console.ui.panes.wizard import WizardLaunchConfig
 
         from .ui_loader import load_ui_module

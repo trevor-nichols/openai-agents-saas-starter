@@ -97,7 +97,6 @@ class WizardPane(Vertical):
             "wizard-profile",
             "wizard-preset",
             "wizard-cloud",
-            "wizard-advanced",
         }:
             self._controls.sync_preset_controls()
             if not self._session:

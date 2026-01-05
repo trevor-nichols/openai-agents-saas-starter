@@ -113,7 +113,6 @@ def write_summary(context: WizardContext, sections: list[SectionResult]) -> None
         "profile": context.profile,
         "hosting_preset": context.hosting_preset,
         "cloud_provider": context.cloud_provider,
-        "show_advanced_prompts": context.show_advanced_prompts,
         "api_base_url": context.api_base_url,
         "backend_env_path": str(context.backend_env.path),
         "frontend_env_path": str(context.frontend_path) if context.frontend_path else None,
@@ -156,7 +155,6 @@ def write_markdown_summary(context: WizardContext, sections: list[SectionResult]
         lines.append(f"- **Hosting preset**: `{context.hosting_preset}`")
     if context.cloud_provider:
         lines.append(f"- **Cloud provider**: `{context.cloud_provider}`")
-    lines.append(f"- **Advanced prompts**: `{context.show_advanced_prompts}`")
     lines.append(f"- **API Base URL**: `{context.api_base_url}`")
     lines.append(
         f"- **Backend env**: `{context.backend_env.path}`"
