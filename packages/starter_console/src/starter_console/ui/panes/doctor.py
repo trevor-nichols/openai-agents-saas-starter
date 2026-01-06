@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from textual.app import ComposeResult
-from textual.containers import Grid, Horizontal, Vertical
+from textual.containers import Grid, Horizontal
 from textual.widgets import Button, DataTable, Input, RadioButton, RadioSet, Static, Switch
 
 from starter_console.core import CLIContext, CLIError
@@ -20,6 +20,8 @@ from starter_console.ui.action_runner import ActionResult, ActionRunner
 from starter_console.ui.view_models import probe_rows, service_rows
 from starter_console.workflows.home.doctor import DoctorRunner
 
+from .footer_pane import FooterPane
+
 
 @dataclass(slots=True)
 class DoctorRunResult:
@@ -30,9 +32,9 @@ class DoctorRunResult:
     markdown_path: Path
 
 
-class DoctorPane(Vertical):
+class DoctorPane(FooterPane):
     def __init__(self, ctx: CLIContext) -> None:
-        super().__init__(id="doctor", classes="section-pane")
+        super().__init__(pane_id="doctor")
         self.ctx = ctx
         self._last_profile_selection: ProfileSelection | None = None
         self._runner = ActionRunner(
@@ -43,7 +45,7 @@ class DoctorPane(Vertical):
             on_state_change=self._set_action_state,
         )
 
-    def compose(self) -> ComposeResult:
+    def compose_body(self) -> ComposeResult:
         yield Static("Doctor", classes="section-title")
         yield Static("Run readiness checks and export reports.", classes="section-description")
         with Grid(classes="form-grid"):
@@ -63,14 +65,16 @@ class DoctorPane(Vertical):
             yield Input(id="doctor-json-path")
             yield Static("Markdown path", classes="wizard-control-label")
             yield Input(id="doctor-markdown-path")
-        with Horizontal(classes="ops-actions"):
-            yield Button("Run Doctor", id="doctor-run", variant="primary")
         yield Static("", id="doctor-summary", classes="section-summary")
         with Horizontal(classes="home-tables"):
             yield DataTable(id="doctor-probes", zebra_stripes=True)
             yield DataTable(id="doctor-services", zebra_stripes=True)
-        yield Static("", id="doctor-status", classes="section-footnote")
         yield Static("", id="doctor-output", classes="ops-output")
+
+    def compose_footer(self) -> ComposeResult:
+        yield Button("Run Doctor", id="doctor-run", variant="primary")
+        yield self.footer_spacer()
+        yield Static("", id="doctor-status", classes="section-footnote")
 
     def on_mount(self) -> None:
         self.query_one("#doctor-profile-auto", RadioButton).value = True

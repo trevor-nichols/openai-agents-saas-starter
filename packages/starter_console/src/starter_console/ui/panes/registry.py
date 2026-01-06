@@ -12,6 +12,7 @@ from ..sections import NavGroupSpec, SectionSpec, iter_sections
 from .api_export import ApiExportPane
 from .auth_tokens import AuthTokensPane
 from .config_inventory import ConfigInventoryPane
+from .context import ContextPane
 from .doctor import DoctorPane
 from .home import HomePane
 from .infra import InfraPane
@@ -66,6 +67,7 @@ def _placeholder_factory(
 
 PANE_FACTORIES: dict[str, PaneFactory] = {
     "home": lambda ctx, hub, config, section: HomePane(ctx, hub),
+    "context": lambda ctx, hub, config, section: ContextPane(ctx),
     "setup": lambda ctx, hub, config, section: SetupPane(
         ctx,
         hub,

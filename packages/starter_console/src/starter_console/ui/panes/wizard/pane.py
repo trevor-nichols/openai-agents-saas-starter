@@ -12,6 +12,7 @@ from starter_console.core.profiles import load_profile_registry, select_profile
 from starter_console.ui.action_runner import ActionResult, ActionRunner
 from starter_console.ui.prompt_controller import PromptController
 
+from ..footer_pane import FooterPane
 from .controls import WizardControls, build_profile_options
 from .layout import compose_wizard_layout
 from .models import WizardLaunchConfig
@@ -28,9 +29,9 @@ from .runner import WizardHeadlessRun, WizardRunService
 from .session import WizardSession
 
 
-class WizardPane(Vertical):
+class WizardPane(FooterPane):
     def __init__(self, ctx: CLIContext, *, config: WizardLaunchConfig | None = None) -> None:
-        super().__init__(id="wizard", classes="section-pane")
+        super().__init__(pane_id="wizard")
         self._ctx = ctx
         self._config = config or WizardLaunchConfig()
         self._profile_registry = load_profile_registry(
@@ -58,8 +59,14 @@ class WizardPane(Vertical):
         )
         self._runner = WizardRunService()
 
-    def compose(self) -> ComposeResult:
+    def compose_body(self) -> ComposeResult:
         yield from compose_wizard_layout(self._profile_options)
+
+    def compose_footer(self) -> ComposeResult:
+        yield Button("Open Editor", id="wizard-open-editor")
+        yield Button("Start Wizard", id="wizard-start", variant="primary")
+        yield self.footer_spacer()
+        yield Static("", id="wizard-status", classes="section-footnote")
 
     def on_mount(self) -> None:
         self._controls.configure_profile()

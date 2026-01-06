@@ -4,7 +4,7 @@ import asyncio
 import json
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Grid, Horizontal, Vertical
 from textual.timer import Timer
 from textual.widgets import Button, DataTable, Static
 
@@ -30,7 +30,7 @@ from .command_output import format_command_result
 
 class InfraPane(Vertical):
     def __init__(self, ctx: CLIContext, hub: HubService) -> None:
-        super().__init__(id="infra", classes="section-pane")
+        super().__init__(id="infra", classes="section-pane footer-pane")
         self.ctx = ctx
         self.hub = hub
         self._deps: list[DependencyStatus] = []
@@ -41,23 +41,27 @@ class InfraPane(Vertical):
         self._follow_notes: list[str] = []
 
     def compose(self) -> ComposeResult:
-        yield Static("Infra", classes="section-title")
-        yield Static("Local tooling and compose helpers.", classes="section-description")
-        with Horizontal(classes="ops-actions"):
-            yield Button("Refresh", id="infra-refresh", variant="primary")
-            yield Button("Compose Up", id="infra-compose-up")
-            yield Button("Compose Down", id="infra-compose-down")
-            yield Button("Compose Logs", id="infra-compose-logs")
-            yield Button("Compose PS", id="infra-compose-ps")
-            yield Button("Vault Up", id="infra-vault-up")
-            yield Button("Vault Down", id="infra-vault-down")
-            yield Button("Vault Logs", id="infra-vault-logs")
-            yield Button("Vault Verify", id="infra-vault-verify")
-            yield Button("Stop Follow", id="infra-stop-follow")
-            yield Button("Deps JSON", id="infra-deps-json")
-        yield DataTable(id="infra-deps", zebra_stripes=True)
-        yield Static("", id="infra-status", classes="section-footnote")
-        yield Static("", id="infra-output", classes="ops-output")
+        with Vertical(id="infra-body", classes="pane-body"):
+            yield Static("Infra", classes="section-title")
+            yield Static("Local tooling and compose helpers.", classes="section-description")
+            yield DataTable(id="infra-deps", zebra_stripes=True)
+            yield Static("", id="infra-output", classes="ops-output")
+        with Vertical(id="infra-footer", classes="pane-footer"):
+            with Grid(id="infra-actions-grid", classes="infra-actions-grid"):
+                yield Button("Refresh", id="infra-refresh", variant="primary")
+                yield Button("Compose Up", id="infra-compose-up")
+                yield Button("Compose Down", id="infra-compose-down")
+                yield Button("Compose Logs", id="infra-compose-logs")
+                yield Button("Compose PS", id="infra-compose-ps")
+                yield Button("Deps JSON", id="infra-deps-json")
+                yield Button("Vault Up", id="infra-vault-up")
+                yield Button("Vault Down", id="infra-vault-down")
+                yield Button("Vault Logs", id="infra-vault-logs")
+                yield Button("Vault Verify", id="infra-vault-verify")
+                yield Button("Stop Follow", id="infra-stop-follow")
+            with Horizontal(id="infra-status-row", classes="infra-status-row"):
+                yield Static("", classes="pane-footer-spacer")
+                yield Static("", id="infra-status", classes="section-footnote")
 
     async def on_mount(self) -> None:
         await self.refresh_data()

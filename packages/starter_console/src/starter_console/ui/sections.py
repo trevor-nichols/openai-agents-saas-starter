@@ -52,6 +52,20 @@ NAV_GROUPS: Final[tuple[NavGroupSpec, ...]] = (
         ),
     ),
     NavGroupSpec(
+        key="context",
+        label="Context",
+        description="Environment profiles and env file management.",
+        items=(
+            SectionSpec(
+                key="context",
+                label="Context",
+                description="Manage env files and runtime context.",
+                detail="Adjust env files, reload settings, and review context status.",
+                shortcut="Z",
+            ),
+        ),
+    ),
+    NavGroupSpec(
         key="onboarding",
         label="Onboarding",
         description="First-time setup workflows and provider onboarding.",

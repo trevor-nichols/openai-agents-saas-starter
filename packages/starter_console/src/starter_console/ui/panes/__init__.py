@@ -3,6 +3,7 @@ from __future__ import annotations
 from .api_export import ApiExportPane
 from .auth_tokens import AuthTokensPane
 from .config_inventory import ConfigInventoryPane
+from .context import ContextPane
 from .doctor import DoctorPane
 from .home import HomePane
 from .infra import InfraPane
@@ -26,6 +27,7 @@ __all__ = [
     "ApiExportPane",
     "AuthTokensPane",
     "ConfigInventoryPane",
+    "ContextPane",
     "DoctorPane",
     "HomePane",
     "InfraPane",

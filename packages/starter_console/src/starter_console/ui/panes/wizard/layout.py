@@ -143,11 +143,7 @@ def compose_wizard_layout(profile_options: Sequence[ProfileOption]) -> ComposeRe
         yield DataTable(id="wizard-automation", zebra_stripes=True)
     yield DataTable(id="wizard-conditional", zebra_stripes=True)
     yield Static("", id="wizard-activity", classes="section-footnote")
-    with Horizontal(classes="ops-actions"):
-        yield Button("Open Editor", id="wizard-open-editor")
-        yield Button("Start Wizard", id="wizard-start", variant="primary")
     yield Static("", id="wizard-output", classes="ops-output")
-    yield Static("", id="wizard-status", classes="section-footnote")
     with Vertical(id="wizard-prompt"):
         yield Static("", id="wizard-prompt-label")
         yield Static("", id="wizard-prompt-detail")

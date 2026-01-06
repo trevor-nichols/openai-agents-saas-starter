@@ -3,17 +3,19 @@ from __future__ import annotations
 import json
 
 from textual.app import ComposeResult
-from textual.containers import Grid, Horizontal, Vertical
+from textual.containers import Grid
 from textual.widgets import Button, Input, Static
 
 from starter_console.core import CLIContext
 from starter_console.services.auth.security import rotate_signing_keys
 from starter_console.ui.action_runner import ActionResult, ActionRunner
 
+from .footer_pane import FooterPane
 
-class KeyRotationPane(Vertical):
+
+class KeyRotationPane(FooterPane):
     def __init__(self, ctx: CLIContext) -> None:
-        super().__init__(id="key-rotation", classes="section-pane")
+        super().__init__(pane_id="key-rotation")
         self.ctx = ctx
         self._runner = ActionRunner(
             ctx=self.ctx,
@@ -23,16 +25,18 @@ class KeyRotationPane(Vertical):
             on_state_change=self._set_action_state,
         )
 
-    def compose(self) -> ComposeResult:
+    def compose_body(self) -> ComposeResult:
         yield Static("Key Rotation", classes="section-title")
         yield Static("Rotate Ed25519 signing keys.", classes="section-description")
         with Grid(classes="form-grid"):
             yield Static("KID", classes="wizard-control-label")
             yield Input(id="key-rotation-kid")
-        with Horizontal(classes="ops-actions"):
-            yield Button("Rotate", id="key-rotation-run", variant="primary")
-        yield Static("", id="key-rotation-status", classes="section-footnote")
         yield Static("", id="key-rotation-output", classes="ops-output")
+
+    def compose_footer(self) -> ComposeResult:
+        yield Button("Rotate", id="key-rotation-run", variant="primary")
+        yield self.footer_spacer()
+        yield Static("", id="key-rotation-status", classes="section-footnote")
 
     def on_mount(self) -> None:
         self.set_interval(0.4, self._runner.refresh_output)
