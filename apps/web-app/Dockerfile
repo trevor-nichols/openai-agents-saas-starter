@@ -39,6 +39,8 @@ ENV NODE_ENV=production \
 
 WORKDIR /app
 
+RUN npm install -g npm@11.7.0
+
 RUN useradd --create-home --uid 10001 appuser
 
 COPY --from=builder /repo/apps/web-app/public /app/public
