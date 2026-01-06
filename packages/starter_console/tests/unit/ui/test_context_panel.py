@@ -6,7 +6,7 @@ from textual.widgets import Static
 
 from starter_console.core import CLIContext
 from starter_console.core.constants import DEFAULT_ENV_FILES
-from starter_console.ui.context_panel import ContextPanel
+from starter_console.ui.panes.context import ContextPane
 
 
 class ContextPanelApp(App[None]):
@@ -15,7 +15,7 @@ class ContextPanelApp(App[None]):
         self._ctx = ctx
 
     def compose(self) -> ComposeResult:
-        yield ContextPanel(self._ctx)
+        yield ContextPane(self._ctx)
 
 
 @pytest.mark.asyncio
@@ -47,7 +47,7 @@ async def test_context_panel_blocks_default_env_add(tmp_path) -> None:
     default_path = DEFAULT_ENV_FILES[0]
 
     async with app.run_test() as pilot:
-        panel = app.query_one(ContextPanel)
+        panel = app.query_one(ContextPane)
         ok, status = panel._state.add_custom(str(default_path))
         await pilot.pause()
 

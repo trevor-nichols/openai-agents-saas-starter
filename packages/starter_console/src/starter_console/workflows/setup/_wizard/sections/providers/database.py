@@ -14,18 +14,20 @@ _LOCAL_DB_MODES = ("compose", "external")
 
 
 def collect_database(context: WizardContext, provider: InputProvider) -> None:
-    if context.profile == "demo":
+    if not context.policy_rule_bool("require_database_url", fallback=True):
         _collect_local_database(context, provider)
         return
 
     db_url = provider.prompt_string(
         key="DATABASE_URL",
         prompt="Primary Postgres connection URL (DATABASE_URL)",
-        default=context.current("DATABASE_URL") or os.getenv("DATABASE_URL"),
+        default=context.policy_env_default(
+            "DATABASE_URL", fallback=os.getenv("DATABASE_URL") or ""
+        ),
         required=True,
     ).strip()
     if not db_url:
-        raise CLIError("DATABASE_URL is required outside demo profiles.")
+        raise CLIError("DATABASE_URL is required by profile policy.")
     context.set_backend("DATABASE_URL", db_url)
 
 
@@ -34,6 +36,10 @@ def _collect_local_database(context: WizardContext, provider: InputProvider) -> 
     existing_mode = (context.current(_LOCAL_DB_MODE_KEY) or "").strip().lower()
     if existing_mode not in _LOCAL_DB_MODES:
         existing_mode = _infer_local_db_mode(existing_url)
+
+    policy_mode = context.policy_env_default(_LOCAL_DB_MODE_KEY, fallback=None)
+    if policy_mode in _LOCAL_DB_MODES and existing_mode not in _LOCAL_DB_MODES:
+        existing_mode = policy_mode
 
     mode = provider.prompt_choice(
         key=_LOCAL_DB_MODE_KEY,
@@ -63,19 +69,19 @@ def _collect_local_database(context: WizardContext, provider: InputProvider) -> 
         provider,
         key="POSTGRES_PORT",
         prompt="Local Postgres port (host)",
-        default=context.current("POSTGRES_PORT") or "5432",
+        default=context.policy_env_default("POSTGRES_PORT", fallback="5432") or "5432",
     )
     user = prompt_nonempty_string(
         context,
         provider,
         key="POSTGRES_USER",
         prompt="Local Postgres username",
-        default=context.current("POSTGRES_USER") or "postgres",
+        default=context.policy_env_default("POSTGRES_USER", fallback="postgres") or "postgres",
     )
     password = provider.prompt_secret(
         key="POSTGRES_PASSWORD",
         prompt="Local Postgres password",
-        existing=context.current("POSTGRES_PASSWORD") or "postgres",
+        existing=context.policy_env_default("POSTGRES_PASSWORD", fallback="postgres"),
         required=True,
     )
     db_name = prompt_nonempty_string(
@@ -83,7 +89,8 @@ def _collect_local_database(context: WizardContext, provider: InputProvider) -> 
         provider,
         key="POSTGRES_DB",
         prompt="Local Postgres database name",
-        default=context.current("POSTGRES_DB") or "saas_starter_db",
+        default=context.policy_env_default("POSTGRES_DB", fallback="saas_starter_db")
+        or "saas_starter_db",
     )
 
     context.set_backend("POSTGRES_PORT", str(port))

@@ -4,17 +4,18 @@ import json
 
 from starter_contracts.keys import load_keyset
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
 from textual.widgets import Button, Static
 
 from starter_console.core import CLIContext
 from starter_console.services.auth.security import configure_key_storage_secret_manager
 from starter_console.ui.action_runner import ActionResult, ActionRunner
 
+from .footer_pane import FooterPane
 
-class JwksPane(Vertical):
+
+class JwksPane(FooterPane):
     def __init__(self, ctx: CLIContext) -> None:
-        super().__init__(id="jwks", classes="section-pane")
+        super().__init__(pane_id="jwks")
         self.ctx = ctx
         self._runner = ActionRunner(
             ctx=self.ctx,
@@ -24,13 +25,15 @@ class JwksPane(Vertical):
             on_state_change=self._set_action_state,
         )
 
-    def compose(self) -> ComposeResult:
+    def compose_body(self) -> ComposeResult:
         yield Static("JWKS", classes="section-title")
         yield Static("Inspect current JSON Web Key Sets.", classes="section-description")
-        with Horizontal(classes="ops-actions"):
-            yield Button("Print JWKS", id="jwks-print", variant="primary")
-        yield Static("", id="jwks-status", classes="section-footnote")
         yield Static("", id="jwks-output", classes="ops-output")
+
+    def compose_footer(self) -> ComposeResult:
+        yield Button("Print JWKS", id="jwks-print", variant="primary")
+        yield self.footer_spacer()
+        yield Static("", id="jwks-status", classes="section-footnote")
 
     def on_mount(self) -> None:
         self.set_interval(0.4, self._runner.refresh_output)

@@ -94,3 +94,4 @@ src/app/api/v1/logs/__pycache__/
 *.tmp
 *.temp 
 SNAPSHOT.md
+smoke-*.db

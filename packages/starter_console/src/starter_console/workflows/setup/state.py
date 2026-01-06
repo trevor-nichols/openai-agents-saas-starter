@@ -5,10 +5,20 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 
-class WizardStateStore:
+class WizardStateStorePort(Protocol):
+    def record_answer(self, key: str, value: str) -> None: ...
+
+    def record_skip(self, key: str, reason: str) -> None: ...
+
+    def snapshot(self) -> dict[str, str]: ...
+
+    def forget_answer(self, key: str) -> None: ...
+
+
+class WizardStateStore(WizardStateStorePort):
     def __init__(self, path: Path) -> None:
         self.path = path
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -54,6 +64,10 @@ class WizardStateStore:
                 snapshot[key] = value
         return snapshot
 
+    def forget_answer(self, key: str) -> None:
+        self.data["answers"].pop(_normalize(key), None)
+        self._save()
+
     def _save(self) -> None:
         self.path.write_text(
             json.dumps(self.data, indent=2, sort_keys=True) + "\n",
@@ -69,4 +83,4 @@ def _normalize(key: str) -> str:
     return key.strip().upper()
 
 
-__all__ = ["WizardStateStore"]
+__all__ = ["WizardStateStore", "WizardStateStorePort"]

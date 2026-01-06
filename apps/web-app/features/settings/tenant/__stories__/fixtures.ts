@@ -35,5 +35,6 @@ export const sampleTenantSettings: TenantSettings = {
     advanced_audit: false,
     workflows_beta: true,
   },
+  version: 3,
   updatedAt: new Date(now - 60 * 60 * 1000).toISOString(),
 };

@@ -278,6 +278,26 @@ async def lifespan(app: FastAPI):
         container.tenant_settings_service.set_repository(
             PostgresTenantSettingsRepository(session_factory)
         )
+
+    try:
+        _ = container.feature_flag_service.repository
+        feature_flag_repo_set = True
+    except RuntimeError:
+        feature_flag_repo_set = False
+    if not feature_flag_repo_set:
+        container.feature_flag_service.set_repository(
+            PostgresTenantSettingsRepository(session_factory)
+        )
+
+    try:
+        _ = container.feature_entitlement_service.repository
+        feature_entitlement_repo_set = True
+    except RuntimeError:
+        feature_entitlement_repo_set = False
+    if not feature_entitlement_repo_set:
+        container.feature_entitlement_service.set_repository(
+            PostgresTenantSettingsRepository(session_factory)
+        )
     container.tenant_lifecycle_service = build_tenant_lifecycle_service(
         tenant_account_service=container.tenant_account_service,
         billing_service=container.billing_service if settings.enable_billing else None,

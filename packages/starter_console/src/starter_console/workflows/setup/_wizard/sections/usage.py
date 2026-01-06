@@ -121,8 +121,7 @@ def run(context: WizardContext, provider: InputProvider) -> None:
 
     plan_codes = _prompt_plan_codes(context, provider, existing)
     entitlements = _collect_plan_entitlements(context, provider, plan_codes, existing)
-    if _prompt_vector_limits(context, provider):
-        entitlements = _inject_vector_limits(context, entitlements)
+    entitlements = _inject_vector_limits(context, entitlements)
     _write_entitlements_report(context, enabled=True, plans=entitlements)
     context.console.success(
         "Usage guardrails configured. Remember to seed plan features in Postgres before launch.",
@@ -310,17 +309,6 @@ def _collect_plan_entitlements(
             )
         entitlements.append(PlanEntitlement(plan_code=code, features=features))
     return entitlements
-
-
-def _prompt_vector_limits(context: WizardContext, provider: InputProvider) -> bool:
-    default = context.current_bool("ENABLE_VECTOR_LIMIT_ENTITLEMENTS", True)
-    choice = provider.prompt_bool(
-        key="ENABLE_VECTOR_LIMIT_ENTITLEMENTS",
-        prompt="Add vector storage limits to plan entitlements?",
-        default=default,
-    )
-    context.set_backend_bool("ENABLE_VECTOR_LIMIT_ENTITLEMENTS", choice)
-    return choice
 
 
 def _inject_vector_limits(

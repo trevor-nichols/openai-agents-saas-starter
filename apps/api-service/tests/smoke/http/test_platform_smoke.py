@@ -43,3 +43,12 @@ async def test_platform_tenants_list_and_get(
     detail_body = detail.json()
     assert detail_body.get("id") == smoke_state.tenant_id
     assert detail_body.get("slug") == smoke_config.tenant_slug
+
+    features = await http_client.get(
+        f"/api/v1/platform/tenants/{smoke_state.tenant_id}/features",
+        headers=headers,
+    )
+    assert features.status_code == 200, features.text
+    features_body = features.json()
+    assert features_body.get("tenant_id") == smoke_state.tenant_id
+    assert isinstance(features_body.get("flags"), dict)

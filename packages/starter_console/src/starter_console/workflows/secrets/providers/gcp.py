@@ -51,11 +51,18 @@ def run_gcp_sm(
     )
     cache_ttl = _coerce_positive_int(cache_ttl_raw, "GCP_SM_CACHE_TTL_SECONDS")
 
-    verified = _probe_gcp_secret(
-        project_id=project_id or None,
-        secret_name=signing_secret,
-        console=ctx.console,
-    )
+    verified = False
+    if options.skip_verification:
+        ctx.console.info(
+            "Skipping GCP Secret Manager verification (external calls disabled).",
+            topic="secrets",
+        )
+    else:
+        verified = _probe_gcp_secret(
+            project_id=project_id or None,
+            secret_name=signing_secret,
+            console=ctx.console,
+        )
 
     env_updates = {
         "SECRETS_PROVIDER": SecretsProviderLiteral.GCP_SM.value,
@@ -75,10 +82,14 @@ def run_gcp_sm(
     if verified:
         steps.insert(0, "Validated Secret Manager access by reading the signing secret.")
     else:
-        warnings.append(
-            "Failed to read the signing secret via Secret Manager. "
-            "Check IAM or credentials (ADC/GOOGLE_APPLICATION_CREDENTIALS)."
-        )
+        if options.skip_verification:
+            message = "Secret Manager verification skipped."
+        else:
+            message = (
+                "Failed to read the signing secret via Secret Manager. "
+                "Check IAM or credentials (ADC/GOOGLE_APPLICATION_CREDENTIALS)."
+            )
+        warnings.append(message)
 
     artifacts = [
         VerificationArtifact(

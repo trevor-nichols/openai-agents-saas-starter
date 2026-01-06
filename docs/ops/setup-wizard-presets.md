@@ -2,6 +2,12 @@
 
 Use hosting presets to keep the setup wizard deterministic and auditable while still allowing overrides when needed. Presets only set defaults and prompt gating; you can still override values via answers files or follow-up runs.
 
+## Profiles vs presets
+
+Profiles (demo/staging/production/custom) set policy defaults, required checks, and automation gates.
+Presets apply hosting-specific defaults inside the wizard. The selected profile chooses the initial
+preset defaults, but operators can override the preset in the UI or answers file.
+
 ## Presets
 
 ### local_docker
