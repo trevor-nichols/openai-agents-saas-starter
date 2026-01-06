@@ -52,7 +52,7 @@ jobs:
 
       - name: Upload frontend audit artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: frontend-audit
           path: |
@@ -112,7 +112,7 @@ jobs:
 
       - name: Upload jscpd report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: jscpd-report
           path: var/reports/jscpd/jscpd-report.json

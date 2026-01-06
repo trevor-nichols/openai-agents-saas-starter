@@ -47,6 +47,7 @@ class TenantSettingsResponse(BaseModel):
     billing_webhook_url: AnyHttpUrl | None = None
     plan_metadata: dict[str, str]
     flags: dict[str, bool]
+    version: int = Field(description="Monotonic version for optimistic concurrency.")
     updated_at: datetime | None = None
 
     @classmethod
@@ -60,6 +61,7 @@ class TenantSettingsResponse(BaseModel):
             billing_webhook_url=cast(AnyHttpUrl | None, snapshot.billing_webhook_url),
             plan_metadata=snapshot.plan_metadata,
             flags=snapshot.flags,
+            version=snapshot.version,
             updated_at=snapshot.updated_at,
         )
 

@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from dataclasses import asdict
 from urllib.parse import urlparse
 
+from app.domain.feature_flags import split_feature_flags
 from app.domain.tenant_settings import (
     BillingContact,
+    TenantSettingsConflictError,
     TenantSettingsRepository,
     TenantSettingsSnapshot,
 )
@@ -56,19 +59,32 @@ class TenantSettingsService:
         billing_contacts: list[dict[str, object]] | list[BillingContact],
         billing_webhook_url: str | None,
         plan_metadata: dict[str, object],
-        flags: dict[str, object],
+        flags: Mapping[str, object],
+        expected_version: int | None = None,
     ) -> TenantSettingsSnapshot:
         normalized_contacts = self._normalize_contacts(billing_contacts)
         normalized_metadata = self._normalize_plan_metadata(plan_metadata)
         normalized_flags = self._normalize_flags(flags)
         normalized_webhook = self._normalize_webhook(billing_webhook_url)
+        current = await self._require_repository().fetch(tenant_id)
+        if current is None:
+            current = TenantSettingsSnapshot(tenant_id=tenant_id)
+
+        if expected_version is not None and current.version != expected_version:
+            raise TenantSettingsConflictError(
+                "Tenant settings version conflict; refresh and retry."
+            )
+        reserved_flags, _ = split_feature_flags(current.flags)
+        _, custom_flags = split_feature_flags(normalized_flags)
+        merged_flags = {**custom_flags, **reserved_flags}
 
         snapshot = await self._require_repository().upsert(
             tenant_id,
             billing_contacts=normalized_contacts,
             billing_webhook_url=normalized_webhook,
             plan_metadata=normalized_metadata,
-            flags=normalized_flags,
+            flags=merged_flags,
+            expected_version=expected_version,
         )
         return snapshot
 
@@ -125,7 +141,7 @@ class TenantSettingsService:
             normalized[key_str] = value_str
         return normalized
 
-    def _normalize_flags(self, flags: dict[str, object] | None) -> dict[str, bool]:
+    def _normalize_flags(self, flags: Mapping[str, object] | None) -> dict[str, bool]:
         if flags is None:
             return {}
         normalized: dict[str, bool] = {}

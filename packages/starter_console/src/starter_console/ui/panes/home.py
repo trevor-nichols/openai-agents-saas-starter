@@ -4,7 +4,6 @@ import asyncio
 from datetime import UTC, datetime
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
 from textual.widgets import Button, Collapsible, DataTable, Static
 
 from starter_console.core import CLIContext
@@ -12,11 +11,12 @@ from starter_console.core.status_models import ProbeResult, ServiceStatus
 from starter_console.workflows.home.hub import HubService
 
 from ..view_models import format_summary, probe_rows, service_rows
+from .footer_pane import FooterPane
 
 
-class HomePane(Vertical):
+class HomePane(FooterPane):
     def __init__(self, ctx: CLIContext, hub: HubService) -> None:
-        super().__init__(id="home", classes="section-pane")
+        super().__init__(pane_id="home")
         self.ctx = ctx
         self.hub = hub
         self._summary: dict[str, int] = {}
@@ -26,16 +26,21 @@ class HomePane(Vertical):
         self._strict: bool = False
         self._stack_state: str | None = None
 
-    def compose(self) -> ComposeResult:
+    def compose_body(self) -> ComposeResult:
         yield Static("Home", classes="section-title")
-        yield Static("Operational overview for this workspace.", classes="section-description")
+        yield Static(
+            "Operational overview for this workspace.",
+            classes="section-description",
+        )
         yield Static("", id="home-summary", classes="section-summary home-summary-card")
-        with Horizontal(classes="home-actions"):
-            yield Button("Refresh", id="home-refresh", variant="primary")
         with Collapsible(title="Probe health", id="home-probes-card", collapsed=False):
             yield DataTable(id="home-probes", zebra_stripes=True)
         with Collapsible(title="Service status", id="home-services-card", collapsed=False):
             yield DataTable(id="home-services", zebra_stripes=True)
+
+    def compose_footer(self) -> ComposeResult:
+        yield Button("Refresh", id="home-refresh", variant="primary")
+        yield self.footer_spacer()
         yield Static("", id="home-status", classes="section-footnote")
 
     async def on_mount(self) -> None:

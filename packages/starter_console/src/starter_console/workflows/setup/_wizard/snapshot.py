@@ -40,7 +40,6 @@ def build_snapshot(context: WizardContext) -> dict[str, Any]:
         "profile": context.profile,
         "hosting_preset": context.hosting_preset,
         "cloud_provider": context.cloud_provider,
-        "show_advanced_prompts": context.show_advanced_prompts,
     }
     backend_values = _capture_values(WIZARD_PROMPTED_ENV_VARS, context.current)
     frontend_values = _capture_values(

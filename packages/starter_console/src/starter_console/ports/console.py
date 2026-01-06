@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -176,10 +177,13 @@ class StdConsole(ConsolePort):
         secret: bool = False,
         command_hook: Callable[[str], bool] | None = None,
     ) -> str:
-        hint = f"{prompt} [{key}]"
-        if default and not secret:
-            hint += f" (default: {default})"
-        hint += ": "
+        header = self._format_prompt_header(
+            prompt=prompt,
+            key=key,
+            default=default if not secret else None,
+            suffix=None,
+        )
+        hint = f"{header}\n{self._style('>', 'cyan')} "
         while True:
             raw_value = getpass(hint) if secret else input(hint)
             if command_hook and command_hook(raw_value):
@@ -202,7 +206,13 @@ class StdConsole(ConsolePort):
         command_hook: Callable[[str], bool] | None = None,
     ) -> bool:
         label = "y" if default else "n"
-        hint = f"{prompt} [{key}] (y/n, default: {label}): "
+        header = self._format_prompt_header(
+            prompt=prompt,
+            key=key,
+            default=None,
+            suffix=f"(y/n, default: {label})",
+        )
+        hint = f"{header}\n{self._style('>', 'cyan')} "
         while True:
             raw_value = input(hint)
             if command_hook and command_hook(raw_value):
@@ -218,6 +228,59 @@ class StdConsole(ConsolePort):
 
     def _log(self, level: str, message: str, topic: str | None, stream: TextIO) -> None:
         timestamp = datetime.now().strftime("%H:%M:%S")
-        label = f"[{level}]"
-        topic_label = f"[{topic}]" if topic else ""
+        label = self._style(f"[{level}]", _LEVEL_STYLES.get(level, "dim"))
+        topic_label = self._style(f"[{topic}]", "dim") if topic else ""
         stream.write(f"{timestamp} {label}{topic_label} {message}\n")
+
+    def _style(self, text: str, style: str) -> str:
+        if not _color_enabled(self.stream):
+            return text
+        return f"{_STYLES.get(style, '')}{text}{_RESET}"
+
+    def _format_prompt_header(
+        self,
+        *,
+        prompt: str,
+        key: str,
+        default: str | None,
+        suffix: str | None,
+    ) -> str:
+        parts: list[str] = [self._style("?", "cyan"), self._style(prompt, "bold")]
+        parts.append(self._style(f"[{key}]", "dim"))
+        if default:
+            parts.append(self._style(f"(default: {default})", "dim"))
+        if suffix:
+            parts.append(self._style(suffix, "dim"))
+        return " ".join(parts)
+
+
+_RESET = "\033[0m"
+_STYLES = {
+    "bold": "\033[1m",
+    "dim": "\033[2m",
+    "red": "\033[31m",
+    "green": "\033[32m",
+    "yellow": "\033[33m",
+    "blue": "\033[34m",
+    "cyan": "\033[36m",
+}
+
+_LEVEL_STYLES = {
+    "INFO": "cyan",
+    "WARN": "yellow",
+    "ERROR": "red",
+    "SUCCESS": "green",
+    "NOTE": "blue",
+}
+
+
+def _color_enabled(stream: TextIO) -> bool:
+    if os.getenv("NO_COLOR"):
+        return False
+    override = os.getenv("STARTER_CONSOLE_COLOR", "1").strip().lower()
+    if override in {"0", "false", "no"}:
+        return False
+    try:
+        return stream.isatty()
+    except Exception:  # pragma: no cover - defensive
+        return False

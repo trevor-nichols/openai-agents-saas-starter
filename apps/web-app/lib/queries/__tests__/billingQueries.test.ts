@@ -1,5 +1,6 @@
 import type { UseQueryOptions } from '@tanstack/react-query';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { queryKeys } from '../keys';
 
 type UseQueryOptionsParam = UseQueryOptions<unknown, unknown, unknown, readonly unknown[]>;
 type UseQueryFn = (options: UseQueryOptionsParam) => unknown;
@@ -63,5 +64,24 @@ describe('billing query guards', () => {
     if (!call) throw new Error('useQuery was not called');
     expect(call.enabled).toBe(true);
     expect(call.queryFn).toBeDefined();
+  });
+
+  it('always enables public billing plans query', async () => {
+    mockUseFeatureFlags.mockReturnValue({
+      flags: { billingEnabled: false, billingStreamEnabled: false },
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    const { usePublicBillingPlans } = await import('../billingPlans');
+
+    mockedUseQuery.mockReturnValue({});
+    usePublicBillingPlans();
+
+    const call = mockedUseQuery.mock.calls[0]?.[0];
+    expect(call).toBeDefined();
+    if (!call) throw new Error('useQuery was not called');
+    expect(call.enabled).toBe(true);
+    expect(call.queryKey).toEqual(queryKeys.billing.publicPlans());
   });
 });

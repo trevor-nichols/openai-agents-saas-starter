@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.domain.tenant_settings import (
     BillingContact,
+    TenantSettingsConflictError,
     TenantSettingsRepository,
     TenantSettingsSnapshot,
 )
@@ -38,12 +39,22 @@ class PostgresTenantSettingsRepository(TenantSettingsRepository):
         billing_webhook_url: str | None,
         plan_metadata: dict[str, str],
         flags: dict[str, bool],
+        expected_version: int | None = None,
     ) -> TenantSettingsSnapshot:
         tenant_uuid = self._parse_tenant_uuid(tenant_id)
         async with self._session_factory() as session:
             record = await session.scalar(
-                select(TenantSettingsModel).where(TenantSettingsModel.tenant_id == tenant_uuid)
+                select(TenantSettingsModel)
+                .where(TenantSettingsModel.tenant_id == tenant_uuid)
+                .with_for_update()
             )
+
+            if expected_version is not None:
+                current_version = record.version if record else 0
+                if current_version != expected_version:
+                    raise TenantSettingsConflictError(
+                        "Tenant settings version conflict; refresh and retry."
+                    )
 
             payload = {
                 "billing_contacts_json": [self._contact_to_json(item) for item in billing_contacts],
@@ -67,6 +78,44 @@ class PostgresTenantSettingsRepository(TenantSettingsRepository):
             await session.refresh(record)
             return self._to_snapshot(tenant_id, record)
 
+    async def patch_flags(
+        self,
+        tenant_id: str,
+        *,
+        updates: dict[str, bool | None],
+    ) -> TenantSettingsSnapshot:
+        tenant_uuid = self._parse_tenant_uuid(tenant_id)
+        async with self._session_factory() as session:
+            record = await session.scalar(
+                select(TenantSettingsModel)
+                .where(TenantSettingsModel.tenant_id == tenant_uuid)
+                .with_for_update()
+            )
+
+            created = record is None
+            if created:
+                record = TenantSettingsModel(
+                    tenant_id=tenant_uuid,
+                    flags_json={},
+                )
+                session.add(record)
+            assert record is not None
+
+            merged_flags = dict(record.flags_json or {})
+            for key, value in updates.items():
+                if value is None:
+                    merged_flags.pop(key, None)
+                else:
+                    merged_flags[key] = bool(value)
+
+            record.flags_json = merged_flags
+            if not created:
+                record.version += 1
+
+            await session.commit()
+            await session.refresh(record)
+            return self._to_snapshot(tenant_id, record)
+
     def _to_snapshot(
         self,
         tenant_id: str,
@@ -79,6 +128,7 @@ class PostgresTenantSettingsRepository(TenantSettingsRepository):
             billing_webhook_url=record.billing_webhook_url,
             plan_metadata=dict(record.plan_metadata_json or {}),
             flags=dict(record.flags_json or {}),
+            version=record.version,
             updated_at=record.updated_at,
         )
 

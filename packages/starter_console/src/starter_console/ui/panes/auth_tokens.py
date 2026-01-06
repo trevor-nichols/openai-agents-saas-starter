@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from textual.app import ComposeResult
-from textual.containers import Grid, Horizontal, Vertical
+from textual.containers import Grid
 from textual.widgets import Button, Input, RadioButton, RadioSet, Static, Switch
 
 from starter_console.core import CLIContext, CLIError
@@ -15,10 +15,12 @@ from starter_console.services.auth.tokens import (
 )
 from starter_console.ui.action_runner import ActionResult, ActionRunner
 
+from .footer_pane import FooterPane
 
-class AuthTokensPane(Vertical):
+
+class AuthTokensPane(FooterPane):
     def __init__(self, ctx: CLIContext) -> None:
-        super().__init__(id="auth-tokens", classes="section-pane")
+        super().__init__(pane_id="auth-tokens")
         self.ctx = ctx
         self._runner = ActionRunner(
             ctx=self.ctx,
@@ -28,7 +30,7 @@ class AuthTokensPane(Vertical):
             on_state_change=self._set_action_state,
         )
 
-    def compose(self) -> ComposeResult:
+    def compose_body(self) -> ComposeResult:
         yield Static("Auth Tokens", classes="section-title")
         yield Static("Issue service-account refresh tokens.", classes="section-description")
         with Grid(classes="form-grid"):
@@ -53,10 +55,12 @@ class AuthTokensPane(Vertical):
             )
             yield Static("Base URL", classes="wizard-control-label")
             yield Input(id="auth-base-url")
-        with Horizontal(classes="ops-actions"):
-            yield Button("Issue Token", id="auth-issue", variant="primary")
-        yield Static("", id="auth-status", classes="section-footnote")
         yield Static("", id="auth-output-log", classes="ops-output")
+
+    def compose_footer(self) -> ComposeResult:
+        yield Button("Issue Token", id="auth-issue", variant="primary")
+        yield self.footer_spacer()
+        yield Static("", id="auth-status", classes="section-footnote")
 
     def on_mount(self) -> None:
         self.query_one("#auth-base-url", Input).value = resolve_base_url()

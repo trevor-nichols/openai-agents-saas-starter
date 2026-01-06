@@ -194,9 +194,9 @@ def _prompt_worker_mode(context: WizardContext, provider: InputProvider) -> str:
             "Update your answers file before re-running."
         )
 
-    default_mode = existing
-    if not default_mode:
-        default_mode = "inline" if context.profile == "demo" else "dedicated"
+    default_mode = existing or context.policy_env_default(
+        "BILLING_RETRY_DEPLOYMENT_MODE", fallback="inline"
+    )
     while True:
         value = (
             provider.prompt_string(

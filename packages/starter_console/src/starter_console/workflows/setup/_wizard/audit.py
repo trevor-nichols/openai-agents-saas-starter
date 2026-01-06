@@ -18,10 +18,10 @@ def build_sections(context: WizardContext) -> list[SectionResult]:
     settings = context.cli_ctx.optional_settings()
     env_snapshot = context.env_snapshot()
     return [
-        _secrets_section(context.profile, settings, env_snapshot),
+        _secrets_section(context, settings, env_snapshot),
         _providers_section(context, settings, env_snapshot),
-        _tenant_observability_section(env_snapshot),
-        _signup_worker_section(settings, env_snapshot),
+        _tenant_observability_section(context, env_snapshot),
+        _signup_worker_section(context, settings, env_snapshot),
     ]
 
 
@@ -113,7 +113,6 @@ def write_summary(context: WizardContext, sections: list[SectionResult]) -> None
         "profile": context.profile,
         "hosting_preset": context.hosting_preset,
         "cloud_provider": context.cloud_provider,
-        "show_advanced_prompts": context.show_advanced_prompts,
         "api_base_url": context.api_base_url,
         "backend_env_path": str(context.backend_env.path),
         "frontend_env_path": str(context.frontend_path) if context.frontend_path else None,
@@ -156,7 +155,6 @@ def write_markdown_summary(context: WizardContext, sections: list[SectionResult]
         lines.append(f"- **Hosting preset**: `{context.hosting_preset}`")
     if context.cloud_provider:
         lines.append(f"- **Cloud provider**: `{context.cloud_provider}`")
-    lines.append(f"- **Advanced prompts**: `{context.show_advanced_prompts}`")
     lines.append(f"- **API Base URL**: `{context.api_base_url}`")
     lines.append(
         f"- **Backend env**: `{context.backend_env.path}`"
@@ -212,7 +210,11 @@ def write_markdown_summary(context: WizardContext, sections: list[SectionResult]
     context.console.success(f"Markdown summary written to {path}", topic="wizard")
 
 
-def _secrets_section(profile: str, settings, env_snapshot: dict[str, str]) -> SectionResult:
+def _secrets_section(
+    context: WizardContext,
+    settings,
+    env_snapshot: dict[str, str],
+) -> SectionResult:
     section = SectionResult("M1 - Secrets & Key Management", "Rotate and harden keys.")
     password_pepper = env_snapshot.get("AUTH_PASSWORD_PEPPER")
     refresh_pepper = env_snapshot.get("AUTH_REFRESH_TOKEN_PEPPER")
@@ -220,12 +222,12 @@ def _secrets_section(profile: str, settings, env_snapshot: dict[str, str]) -> Se
     section.checks.append(_pepper_status("AUTH_PASSWORD_PEPPER", password_pepper))
     section.checks.append(_pepper_status("AUTH_REFRESH_TOKEN_PEPPER", refresh_pepper))
 
-    vault_required = profile in {"staging", "production"}
+    vault_required = context.policy_rule_bool("require_vault", fallback=False)
     section.checks.extend(
         [
-            _env_presence("VAULT_ADDR", env_snapshot, required=vault_required),
-            _env_presence("VAULT_TOKEN", env_snapshot, required=vault_required),
-            _env_presence("VAULT_TRANSIT_KEY", env_snapshot, required=vault_required),
+            _presence(context, "VAULT_ADDR", env_snapshot, default_required=vault_required),
+            _presence(context, "VAULT_TOKEN", env_snapshot, default_required=vault_required),
+            _presence(context, "VAULT_TRANSIT_KEY", env_snapshot, default_required=vault_required),
         ]
     )
 
@@ -272,16 +274,16 @@ def _providers_section(
     )
     section.checks.extend(
         [
-            _env_presence("OPENAI_API_KEY", env_snapshot),
-            _env_presence("STRIPE_SECRET_KEY", env_snapshot),
-            _env_presence("STRIPE_WEBHOOK_SECRET", env_snapshot),
-            _env_presence("RESEND_API_KEY", env_snapshot, required=False),
-            _env_presence("DATABASE_URL", env_snapshot, required=False),
-            _env_presence("REDIS_URL", env_snapshot),
-            _env_presence("RATE_LIMIT_REDIS_URL", env_snapshot, required=False),
-            _env_presence("AUTH_CACHE_REDIS_URL", env_snapshot, required=False),
-            _env_presence("SECURITY_TOKEN_REDIS_URL", env_snapshot, required=False),
-            _env_presence("BILLING_EVENTS_REDIS_URL", env_snapshot, required=False),
+            _presence(context, "OPENAI_API_KEY", env_snapshot, default_required=True),
+            _presence(context, "STRIPE_SECRET_KEY", env_snapshot, default_required=True),
+            _presence(context, "STRIPE_WEBHOOK_SECRET", env_snapshot, default_required=True),
+            _presence(context, "RESEND_API_KEY", env_snapshot, default_required=False),
+            _presence(context, "DATABASE_URL", env_snapshot, default_required=False),
+            _presence(context, "REDIS_URL", env_snapshot, default_required=True),
+            _presence(context, "RATE_LIMIT_REDIS_URL", env_snapshot, default_required=False),
+            _presence(context, "AUTH_CACHE_REDIS_URL", env_snapshot, default_required=False),
+            _presence(context, "SECURITY_TOKEN_REDIS_URL", env_snapshot, default_required=False),
+            _presence(context, "BILLING_EVENTS_REDIS_URL", env_snapshot, default_required=False),
         ]
     )
 
@@ -316,36 +318,72 @@ def _providers_section(
     return section
 
 
-def _tenant_observability_section(env_snapshot: dict[str, str]) -> SectionResult:
+def _tenant_observability_section(
+    context: WizardContext, env_snapshot: dict[str, str]
+) -> SectionResult:
     section = SectionResult(
         "M3 - Tenant & Observability",
         "Baseline tenant + logging + geo telemetry.",
     )
     section.checks.extend(
         [
-            _env_presence("TENANT_DEFAULT_SLUG", env_snapshot),
-            _env_presence("LOGGING_SINKS", env_snapshot),
-            _env_presence("GEOIP_PROVIDER", env_snapshot),
+            _presence(context, "TENANT_DEFAULT_SLUG", env_snapshot, default_required=True),
+            _presence(context, "LOGGING_SINKS", env_snapshot, default_required=True),
+            _presence(context, "GEOIP_PROVIDER", env_snapshot, default_required=True),
         ]
     )
     return section
 
 
-def _signup_worker_section(settings, env_snapshot: dict[str, str]) -> SectionResult:
+def _signup_worker_section(
+    context: WizardContext, settings, env_snapshot: dict[str, str]
+) -> SectionResult:
     section = SectionResult(
         "M4 - Signup & Worker policy",
         "Ensure signup controls & billing workers match deployment.",
     )
     section.checks.extend(
         [
-            _env_presence("SIGNUP_ACCESS_POLICY", env_snapshot),
-            _env_presence("SIGNUP_RATE_LIMIT_PER_HOUR", env_snapshot),
-            _env_presence("SIGNUP_RATE_LIMIT_PER_IP_DAY", env_snapshot),
-            _env_presence("SIGNUP_RATE_LIMIT_PER_EMAIL_DAY", env_snapshot),
-            _env_presence("SIGNUP_RATE_LIMIT_PER_DOMAIN_DAY", env_snapshot),
-            _env_presence("SIGNUP_CONCURRENT_REQUESTS_LIMIT", env_snapshot),
-            _env_presence("SIGNUP_DEFAULT_TRIAL_DAYS", env_snapshot),
-            _env_presence("BILLING_RETRY_DEPLOYMENT_MODE", env_snapshot),
+            _presence(context, "SIGNUP_ACCESS_POLICY", env_snapshot, default_required=True),
+            _presence(
+                context,
+                "SIGNUP_RATE_LIMIT_PER_HOUR",
+                env_snapshot,
+                default_required=True,
+            ),
+            _presence(
+                context,
+                "SIGNUP_RATE_LIMIT_PER_IP_DAY",
+                env_snapshot,
+                default_required=True,
+            ),
+            _presence(
+                context,
+                "SIGNUP_RATE_LIMIT_PER_EMAIL_DAY",
+                env_snapshot,
+                default_required=True,
+            ),
+            _presence(
+                context,
+                "SIGNUP_RATE_LIMIT_PER_DOMAIN_DAY",
+                env_snapshot,
+                default_required=True,
+            ),
+            _presence(
+                context,
+                "SIGNUP_CONCURRENT_REQUESTS_LIMIT",
+                env_snapshot,
+                default_required=True,
+            ),
+            _presence(
+                context,
+                "SIGNUP_DEFAULT_TRIAL_DAYS",
+                env_snapshot,
+                default_required=True,
+            ),
+            _presence(
+                context, "BILLING_RETRY_DEPLOYMENT_MODE", env_snapshot, default_required=True
+            ),
         ]
     )
 
@@ -394,6 +432,17 @@ def _latest_artifact(
 def _env_presence(key: str, env: dict[str, str], *, required: bool = True) -> CheckResult:
     status = "ok" if env.get(key) else "missing"
     return CheckResult(name=key, status=status, required=required)
+
+
+def _presence(
+    context: WizardContext,
+    key: str,
+    env: dict[str, str],
+    *,
+    default_required: bool,
+) -> CheckResult:
+    required = context.policy_required(key, default=default_required)
+    return _env_presence(key, env, required=required)
 
 
 def _pepper_status(key: str, value: str | None) -> CheckResult:

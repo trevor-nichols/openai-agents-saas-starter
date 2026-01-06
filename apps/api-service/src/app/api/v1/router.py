@@ -12,6 +12,7 @@ from app.api.v1.contact.router import router as contact_router
 from app.api.v1.containers.router import router as containers_router
 from app.api.v1.conversations.ledger_router import router as conversation_ledger_router
 from app.api.v1.conversations.router import router as conversations_router
+from app.api.v1.features.router import router as features_router
 from app.api.v1.guardrails.router import router as guardrails_router
 from app.api.v1.logs.router import router as logs_router
 from app.api.v1.openai_files.router import router as openai_files_router
@@ -41,6 +42,7 @@ router.include_router(workflows_router)
 router.include_router(workflows_replay_router)
 router.include_router(conversations_router)
 router.include_router(conversation_ledger_router)
+router.include_router(features_router)
 router.include_router(tools_router)
 router.include_router(activity_router)
 router.include_router(containers_router)
@@ -57,9 +59,8 @@ router.include_router(user_notifications_router)
 router.include_router(user_profile_router)
 router.include_router(usage_router)
 
+router.include_router(billing_router)
 settings = get_settings()
-if settings.enable_billing:
-    router.include_router(billing_router)
 if settings.use_test_fixtures:
     router.include_router(test_fixtures_router)
 if settings.enable_frontend_log_ingest:

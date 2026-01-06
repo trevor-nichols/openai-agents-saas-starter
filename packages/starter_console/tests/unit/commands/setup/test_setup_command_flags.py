@@ -13,6 +13,7 @@ from starter_console.core import CLIContext, CLIError
 def _build_args(**overrides) -> argparse.Namespace:
     defaults = {
         "profile": "demo",
+        "profiles_path": None,
         "output": "summary",
         "answers_file": None,
         "var": None,

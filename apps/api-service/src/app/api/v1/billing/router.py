@@ -10,12 +10,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 
 from app.api.dependencies import raise_rate_limit_http_error
-from app.api.dependencies.tenant import (
-    TenantContext,
-    TenantRole,
-    get_tenant_context,
-    require_tenant_role,
-)
+from app.api.dependencies.features import require_feature, require_feature_for_role
+from app.api.dependencies.tenant import TenantContext, TenantRole
 from app.api.models.common import SuccessNoDataResponse
 from app.api.v1.billing.schemas import (
     BillingEventHistoryResponse,
@@ -40,6 +36,7 @@ from app.api.v1.billing.schemas import (
     UsageTotalResponse,
 )
 from app.core.settings import get_settings
+from app.domain.feature_flags import FeatureKey
 from app.infrastructure.persistence.stripe.models import StripeEventStatus
 from app.services.billing.billing_events import get_billing_events_service
 from app.services.billing.billing_service import billing_service
@@ -98,7 +95,7 @@ def _handle_billing_error(exc: BillingError) -> None:
 )
 async def get_tenant_subscription(
     tenant_id: str,
-    context: TenantContext = Depends(get_tenant_context),
+    context: TenantContext = Depends(require_feature(FeatureKey.BILLING)),
 ) -> TenantSubscriptionResponse:
     """Return the current subscription for a tenant."""
 
@@ -127,7 +124,8 @@ async def list_invoices(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     context: TenantContext = Depends(
-        require_tenant_role(
+        require_feature_for_role(
+            FeatureKey.BILLING,
             TenantRole.OWNER,
             TenantRole.ADMIN,
             TenantRole.MEMBER,
@@ -163,7 +161,8 @@ async def get_invoice(
     tenant_id: str,
     invoice_id: str,
     context: TenantContext = Depends(
-        require_tenant_role(
+        require_feature_for_role(
+            FeatureKey.BILLING,
             TenantRole.OWNER,
             TenantRole.ADMIN,
             TenantRole.MEMBER,
@@ -200,7 +199,11 @@ async def get_invoice(
 async def start_subscription(
     tenant_id: str,
     payload: StartSubscriptionRequest,
-    context: TenantContext = Depends(require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN)),
+    context: TenantContext = Depends(
+        require_feature_for_role(
+            FeatureKey.BILLING, TenantRole.OWNER, TenantRole.ADMIN
+        )
+    ),
 ) -> TenantSubscriptionResponse:
     """Provision a new subscription for the tenant."""
 
@@ -227,7 +230,9 @@ async def start_subscription(
 async def update_subscription(
     tenant_id: str,
     payload: UpdateSubscriptionRequest,
-    context: TenantContext = Depends(require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN)),
+    context: TenantContext = Depends(
+        require_feature_for_role(FeatureKey.BILLING, TenantRole.OWNER, TenantRole.ADMIN)
+    ),
 ) -> TenantSubscriptionResponse:
     """Adjust subscription metadata (auto-renew, seats, billing email)."""
 
@@ -258,7 +263,9 @@ async def update_subscription(
 async def change_subscription_plan(
     tenant_id: str,
     payload: ChangeSubscriptionPlanRequest,
-    context: TenantContext = Depends(require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN)),
+    context: TenantContext = Depends(
+        require_feature_for_role(FeatureKey.BILLING, TenantRole.OWNER, TenantRole.ADMIN)
+    ),
 ) -> PlanChangeResponse:
     """Request a plan change, either immediate or effective at period end."""
 
@@ -283,7 +290,9 @@ async def change_subscription_plan(
 async def cancel_subscription(
     tenant_id: str,
     payload: CancelSubscriptionRequest,
-    context: TenantContext = Depends(require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN)),
+    context: TenantContext = Depends(
+        require_feature_for_role(FeatureKey.BILLING, TenantRole.OWNER, TenantRole.ADMIN)
+    ),
 ) -> TenantSubscriptionResponse:
     """Cancel the tenant subscription (immediately or at period end)."""
 
@@ -305,7 +314,9 @@ async def cancel_subscription(
 async def create_portal_session(
     tenant_id: str,
     payload: PortalSessionRequest,
-    context: TenantContext = Depends(require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN)),
+    context: TenantContext = Depends(
+        require_feature_for_role(FeatureKey.BILLING, TenantRole.OWNER, TenantRole.ADMIN)
+    ),
 ) -> PortalSessionResponse:
     """Create a Stripe billing portal session for the tenant."""
 
@@ -326,7 +337,9 @@ async def create_portal_session(
 )
 async def list_payment_methods(
     tenant_id: str,
-    context: TenantContext = Depends(require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN)),
+    context: TenantContext = Depends(
+        require_feature_for_role(FeatureKey.BILLING, TenantRole.OWNER, TenantRole.ADMIN)
+    ),
 ) -> list[PaymentMethodResponse]:
     """List saved payment methods for a tenant."""
 
@@ -357,7 +370,9 @@ async def list_payment_methods(
 async def create_setup_intent(
     tenant_id: str,
     payload: SetupIntentRequest,
-    context: TenantContext = Depends(require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN)),
+    context: TenantContext = Depends(
+        require_feature_for_role(FeatureKey.BILLING, TenantRole.OWNER, TenantRole.ADMIN)
+    ),
 ) -> SetupIntentResponse:
     """Create a setup intent for adding a new payment method."""
 
@@ -379,7 +394,9 @@ async def create_setup_intent(
 async def set_default_payment_method(
     tenant_id: str,
     payment_method_id: str,
-    context: TenantContext = Depends(require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN)),
+    context: TenantContext = Depends(
+        require_feature_for_role(FeatureKey.BILLING, TenantRole.OWNER, TenantRole.ADMIN)
+    ),
 ) -> SuccessNoDataResponse:
     """Set the default payment method for a tenant."""
 
@@ -401,7 +418,9 @@ async def set_default_payment_method(
 async def detach_payment_method(
     tenant_id: str,
     payment_method_id: str,
-    context: TenantContext = Depends(require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN)),
+    context: TenantContext = Depends(
+        require_feature_for_role(FeatureKey.BILLING, TenantRole.OWNER, TenantRole.ADMIN)
+    ),
 ) -> SuccessNoDataResponse:
     """Detach a payment method from the tenant's Stripe customer."""
 
@@ -424,7 +443,8 @@ async def preview_upcoming_invoice(
     tenant_id: str,
     payload: UpcomingInvoicePreviewRequest,
     context: TenantContext = Depends(
-        require_tenant_role(
+        require_feature_for_role(
+            FeatureKey.BILLING,
             TenantRole.OWNER,
             TenantRole.ADMIN,
             TenantRole.MEMBER,
@@ -454,7 +474,9 @@ async def preview_upcoming_invoice(
 async def record_usage(
     tenant_id: str,
     payload: UsageRecordRequest,
-    context: TenantContext = Depends(require_tenant_role(TenantRole.OWNER, TenantRole.ADMIN)),
+    context: TenantContext = Depends(
+        require_feature_for_role(FeatureKey.BILLING, TenantRole.OWNER, TenantRole.ADMIN)
+    ),
 ) -> SuccessNoDataResponse:
     """Report metered usage for a tenant subscription."""
 
@@ -491,7 +513,8 @@ async def list_usage_totals(
         default=None, description="Filter usage with windows starting before this time (UTC)."
     ),
     context: TenantContext = Depends(
-        require_tenant_role(
+        require_feature_for_role(
+            FeatureKey.BILLING,
             TenantRole.OWNER,
             TenantRole.ADMIN,
             TenantRole.MEMBER,
@@ -531,7 +554,8 @@ async def list_billing_events(
         description="Filter by processing outcome (received/processed/failed).",
     ),
     context: TenantContext = Depends(
-        require_tenant_role(
+        require_feature_for_role(
+            FeatureKey.BILLING,
             TenantRole.OWNER,
             TenantRole.ADMIN,
             TenantRole.MEMBER,
@@ -565,7 +589,8 @@ async def list_billing_events(
 async def billing_event_stream(
     request: Request,
     context: TenantContext = Depends(
-        require_tenant_role(
+        require_feature_for_role(
+            FeatureKey.BILLING_STREAM,
             TenantRole.OWNER,
             TenantRole.ADMIN,
             TenantRole.MEMBER,
@@ -574,10 +599,6 @@ async def billing_event_stream(
     ),
 ) -> StreamingResponse:
     settings = get_settings()
-    if not settings.enable_billing_stream:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Billing stream is disabled."
-        )
 
     service = get_billing_events_service()
     await _enforce_tenant_quota(

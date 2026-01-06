@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
-import { isBillingEnabled } from '@/lib/server/features';
+import { FeatureFlagsApiError, requireBillingFeature } from '@/lib/server/features';
 import { listTenantBillingEvents } from '@/lib/server/services/billing';
 import type { StripeEventStatus } from '@/lib/api/client/types.gen';
 import {
@@ -23,9 +23,6 @@ function normalizeProcessingStatus(value: string | null): StripeEventStatus | nu
 }
 
 export async function GET(request: NextRequest, context: BillingTenantRouteContext) {
-  if (!(await isBillingEnabled())) {
-    return NextResponse.json({ success: false, error: 'Billing is disabled.' }, { status: 404 });
-  }
   const tenantId = await resolveTenantId(context);
   if (!tenantId) {
     return NextResponse.json({ message: 'Tenant id is required.' }, { status: 400 });
@@ -52,6 +49,7 @@ export async function GET(request: NextRequest, context: BillingTenantRouteConte
   }
 
   try {
+    await requireBillingFeature();
     const history = await listTenantBillingEvents(tenantId, {
       limit,
       cursor,
@@ -63,7 +61,10 @@ export async function GET(request: NextRequest, context: BillingTenantRouteConte
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Failed to load billing events.';
-    const statusCode = mapBillingErrorToStatus(message, { includeNotFound: true });
+    const statusCode =
+      error instanceof FeatureFlagsApiError
+        ? error.status
+        : mapBillingErrorToStatus(message, { includeNotFound: true });
     return NextResponse.json({ message }, { status: statusCode });
   }
 }

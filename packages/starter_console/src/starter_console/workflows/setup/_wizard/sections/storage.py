@@ -14,21 +14,27 @@ def run(context: WizardContext, provider: InputProvider) -> None:
         "Choose object storage backend (MinIO, S3, Azure Blob, or Google Cloud Storage).",
     )
 
-    current = context.current("STORAGE_PROVIDER") or (
+    preset_default = (
         StorageProviderLiteral.MINIO.value
-        if context.profile == "demo"
+        if context.hosting_preset == "local_docker"
         else StorageProviderLiteral.S3.value
     )
+    current = context.policy_env_default("STORAGE_PROVIDER", fallback=preset_default)
     choice = provider.prompt_choice(
         key="STORAGE_PROVIDER",
         prompt="Select storage provider",
-        choices=[
-            StorageProviderLiteral.MINIO.value,
-            StorageProviderLiteral.S3.value,
-            StorageProviderLiteral.AZURE_BLOB.value,
-            StorageProviderLiteral.GCS.value,
-        ],
-        default=current,
+        choices=list(
+            context.policy_choice(
+                "storage_provider",
+                fallback=[
+                    StorageProviderLiteral.MINIO.value,
+                    StorageProviderLiteral.S3.value,
+                    StorageProviderLiteral.AZURE_BLOB.value,
+                    StorageProviderLiteral.GCS.value,
+                ],
+            )
+        ),
+        default=current or preset_default,
     )
     try:
         provider_literal = StorageProviderLiteral(choice)
@@ -57,8 +63,9 @@ def run(context: WizardContext, provider: InputProvider) -> None:
 
 
 def _configure_minio(context: WizardContext, provider: InputProvider) -> None:
-    default_endpoint = context.current("MINIO_ENDPOINT") or (
-        "http://localhost:9000" if context.profile == "demo" else ""
+    default_endpoint = context.policy_env_default(
+        "MINIO_ENDPOINT",
+        fallback="http://localhost:9000" if context.hosting_preset == "local_docker" else "",
     )
     endpoint = provider.prompt_string(
         key="MINIO_ENDPOINT",
@@ -69,13 +76,16 @@ def _configure_minio(context: WizardContext, provider: InputProvider) -> None:
     access_key = provider.prompt_string(
         key="MINIO_ACCESS_KEY",
         prompt="MinIO access key",
-        default=context.current("MINIO_ACCESS_KEY")
-        or ("minioadmin" if context.profile == "demo" else ""),
+        default=context.policy_env_default(
+            "MINIO_ACCESS_KEY",
+            fallback="minioadmin" if context.hosting_preset == "local_docker" else "",
+        ),
         required=True,
     )
-    default_secret = context.current("MINIO_SECRET_KEY") or (
-        "minioadmin" if context.profile == "demo" else ""
-    )
+    default_secret = context.policy_env_default(
+        "MINIO_SECRET_KEY",
+        fallback="minioadmin" if context.hosting_preset == "local_docker" else "",
+    ) or ""
     secret_key = provider.prompt_secret(
         key="MINIO_SECRET_KEY",
         prompt="MinIO secret key",
@@ -85,14 +95,16 @@ def _configure_minio(context: WizardContext, provider: InputProvider) -> None:
     region = provider.prompt_string(
         key="MINIO_REGION",
         prompt="MinIO region (optional)",
-        default=context.current("MINIO_REGION") or "",
+        default=context.policy_env_default("MINIO_REGION", fallback=""),
         required=False,
     )
-    secure_default = context.profile != "demo"
+    secure_default = context.policy_env_default_bool(
+        "MINIO_SECURE", fallback=context.hosting_preset != "local_docker"
+    )
     secure = provider.prompt_bool(
         key="MINIO_SECURE",
         prompt="Use HTTPS for MinIO?",
-        default=context.current_bool("MINIO_SECURE", secure_default),
+        default=secure_default,
     )
 
     context.set_backend("MINIO_ENDPOINT", endpoint)
@@ -106,19 +118,19 @@ def _configure_gcs(context: WizardContext, provider: InputProvider) -> None:
     project_id = provider.prompt_string(
         key="GCP_PROJECT_ID",
         prompt="GCP project id",
-        default=context.current("GCP_PROJECT_ID") or "",
+        default=context.policy_env_default("GCP_PROJECT_ID", fallback=""),
         required=True,
     )
     bucket = provider.prompt_string(
         key="GCS_BUCKET",
         prompt="GCS bucket name",
-        default=context.current("GCS_BUCKET") or "",
+        default=context.policy_env_default("GCS_BUCKET", fallback=""),
         required=True,
     )
     creds_path = provider.prompt_string(
         key="GCS_CREDENTIALS_PATH",
         prompt="Path to GCS service account JSON (blank = ADC)",
-        default=context.current("GCS_CREDENTIALS_PATH") or "",
+        default=context.policy_env_default("GCS_CREDENTIALS_PATH", fallback=""),
         required=False,
     )
     creds_json = provider.prompt_secret(
@@ -130,13 +142,13 @@ def _configure_gcs(context: WizardContext, provider: InputProvider) -> None:
     signing_email = provider.prompt_string(
         key="GCS_SIGNING_EMAIL",
         prompt="Service account email for signed URLs (optional)",
-        default=context.current("GCS_SIGNING_EMAIL") or "",
+        default=context.policy_env_default("GCS_SIGNING_EMAIL", fallback=""),
         required=False,
     )
     uniform_access = provider.prompt_bool(
         key="GCS_UNIFORM_ACCESS",
         prompt="Bucket uses Uniform Access (UBLA)?",
-        default=context.current_bool("GCS_UNIFORM_ACCESS", True),
+        default=context.policy_env_default_bool("GCS_UNIFORM_ACCESS", fallback=True),
     )
 
     context.set_backend("GCP_PROJECT_ID", project_id)
@@ -151,25 +163,25 @@ def _configure_s3(context: WizardContext, provider: InputProvider) -> None:
     bucket = provider.prompt_string(
         key="S3_BUCKET",
         prompt="S3 bucket name",
-        default=context.current("S3_BUCKET") or "",
+        default=context.policy_env_default("S3_BUCKET", fallback=""),
         required=True,
     )
     region = provider.prompt_string(
         key="S3_REGION",
         prompt="S3 region (blank = SDK default)",
-        default=context.current("S3_REGION") or "",
+        default=context.policy_env_default("S3_REGION", fallback=""),
         required=False,
     )
     endpoint = provider.prompt_string(
         key="S3_ENDPOINT_URL",
         prompt="Custom S3 endpoint URL (blank = AWS)",
-        default=context.current("S3_ENDPOINT_URL") or "",
+        default=context.policy_env_default("S3_ENDPOINT_URL", fallback=""),
         required=False,
     )
     force_path_style = provider.prompt_bool(
         key="S3_FORCE_PATH_STYLE",
         prompt="Force path-style addressing?",
-        default=context.current_bool("S3_FORCE_PATH_STYLE", False),
+        default=context.policy_env_default_bool("S3_FORCE_PATH_STYLE", fallback=False),
     )
 
     context.set_backend("S3_BUCKET", bucket)
@@ -182,7 +194,7 @@ def _configure_azure_blob(context: WizardContext, provider: InputProvider) -> No
     container = provider.prompt_string(
         key="AZURE_BLOB_CONTAINER",
         prompt="Azure Blob container name",
-        default=context.current("AZURE_BLOB_CONTAINER") or "",
+        default=context.policy_env_default("AZURE_BLOB_CONTAINER", fallback=""),
         required=True,
     )
     connection_string = provider.prompt_secret(
@@ -194,7 +206,7 @@ def _configure_azure_blob(context: WizardContext, provider: InputProvider) -> No
     account_url = provider.prompt_string(
         key="AZURE_BLOB_ACCOUNT_URL",
         prompt="Azure Blob account URL (required if no connection string)",
-        default=context.current("AZURE_BLOB_ACCOUNT_URL") or "",
+        default=context.policy_env_default("AZURE_BLOB_ACCOUNT_URL", fallback=""),
         required=not bool(connection_string),
     )
     if not connection_string and not account_url:
@@ -218,43 +230,43 @@ def _configure_image_defaults(context: WizardContext, provider: InputProvider) -
     size = provider.prompt_string(
         key="IMAGE_DEFAULT_SIZE",
         prompt="Default image size (auto, 1024x1024, 1024x1536, 1536x1024)",
-        default=context.current("IMAGE_DEFAULT_SIZE") or "1024x1024",
+        default=context.policy_env_default("IMAGE_DEFAULT_SIZE", fallback="1024x1024"),
         required=True,
     )
     quality = provider.prompt_string(
         key="IMAGE_DEFAULT_QUALITY",
         prompt="Default image quality (auto, low, medium, high)",
-        default=context.current("IMAGE_DEFAULT_QUALITY") or "high",
+        default=context.policy_env_default("IMAGE_DEFAULT_QUALITY", fallback="high"),
         required=True,
     )
     fmt = provider.prompt_string(
         key="IMAGE_DEFAULT_FORMAT",
         prompt="Default image format (png, jpeg, webp)",
-        default=context.current("IMAGE_DEFAULT_FORMAT") or "png",
+        default=context.policy_env_default("IMAGE_DEFAULT_FORMAT", fallback="png"),
         required=True,
     )
     background = provider.prompt_string(
         key="IMAGE_DEFAULT_BACKGROUND",
         prompt="Default background (auto, opaque, transparent)",
-        default=context.current("IMAGE_DEFAULT_BACKGROUND") or "auto",
+        default=context.policy_env_default("IMAGE_DEFAULT_BACKGROUND", fallback="auto"),
         required=True,
     )
     compression = provider.prompt_string(
         key="IMAGE_DEFAULT_COMPRESSION",
         prompt="Default compression 0-100 (blank = provider chooses)",
-        default=context.current("IMAGE_DEFAULT_COMPRESSION") or "",
+        default=context.policy_env_default("IMAGE_DEFAULT_COMPRESSION", fallback=""),
         required=False,
     )
     max_mb = provider.prompt_string(
         key="IMAGE_OUTPUT_MAX_MB",
         prompt="Max decoded image size (MB)",
-        default=context.current("IMAGE_OUTPUT_MAX_MB") or "6",
+        default=context.policy_env_default("IMAGE_OUTPUT_MAX_MB", fallback="6"),
         required=True,
     )
     partial = provider.prompt_string(
         key="IMAGE_MAX_PARTIAL_IMAGES",
         prompt="Max partial images to stream (0-3)",
-        default=context.current("IMAGE_MAX_PARTIAL_IMAGES") or "2",
+        default=context.policy_env_default("IMAGE_MAX_PARTIAL_IMAGES", fallback="2"),
         required=True,
     )
 

@@ -9,9 +9,41 @@ from starter_console.workflows.setup.ui.state import AutomationRow, SectionStatu
 
 
 def configure_tables(pane, state: WizardUIViewState) -> None:
+    render_stepper(pane, state)
     render_sections(pane, [])
     render_automation(pane, [])
     render_conditional(pane, state)
+
+
+def render_stepper(pane, state: WizardUIViewState) -> None:
+    if not state.sections:
+        pane.query_one("#wizard-stepper", Static).update(
+            "Steps will appear once the wizard starts."
+        )
+        return
+    lines: list[str] = ["Steps"]
+    current_key = state.current_section_key
+    for section in sorted(state.sections, key=lambda item: item.order):
+        is_current = section.key == current_key or section.state == "running"
+        token = _step_token(section.state, is_current=is_current)
+        prefix = ">" if is_current else " "
+        line = f"{prefix} {section.order:02d}. {token} {section.label}"
+        if section.state not in {"pending", "running", "done"}:
+            line += f" ({section.state})"
+        lines.append(line)
+    pane.query_one("#wizard-stepper", Static).update("\n".join(lines))
+
+
+def _step_token(state: str, *, is_current: bool) -> str:
+    if is_current:
+        return "[>]"
+    return {
+        "done": "[x]",
+        "failed": "[!]",
+        "blocked": "[!]",
+        "skipped": "[-]",
+        "running": "[>]",
+    }.get(state, "[ ]")
 
 
 def render_sections(pane, sections: Iterable[SectionStatus]) -> None:

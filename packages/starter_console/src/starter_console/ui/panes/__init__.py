@@ -3,6 +3,7 @@ from __future__ import annotations
 from .api_export import ApiExportPane
 from .auth_tokens import AuthTokensPane
 from .config_inventory import ConfigInventoryPane
+from .context import ContextPane
 from .doctor import DoctorPane
 from .home import HomePane
 from .infra import InfraPane
@@ -20,11 +21,13 @@ from .status_ops import StatusOpsPane
 from .stripe import StripePane
 from .usage import UsagePane
 from .util_run_with_env import UtilRunWithEnvPane
+from .wizard_editor import WizardEditorPane
 
 __all__ = [
     "ApiExportPane",
     "AuthTokensPane",
     "ConfigInventoryPane",
+    "ContextPane",
     "DoctorPane",
     "HomePane",
     "InfraPane",
@@ -41,5 +44,6 @@ __all__ = [
     "StripePane",
     "UsagePane",
     "UtilRunWithEnvPane",
+    "WizardEditorPane",
     "build_panes",
 ]

@@ -35,6 +35,11 @@ async def test_billing_subscription_lifecycle_and_events(
 
     headers = auth_headers(smoke_state, tenant_role="owner")
 
+    public_plans = await http_client.get("/api/v1/billing/plans")
+    assert public_plans.status_code == 200, public_plans.text
+    public_catalog = public_plans.json()
+    assert isinstance(public_catalog, list)
+
     plans = await http_client.get("/api/v1/billing/plans", headers=headers)
     assert plans.status_code == 200, plans.text
     catalog = plans.json()

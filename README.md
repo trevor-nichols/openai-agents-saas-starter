@@ -8,7 +8,7 @@ Starter kit for building AI Agent SaaS products. The repo bundles a FastAPI back
 
 | Setup mode | Best for | Entry point |
 | --- | --- | --- |
-| Demo | Fast local demo | `just setup-demo-lite` (or `just setup-demo-full`) |
+| Demo | Fast local demo (`setup-demo-lite` skips GeoIP + Stripe; `setup-demo-full` enables them) | `just setup-demo-lite` (or `just setup-demo-full`) |
 | Wizard | Dev/staging/production | `starter-console setup wizard --profile demo|staging|production` |
 | Manual | Power users | Copy `.env` examples + run `just dev-up` / `just migrate` / `just api` (see “Guided Setup” below) |
 
@@ -19,10 +19,14 @@ Best for a quick, runnable demo with sensible defaults.
 just python-bootstrap
 just dev-install
 just setup-demo-lite
-just api
+# In the CLI wizard, enter any missing secrets and press `A` to save + run automation, then run:
+just start-dev
 ```
 
-Optional: `just setup-demo-full` for all automation toggles, and `just issue-demo-token` after the API is running.
+Note: `just setup-demo-lite` launches the setup wizard CLI editor (same as `starter-console setup wizard --cli`) and holds the terminal until you finish/exit.
+Run `just start-dev` in a new terminal, or after you close the wizard.
+Use `starter-console setup wizard --non-interactive --answers-file <path>` (and `--no-tui`) for headless runs.
+Optional: `just setup-demo-full` enables all automation toggles (including GeoIP + Stripe) while `setup-demo-lite` skips those; run `just issue-demo-token` after the API is running.
 
 ### 2) Guided wizard (demo / staging / production)
 Use this when you want something beyond a demo or need staging/production fidelity. Profiles: `demo` (local dev), `staging`, `production`.
@@ -35,6 +39,12 @@ starter-console setup wizard --profile demo
 Headless/CI: `starter-console setup wizard --non-interactive --answers-file ./answers.json`.
 Repo shortcuts: `just setup-staging` and `just setup-production`.
 Alternate startup: `starter-console start dev --detached` (or `just start-dev`) after env files exist.
+
+#### Setup profiles (advanced)
+- Default profiles: `demo`, `staging`, `production`.
+- Override/extend with `config/starter-console.profile.yaml` (portable, versioned).
+- Selection precedence: `--profile` → `active_profile` in config → `STARTER_PROFILE` → auto-detect → `demo`.
+- Audit trail: `var/reports/profile-manifest.json` records the selected profile and any locked overrides.
 
 ### 3) Just browse the repo
 If you only want to read the code/docs, clone and explore:
@@ -97,6 +107,7 @@ tsconfig.scripts.json   # TS config for repo scripts
 See `docs/architecture/repo-layout.md` for rules and ownership. Hosting reference docs live in `docs/ops/hosting-overview.md`.
 
 ## Quick Command Map (Just)
+- `just start-dev` – start infra + backend + frontend via the Starter Console.
 - `just api` / `just migrate` / `just migration-revision "msg"` – backend serve + migrations (delegates to `apps/api-service/justfile`).
 - `just backend-lint | backend-typecheck | backend-test` – backend quality gates.
 - `just cli-lint | cli-typecheck | cli-test` – Starter Console quality gates.
@@ -105,6 +116,7 @@ See `docs/architecture/repo-layout.md` for rules and ownership. Hosting referenc
 - `just dev-up | dev-down | dev-logs | dev-ps` – Postgres/Redis(+otel) via `ops/compose/docker-compose.yml`.
 - `just vault-up | vault-down | verify-vault` – local Vault dev signer flows.
 - `just cli cmd="..."` – run any console command; `just stripe-replay args="list --status failed"` for Stripe tooling.
+Full list: `docs/ops/justfile-commands.md`.
 
 ## Prerequisites
 | Tool | Version | Notes |
