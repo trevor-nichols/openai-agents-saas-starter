@@ -81,7 +81,7 @@ dev = [
   "jsonschema>=4.22.0,<5.0.0",
 ]
 tui = [
-  "textual>=0.64.0,<0.70.0",
+  "textual>=0.64.0,<7.1.0",
 ]
 
 [project.urls]
