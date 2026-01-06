@@ -8,5 +8,5 @@ const defaultFeatureFlags: FeatureFlags = {
 };
 
 export const defaultHandlers = [
-  http.get('/api/health/features', () => HttpResponse.json(defaultFeatureFlags)),
+  http.get('/api/v1/features', () => HttpResponse.json(defaultFeatureFlags)),
 ];

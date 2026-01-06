@@ -45,7 +45,7 @@ import type { BillingEventHistoryResponse } from '@/types/billing';
 
 import { USE_API_MOCK } from '@/lib/config';
 
-import { getServerApiClient } from '../apiClient';
+import { createApiClient, getServerApiClient } from '../apiClient';
 import { proxyBackendSseStream } from '../streaming/sseProxy';
 
 const STREAM_HEADERS = {
@@ -260,10 +260,9 @@ export async function getTenantInvoice(
  * Fetch the catalog of billing plans for future UI use.
  */
 export async function listBillingPlans(): Promise<BillingPlanResponse[]> {
-  const { client, auth } = await getServerApiClient();
+  const client = createApiClient();
   const response = await listBillingPlansApiV1BillingPlansGet({
     client,
-    auth,
     responseStyle: 'fields',
     throwOnError: true,
   });

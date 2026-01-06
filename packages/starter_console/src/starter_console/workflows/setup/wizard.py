@@ -4,6 +4,8 @@ from collections.abc import Callable, Sequence
 from functools import partial
 from pathlib import Path
 
+from starter_contracts.profiles import ProfilePolicy
+
 from starter_console.core import CLIContext, CLIError
 
 from ._wizard import audit
@@ -40,8 +42,6 @@ from .tenant_summary import capture_tenant_summary
 from .ui import WizardUIView
 from .ui.commands import WizardUICommandHandler
 from .ui.schema_metadata import build_section_prompt_metadata
-
-PROFILE_CHOICES = ("demo", "staging", "production")
 
 _AUTOMATION_PROMPTS: dict[AutomationPhase, tuple[str, str, bool]] = {
     AutomationPhase.INFRA: (
@@ -103,18 +103,6 @@ _AUTOMATION_DEPENDENCIES: dict[AutomationPhase, set[str]] = {
     AutomationPhase.DEMO_TOKEN: set(),
 }
 
-_AUTOMATION_PROFILE_LIMITS: dict[AutomationPhase, set[str] | None] = {
-    AutomationPhase.INFRA: {"demo"},
-    AutomationPhase.SECRETS: {"demo"},
-    AutomationPhase.STRIPE: None,
-    AutomationPhase.SSO: None,
-    AutomationPhase.MIGRATIONS: None,
-    AutomationPhase.REDIS: None,
-    AutomationPhase.GEOIP: None,
-    AutomationPhase.DEV_USER: {"demo"},
-    AutomationPhase.DEMO_TOKEN: {"demo"},
-}
-
 _AUTOMATION_LABELS: dict[AutomationPhase, str] = {
     AutomationPhase.INFRA: "Demo Infra",
     AutomationPhase.SECRETS: "Vault Helpers",
@@ -138,6 +126,7 @@ class SetupWizard:
         *,
         ctx: CLIContext,
         profile: str,
+        profile_policy: ProfilePolicy,
         output_format: str,
         input_provider: InputProvider | None,
         summary_path: Path | None = None,
@@ -155,13 +144,19 @@ class SetupWizard:
         self.enable_tui = enable_tui
         self.console = ctx.console
         self.schema = load_schema()
+        if profile != profile_policy.profile_id:
+            raise CLIError(
+                f"Profile mismatch: requested '{profile}' "
+                f"but policy is '{profile_policy.profile_id}'."
+            )
         self.state_store = WizardStateStore(ctx.project_root / "var/reports/wizard-state.json")
         self.export_answers_path = export_answers_path
         self._answer_recorder: AnswerRecorder | None = None
         section_prompt_metadata = build_section_prompt_metadata(self.schema)
         self.context = WizardContext(
             cli_ctx=ctx,
-            profile=profile,
+            profile=profile_policy.profile_id,
+            profile_policy=profile_policy,
             backend_env=backend_env,
             frontend_env=frontend_env,
             frontend_path=frontend_path,
@@ -382,6 +377,7 @@ class SetupWizard:
         )
         for phase in ALL_AUTOMATION_PHASES:
             key, prompt, default = _AUTOMATION_PROMPTS[phase]
+            default = self.context.policy_automation_default(phase, fallback=default)
             override = self.automation_overrides.get(phase)
             if override is not None:
                 enabled = override
@@ -390,7 +386,8 @@ class SetupWizard:
                 enabled = provider.prompt_bool(key=key, prompt=prompt, default=default)
                 source = "answers/prompt"
             blockers = self._missing_dependencies_for_phase(phase)
-            blockers.extend(self._profile_blockers(phase))
+            if not self.context.policy_automation_allowed(phase):
+                blockers.append("Disabled by profile policy.")
             self.context.automation.request(
                 phase,
                 enabled=enabled,
@@ -434,15 +431,6 @@ class SetupWizard:
             if dep_status is None or dep_status.status != "ok":
                 missing.append(dependency)
         return missing
-
-    def _profile_blockers(self, phase: AutomationPhase) -> list[str]:
-        allowed = _AUTOMATION_PROFILE_LIMITS.get(phase)
-        if not allowed:
-            return []
-        if self.context.profile not in allowed:
-            allowed_list = ", ".join(sorted(allowed))
-            return [f"Supported only for {allowed_list} profile(s)."]
-        return []
 
     def _sync_automation_ui(self, phase: AutomationPhase) -> None:
         if not self.ui:
@@ -496,4 +484,4 @@ class SetupWizard:
         )
 
 
-__all__ = ["SetupWizard", "PROFILE_CHOICES", "FRONTEND_ENV_RELATIVE", "build_automation_labels"]
+__all__ = ["SetupWizard", "FRONTEND_ENV_RELATIVE", "build_automation_labels"]

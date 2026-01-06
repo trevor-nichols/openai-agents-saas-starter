@@ -12,7 +12,6 @@ from starter_contracts.config import StarterSettingsProtocol, get_settings
 
 from ..ports.console import ConsolePort, StdConsole
 from ..ports.presentation import Presenter
-from ..presenters.headless import build_headless_presenter
 from .constants import DEFAULT_ENV_FILES, PROJECT_ROOT, SKIP_ENV_FLAG, TRUE_LITERALS
 from .exceptions import CLIError
 
@@ -32,10 +31,6 @@ class CLIContext:
     _env_overlay: dict[str, str] = field(default_factory=dict, repr=False)
     _env_backup: dict[str, str] = field(default_factory=dict, repr=False)
     _env_missing: set[str] = field(default_factory=set, repr=False)
-
-    def __post_init__(self) -> None:
-        if self.presenter is None:
-            self.presenter = build_headless_presenter(self.console)
 
     def load_environment(
         self,
@@ -126,11 +121,10 @@ def build_context(
     else:
         unique_files = tuple(dict.fromkeys(env_files))
     resolved_console = console or StdConsole()
-    resolved_presenter = presenter or build_headless_presenter(resolved_console)
     return CLIContext(
         env_files=unique_files,
         console=resolved_console,
-        presenter=resolved_presenter,
+        presenter=presenter,
         skip_env=skip_env,
         quiet_env=quiet_env,
     )

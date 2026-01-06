@@ -85,6 +85,7 @@ describe('TenantSettingsWorkspace', () => {
         billingWebhookUrl: null,
         planMetadata: {},
         flags: {},
+        version: 1,
         updatedAt: null,
       },
       isLoading: false,

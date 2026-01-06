@@ -1,7 +1,7 @@
 # Starter Console Environment Inventory
 
 This file is generated via `starter-console config write-inventory`.
-Last updated: 2026-01-04 16:17:22 UTC
+Last updated: 2026-01-05 14:48:20 UTC
 
 Legend: `✅` = wizard prompts for it, blank = requires manual population.
 
@@ -25,7 +25,6 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | ALLOW_ANON_FRONTEND_LOGS | bool | False |  |  | Allow anonymous frontend log ingest when signature is valid. |
 | ALLOW_PUBLIC_SIGNUP | bool | False |  |  | Allow unauthenticated tenants to self-register via /auth/register. Derived from SIGNUP_ACCESS_POLICY. |
 | ALLOW_SIGNUP_TRIAL_OVERRIDE | bool | False |  | ✅ | Permit /auth/register callers to request trial periods up to the plan/default cap. |
-| ANTHROPIC_API_KEY | str \| NoneType | — |  | ✅ | Anthropic API key |
 | APP_DESCRIPTION | str | api-service FastAPI microservice |  | ✅ | Application description |
 | APP_NAME | str | api-service |  | ✅ | Application name |
 | APP_PUBLIC_URL | str | http://localhost:3000 |  | ✅ | Public base URL used when generating email links. |
@@ -112,7 +111,7 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | ENABLE_VECTOR_STORE_SYNC_WORKER | bool | True |  |  | Run background sync worker to refresh vector store/file status and expiry. Set false only for constrained/local dev. |
 | ENVIRONMENT | str | development |  | ✅ | Deployment environment label (development, staging, production, etc.) |
 | FRONTEND_LOG_SHARED_SECRET | str \| NoneType | — |  |  | Shared secret for signed anonymous frontend logs. |
-| GCP_PROJECT_ID | str \| NoneType | — |  | ✅ | Default GCP project ID for storage operations and Secret Manager fallback when `GCP_SM_PROJECT_ID` is unset. |
+| GCP_PROJECT_ID | str \| NoneType | — |  | ✅ | Default GCP project ID for storage operations and Secret Manager fallbacks when GCP_SM_PROJECT_ID is unset. |
 | GCP_SM_CACHE_TTL_SECONDS | int | 60 |  | ✅ | TTL (seconds) for cached Secret Manager values. |
 | GCP_SM_PROJECT_ID | str \| NoneType | — |  | ✅ | GCP project ID for Secret Manager requests. |
 | GCP_SM_SIGNING_SECRET_NAME | str \| NoneType | — |  | ✅ | Secret Manager secret name containing the signing secret value. |
@@ -121,7 +120,6 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | GCS_CREDENTIALS_PATH | str \| NoneType | — |  | ✅ | Path to GCS credentials JSON file. |
 | GCS_SIGNING_EMAIL | str \| NoneType | — |  | ✅ | Service account email used for V4 signed URLs (GCS). |
 | GCS_UNIFORM_ACCESS | bool | True |  | ✅ | Assume uniform bucket-level access (UBLA) is enabled. |
-| GEMINI_API_KEY | str \| NoneType | — |  | ✅ | Google Gemini API key |
 | GEOIP_CACHE_MAX_ENTRIES | int | 4096 |  |  | Maximum cached GeoIP lookups to retain in memory. |
 | GEOIP_CACHE_TTL_SECONDS | float | 900.0 |  |  | TTL (seconds) for GeoIP lookup cache entries. |
 | GEOIP_HTTP_TIMEOUT_SECONDS | float | 2.0 |  |  | HTTP timeout (seconds) for SaaS GeoIP providers. |
@@ -248,4 +246,3 @@ Legend: `✅` = wizard prompts for it, blank = requires manual population.
 | VECTOR_STORE_SYNC_BATCH_SIZE | int | 20 |  |  | Maximum stores refreshed per sync iteration. |
 | VECTOR_STORE_SYNC_POLL_SECONDS | float | 60.0 |  |  | Polling interval for vector store sync worker. |
 | WORKFLOW_MIN_PURGE_AGE_HOURS | int | 0 |  |  | Minimum age in hours before a workflow run can be hard-deleted. Set to 0 to disable the guard. |
-| XAI_API_KEY | str \| NoneType | — |  | ✅ | xAI API key |

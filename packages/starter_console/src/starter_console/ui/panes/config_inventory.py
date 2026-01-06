@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from textual.app import ComposeResult
-from textual.containers import Grid, Horizontal, Vertical
+from textual.containers import Grid
 from textual.widgets import Button, DataTable, Input, RadioButton, RadioSet, Static
 
 from starter_console.core import CLIContext
@@ -16,10 +16,12 @@ from starter_console.services.config.inventory import (
 )
 from starter_console.ui.action_runner import ActionRunner
 
+from .footer_pane import FooterPane
 
-class ConfigInventoryPane(Vertical):
+
+class ConfigInventoryPane(FooterPane):
     def __init__(self, ctx: CLIContext) -> None:
-        super().__init__(id="config-inventory", classes="section-pane")
+        super().__init__(pane_id="config-inventory")
         self.ctx = ctx
         self._runner: ActionRunner[int] = ActionRunner(
             ctx=self.ctx,
@@ -28,7 +30,7 @@ class ConfigInventoryPane(Vertical):
             on_state_change=self._set_action_state,
         )
 
-    def compose(self) -> ComposeResult:
+    def compose_body(self) -> ComposeResult:
         yield Static("Config Inventory", classes="section-title")
         yield Static(
             "Inspect settings schema and export inventory docs.",
@@ -46,12 +48,14 @@ class ConfigInventoryPane(Vertical):
                 id="config-inventory-path",
                 value=CONSOLE_ENV_INVENTORY_PATH,
             )
-        with Horizontal(classes="ops-actions"):
-            yield Button("Dump Schema", id="config-dump", variant="primary")
-            yield Button("Write Inventory", id="config-write")
         yield DataTable(id="config-schema", zebra_stripes=True)
-        yield Static("", id="config-status", classes="section-footnote")
         yield Static("", id="config-output", classes="ops-output")
+
+    def compose_footer(self) -> ComposeResult:
+        yield Button("Dump Schema", id="config-dump", variant="primary")
+        yield Button("Write Inventory", id="config-write")
+        yield self.footer_spacer()
+        yield Static("", id="config-status", classes="section-footnote")
 
     def on_mount(self) -> None:
         self.query_one("#config-format-table", RadioButton).value = True

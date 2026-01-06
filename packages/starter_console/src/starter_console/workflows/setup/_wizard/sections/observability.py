@@ -30,7 +30,7 @@ def run(context: WizardContext, provider: InputProvider) -> None:
     )
     context.set_backend("TENANT_DEFAULT_SLUG", slug)
 
-    sink_prompt_default = context.current("LOGGING_SINKS") or "stdout"
+    sink_prompt_default = context.policy_env_default("LOGGING_SINKS", fallback="stdout")
     sinks = normalize_logging_sinks(
         provider.prompt_string(
             key="LOGGING_SINKS",
@@ -50,19 +50,21 @@ def run(context: WizardContext, provider: InputProvider) -> None:
         log_path = provider.prompt_string(
             key="LOGGING_FILE_PATH",
             prompt="Log file path (rotating)",
-            default=context.current("LOGGING_FILE_PATH") or "var/log/api-service.log",
+            default=context.policy_env_default(
+                "LOGGING_FILE_PATH", fallback="var/log/api-service.log"
+            ),
             required=True,
         )
         max_mb = provider.prompt_string(
             key="LOGGING_FILE_MAX_MB",
             prompt="Max file size (MB)",
-            default=context.current("LOGGING_FILE_MAX_MB") or "10",
+            default=context.policy_env_default("LOGGING_FILE_MAX_MB", fallback="10"),
             required=True,
         )
         backups = provider.prompt_string(
             key="LOGGING_FILE_BACKUPS",
             prompt="Number of rotated backups to keep",
-            default=context.current("LOGGING_FILE_BACKUPS") or "5",
+            default=context.policy_env_default("LOGGING_FILE_BACKUPS", fallback="5"),
             required=True,
         )
         context.set_backend("LOGGING_FILE_PATH", log_path)
@@ -84,7 +86,7 @@ def run(context: WizardContext, provider: InputProvider) -> None:
         site = provider.prompt_string(
             key="LOGGING_DATADOG_SITE",
             prompt="Datadog site (e.g., datadoghq.com)",
-            default=context.current("LOGGING_DATADOG_SITE") or "datadoghq.com",
+            default=context.policy_env_default("LOGGING_DATADOG_SITE", fallback="datadoghq.com"),
             required=True,
         )
         context.set_backend("LOGGING_DATADOG_API_KEY", api_key, mask=True)
@@ -100,19 +102,20 @@ def run(context: WizardContext, provider: InputProvider) -> None:
         endpoint = provider.prompt_string(
             key="LOGGING_OTLP_ENDPOINT",
             prompt="OTLP/HTTP endpoint",
-            default=
-            context.current("LOGGING_OTLP_ENDPOINT")
-            or (
-                "http://otel-collector:4318/v1/logs"
-                if use_bundled_collector
-                else "https://collector.example/v1/logs"
+            default=context.policy_env_default(
+                "LOGGING_OTLP_ENDPOINT",
+                fallback=(
+                    "http://otel-collector:4318/v1/logs"
+                    if use_bundled_collector
+                    else "https://collector.example/v1/logs"
+                ),
             ),
             required=True,
         )
         headers = provider.prompt_string(
             key="LOGGING_OTLP_HEADERS",
             prompt="OTLP headers JSON (optional)",
-            default=context.current("LOGGING_OTLP_HEADERS") or "",
+            default=context.policy_env_default("LOGGING_OTLP_HEADERS", fallback=""),
             required=False,
         )
         context.set_backend("LOGGING_OTLP_ENDPOINT", endpoint)
@@ -128,16 +131,15 @@ def run(context: WizardContext, provider: InputProvider) -> None:
         context.set_backend_bool("ENABLE_OTEL_COLLECTOR", False)
         _clear_collector_exporters(context)
 
-    ingest_default = context.current_bool(
-        "ENABLE_FRONTEND_LOG_INGEST",
-        default=context.profile in {"demo", "staging"},
-    )
+    ingest_default = context.policy_env_default_bool("ENABLE_FRONTEND_LOG_INGEST", fallback=False)
     ingest_enabled = provider.prompt_bool(
         key="ENABLE_FRONTEND_LOG_INGEST",
         prompt="Accept authenticated frontend logs at /api/v1/logs?",
         default=ingest_default,
     )
-    if ingest_enabled and context.profile == "production":
+    if ingest_enabled and context.policy_rule_bool(
+        "frontend_log_ingest_requires_confirmation", fallback=False
+    ):
         console.warn(
             (
                 "Frontend log ingest is enabled for production. Ensure you have approved "
@@ -165,19 +167,22 @@ def run(context: WizardContext, provider: InputProvider) -> None:
         provider.prompt_string(
             key="GEOIP_PROVIDER",
             prompt="GeoIP provider (none/ipinfo/ip2location/maxmind_db/ip2location_db)",
-            default=context.current("GEOIP_PROVIDER") or "none",
+            default=context.policy_env_default("GEOIP_PROVIDER", fallback="none"),
             required=True,
         )
     )
     context.set_backend("GEOIP_PROVIDER", geo)
-    if context.profile != "demo" and geo == "none":
+    geo_mode = context.policy_rule_str("geoip_required_mode", fallback="disabled")
+    if geo_mode != "disabled" and geo == "none":
         console.warn(
             (
-                "GeoIP provider is disabled for a non-demo profile; session telemetry "
-                "will lack location data."
+                "GeoIP provider is disabled while the profile policy expects telemetry; "
+                "session telemetry will lack location data."
             ),
             topic="geoip",
         )
+        if geo_mode == "error":
+            raise CLIError("GeoIP provider is required by profile policy.")
     if geo == "ipinfo":
         token = provider.prompt_secret(
             key="GEOIP_IPINFO_TOKEN",
@@ -205,7 +210,9 @@ def run(context: WizardContext, provider: InputProvider) -> None:
         db_path = provider.prompt_string(
             key="GEOIP_MAXMIND_DB_PATH",
             prompt="Path to MaxMind GeoIP database",
-            default=context.current("GEOIP_MAXMIND_DB_PATH") or "var/geoip/GeoLite2-City.mmdb",
+            default=context.policy_env_default(
+                "GEOIP_MAXMIND_DB_PATH", fallback="var/geoip/GeoLite2-City.mmdb"
+            ),
             required=True,
         )
         context.set_backend("GEOIP_MAXMIND_DB_PATH", db_path)
@@ -215,7 +222,9 @@ def run(context: WizardContext, provider: InputProvider) -> None:
         db_path = provider.prompt_string(
             key="GEOIP_IP2LOCATION_DB_PATH",
             prompt="Path to IP2Location BIN database",
-            default=context.current("GEOIP_IP2LOCATION_DB_PATH") or default_ip2location,
+            default=context.policy_env_default(
+                "GEOIP_IP2LOCATION_DB_PATH", fallback=default_ip2location
+            ),
             required=True,
         )
         context.set_backend("GEOIP_IP2LOCATION_DB_PATH", db_path)
@@ -224,14 +233,14 @@ def run(context: WizardContext, provider: InputProvider) -> None:
     cache_ttl = provider.prompt_string(
         key="GEOIP_CACHE_TTL_SECONDS",
         prompt="GeoIP cache TTL (seconds)",
-        default=context.current("GEOIP_CACHE_TTL_SECONDS") or "900",
+        default=context.policy_env_default("GEOIP_CACHE_TTL_SECONDS", fallback="900"),
         required=True,
     )
     context.set_backend("GEOIP_CACHE_TTL_SECONDS", cache_ttl)
     cache_max = provider.prompt_string(
         key="GEOIP_CACHE_MAX_ENTRIES",
         prompt="GeoIP cache capacity (entries)",
-        default=context.current("GEOIP_CACHE_MAX_ENTRIES") or "4096",
+        default=context.policy_env_default("GEOIP_CACHE_MAX_ENTRIES", fallback="4096"),
         required=True,
     )
     context.set_backend("GEOIP_CACHE_MAX_ENTRIES", cache_max)
@@ -243,17 +252,14 @@ def run(context: WizardContext, provider: InputProvider) -> None:
     http_timeout = provider.prompt_string(
         key="GEOIP_HTTP_TIMEOUT_SECONDS",
         prompt="GeoIP HTTP timeout (seconds)",
-        default=context.current("GEOIP_HTTP_TIMEOUT_SECONDS") or "2.0",
+        default=context.policy_env_default("GEOIP_HTTP_TIMEOUT_SECONDS", fallback="2.0"),
         required=True,
     )
     context.set_backend("GEOIP_HTTP_TIMEOUT_SECONDS", http_timeout)
 
 
 def _collector_default(context: WizardContext) -> bool:
-    current = context.current("ENABLE_OTEL_COLLECTOR")
-    if current is not None:
-        return context.current_bool("ENABLE_OTEL_COLLECTOR")
-    return context.profile == "demo"
+    return context.policy_env_default_bool("ENABLE_OTEL_COLLECTOR", fallback=False)
 
 
 def _clear_collector_exporters(context: WizardContext) -> None:
@@ -281,8 +287,10 @@ def _configure_sentry_exporter(context: WizardContext, provider: InputProvider) 
     endpoint = provider.prompt_string(
         key="OTEL_EXPORTER_SENTRY_ENDPOINT",
         prompt="Sentry OTLP HTTP endpoint",
-        default=context.current("OTEL_EXPORTER_SENTRY_ENDPOINT")
-        or "https://o11y.ingest.sentry.io/api/<project>/otlp",
+        default=context.policy_env_default(
+            "OTEL_EXPORTER_SENTRY_ENDPOINT",
+            fallback="https://o11y.ingest.sentry.io/api/<project>/otlp",
+        ),
         required=True,
     )
     auth_header = provider.prompt_secret(
@@ -294,7 +302,7 @@ def _configure_sentry_exporter(context: WizardContext, provider: InputProvider) 
     headers = provider.prompt_string(
         key="OTEL_EXPORTER_SENTRY_HEADERS",
         prompt="Additional Sentry headers JSON (optional)",
-        default=context.current("OTEL_EXPORTER_SENTRY_HEADERS") or "",
+        default=context.policy_env_default("OTEL_EXPORTER_SENTRY_HEADERS", fallback=""),
         required=False,
     )
     context.set_backend("OTEL_EXPORTER_SENTRY_ENDPOINT", endpoint)
@@ -312,9 +320,16 @@ def _maybe_download_maxmind_db(
     license_key: str,
     raw_path: str,
 ) -> None:
+    if context.skip_external_calls:
+        context.console.info(
+            "Skipping GeoIP database download (external calls disabled).",
+            topic="geoip",
+        )
+        return
     console = context.console
     target = _resolve_geoip_path(context, raw_path)
-    default_download = context.profile != "demo"
+    mode = context.policy_rule_str("geoip_required_mode", fallback="disabled")
+    default_download = mode in {"warn", "error"}
     record = context.automation.get(AutomationPhase.GEOIP)
     if record.enabled:
         if record.status == AutomationStatus.BLOCKED:

@@ -29,6 +29,7 @@ from starter_console.workflows.setup.models import CheckResult, SectionResult
 from starter_console.workflows.setup.schema_provider import SchemaAwareInputProvider
 from starter_console.workflows.setup.state import WizardStateStore
 from starter_contracts.secrets.models import SecretsProviderLiteral
+from starter_contracts.profiles import load_profiles, resolve_profile
 
 
 @dataclass(slots=True)
@@ -95,9 +96,11 @@ def env_snapshot():
 
 def _build_context(cli_ctx: CLIContext, *, profile: str = "demo") -> WizardContext:
     backend_env = EnvFile(cli_ctx.project_root / "apps" / "api-service" / ".env.local")
+    policy = resolve_profile(load_profiles(), profile)
     return WizardContext(
         cli_ctx=cli_ctx,
         profile=profile,
+        profile_policy=policy,
         backend_env=backend_env,
         frontend_env=None,
         frontend_path=None,
@@ -123,6 +126,15 @@ def test_core_section_sets_api_base_url(cli_ctx: CLIContext) -> None:
     assert context.backend_env.get("API_BASE_URL") == "http://127.0.0.1:8123"
     assert context.api_base_url == "http://127.0.0.1:8123"
     assert context.backend_env.get("DEBUG") == "true"
+
+
+def test_core_section_enforces_locked_key_storage_backend(cli_ctx: CLIContext) -> None:
+    context = _build_context(cli_ctx, profile="staging")
+    provider = StubProvider(strings={"AUTH_KEY_SECRET_NAME": "auth-key-prod"})
+
+    core.run(context, provider)
+
+    assert context.backend_env.get("AUTH_KEY_STORAGE_BACKEND") == "secret-manager"
 
 
 def test_core_section_extended_prompts(cli_ctx: CLIContext) -> None:
@@ -210,6 +222,7 @@ def test_frontend_section_writes_env_values(cli_ctx: CLIContext, tmp_path: Path)
     context = WizardContext(
         cli_ctx=cli_ctx,
         profile="staging",
+        profile_policy=resolve_profile(load_profiles(), "staging"),
         backend_env=EnvFile(cli_ctx.project_root / "apps" / "api-service" / ".env.local"),
         frontend_env=frontend_env,
         frontend_path=frontend_env_path,

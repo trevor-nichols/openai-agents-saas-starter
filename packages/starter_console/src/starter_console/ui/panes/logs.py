@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 
 from textual.app import ComposeResult
-from textual.containers import Grid, Horizontal, Vertical
+from textual.containers import Grid
 from textual.timer import Timer
 from textual.widgets import Button, Collapsible, DataTable, Input, Static, Switch
 
@@ -27,11 +27,12 @@ from starter_console.ui.buffer_console import BufferConsole
 from starter_console.workflows.home.hub import HubService
 
 from .command_output import format_command_result
+from .footer_pane import FooterPane
 
 
-class LogsPane(Vertical):
+class LogsPane(FooterPane):
     def __init__(self, ctx: CLIContext, hub: HubService) -> None:
-        super().__init__(id="logs", classes="section-pane")
+        super().__init__(pane_id="logs")
         self.ctx = ctx
         self.hub = hub
         self._log_root: Path | None = None
@@ -49,14 +50,9 @@ class LogsPane(Vertical):
             on_state_change=self._set_action_state,
         )
 
-    def compose(self) -> ComposeResult:
+    def compose_body(self) -> ComposeResult:
         yield Static("Logs", classes="section-title")
         yield Static("", id="logs-summary", classes="section-summary")
-        with Horizontal(classes="ops-actions"):
-            yield Button("Refresh", id="logs-refresh", variant="primary")
-            yield Button("Tail", id="logs-tail")
-            yield Button("Stop Follow", id="logs-stop-follow")
-            yield Button("Archive", id="logs-archive")
         with Collapsible(title="Tail options", id="logs-tail-options", collapsed=True):
             with Grid(classes="form-grid"):
                 yield Static("Services", classes="wizard-control-label")
@@ -79,8 +75,15 @@ class LogsPane(Vertical):
                 yield Static("Dry run", classes="wizard-control-label")
                 yield Switch(value=False, id="logs-archive-dry-run")
         yield DataTable(id="logs-table", zebra_stripes=True)
-        yield Static("", id="logs-status", classes="section-footnote")
         yield Static("", id="logs-output", classes="ops-output")
+
+    def compose_footer(self) -> ComposeResult:
+        yield Button("Refresh", id="logs-refresh", variant="primary")
+        yield Button("Tail", id="logs-tail")
+        yield Button("Stop Follow", id="logs-stop-follow")
+        yield Button("Archive", id="logs-archive")
+        yield self.footer_spacer()
+        yield Static("", id="logs-status", classes="section-footnote")
 
     async def on_mount(self) -> None:
         await self.refresh_data()

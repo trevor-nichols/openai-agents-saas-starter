@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { fetchTenantSettings, updateTenantSettings } from '@/lib/api/tenantSettings';
 import type { TenantSettings, TenantSettingsUpdateInput } from '@/types/tenantSettings';
+import { RESERVED_TENANT_FLAG_PREFIX } from '@/types/tenantSettings';
 
 import { queryKeys } from './keys';
 
@@ -9,12 +10,28 @@ function mergeSettings(
   current: TenantSettings,
   patch: Partial<TenantSettingsUpdateInput>,
 ): TenantSettingsUpdateInput {
+  const mergeFlags = (
+    existing: Record<string, boolean>,
+    updated?: Record<string, boolean>,
+  ): Record<string, boolean> => {
+    if (!updated) {
+      return { ...existing };
+    }
+    const reserved = Object.fromEntries(
+      Object.entries(existing).filter(([key]) => key.startsWith(RESERVED_TENANT_FLAG_PREFIX)),
+    );
+    const custom = Object.fromEntries(
+      Object.entries(updated).filter(([key]) => !key.startsWith(RESERVED_TENANT_FLAG_PREFIX)),
+    );
+    return { ...custom, ...reserved };
+  };
+
   return {
     billingContacts: patch.billingContacts ?? current.billingContacts,
     billingWebhookUrl:
       patch.billingWebhookUrl !== undefined ? patch.billingWebhookUrl : current.billingWebhookUrl,
     planMetadata: patch.planMetadata ?? { ...current.planMetadata },
-    flags: patch.flags ?? { ...current.flags },
+    flags: mergeFlags(current.flags, patch.flags),
   };
 }
 
@@ -36,7 +53,7 @@ export function useUpdateTenantSettingsMutation() {
         throw new Error('Tenant settings are not loaded yet.');
       }
       const payload = mergeSettings(current, patch);
-      return updateTenantSettings(payload);
+      return updateTenantSettings(payload, { expectedVersion: current.version });
     },
     onMutate: async (patch) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.tenant.settings() });

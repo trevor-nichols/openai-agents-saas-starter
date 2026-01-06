@@ -21,6 +21,7 @@ classifiers = [
 dependencies = [
   "httpx>=0.28.1,<0.29.0",
   "cryptography>=43.0.0,<44.0.0",
+  "pyyaml>=6.0.2,<7.0.0",
 ]
 
 [project.optional-dependencies]
@@ -29,6 +30,7 @@ dev = [
   "pytest-asyncio>=0.21.1,<0.25.0",
   "mypy>=1.11.0,<1.13.0",
   "pyright>=1.1.375,<1.2.0",
+  "types-PyYAML>=6.0.12.20240917,<7.0.0",
   "ruff>=0.7.0,<0.8.0",
 ]
 
@@ -40,7 +42,7 @@ include-package-data = true
 where = ["src"]
 
 [tool.setuptools.package-data]
-starter_contracts = ["py.typed"]
+starter_contracts = ["py.typed", "doctor_v1.json", "profiles/*.yaml"]
 
 [tool.hatch.envs.default]
 features = ["dev"]
