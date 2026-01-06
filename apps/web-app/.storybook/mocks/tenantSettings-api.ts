@@ -41,6 +41,7 @@ let settings: TenantSettings = {
     advanced_audit: false,
     workflows_beta: true,
   },
+  version: 1,
   updatedAt: new Date().toISOString(),
 };
 
@@ -56,6 +57,7 @@ export async function updateTenantSettings(patch: Partial<TenantSettingsUpdateIn
       patch.billingWebhookUrl !== undefined ? patch.billingWebhookUrl : settings.billingWebhookUrl,
     planMetadata: patch.planMetadata ?? settings.planMetadata,
     flags: patch.flags ?? settings.flags,
+    version: settings.version + 1,
     updatedAt: new Date().toISOString(),
   };
   return settings;

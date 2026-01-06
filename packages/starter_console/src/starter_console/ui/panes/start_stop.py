@@ -5,7 +5,7 @@ import asyncio
 from pathlib import Path
 
 from textual.app import ComposeResult
-from textual.containers import Grid, Horizontal, Vertical
+from textual.containers import Grid
 from textual.widgets import (
     Button,
     Collapsible,
@@ -24,10 +24,12 @@ from starter_console.workflows.home.runtime import resolve_stack_runtime
 from starter_console.workflows.home.stack_state import load, status
 from starter_console.workflows.home.start import StartRunner
 
+from .footer_pane import FooterPane
 
-class StartStopPane(Vertical):
+
+class StartStopPane(FooterPane):
     def __init__(self, ctx: CLIContext) -> None:
-        super().__init__(id="start-stop", classes="section-pane")
+        super().__init__(pane_id="start-stop")
         self.ctx = ctx
         self._start_runner = ActionRunner(
             ctx=self.ctx,
@@ -45,7 +47,7 @@ class StartStopPane(Vertical):
         )
         self._refresh_task: asyncio.Task[None] | None = None
 
-    def compose(self) -> ComposeResult:
+    def compose_body(self) -> ComposeResult:
         yield Static("Start / Stop", classes="section-title")
         yield Static("Run local services or stop managed stacks.", classes="section-description")
         runtime = resolve_stack_runtime(self.ctx)
@@ -69,10 +71,6 @@ class StartStopPane(Vertical):
             yield Switch(value=False, id="start-skip-infra")
             yield Static("Force", classes="wizard-control-label")
             yield Switch(value=False, id="start-force")
-        with Horizontal(classes="ops-actions"):
-            yield Button("Start", id="start-run", variant="primary")
-            yield Button("Stop", id="start-stop")
-            yield Button("Refresh Status", id="start-refresh")
         with Collapsible(title="Advanced options", id="start-advanced-options", collapsed=True):
             with Grid(classes="form-grid"):
                 yield Static("Timeout (s)", classes="wizard-control-label")
@@ -83,8 +81,14 @@ class StartStopPane(Vertical):
                 yield Input(id="start-pidfile", value=str(runtime.pidfile))
         yield DataTable(id="start-status", zebra_stripes=True)
         yield Static("", id="start-summary", classes="section-summary")
-        yield Static("", id="start-status-text", classes="section-footnote")
         yield Static("", id="start-output", classes="ops-output")
+
+    def compose_footer(self) -> ComposeResult:
+        yield Button("Start", id="start-run", variant="primary")
+        yield Button("Stop", id="start-stop")
+        yield Button("Refresh Status", id="start-refresh")
+        yield self.footer_spacer()
+        yield Static("", id="start-status-text", classes="section-footnote")
 
     async def on_mount(self) -> None:
         self.query_one("#start-target-dev", RadioButton).value = True

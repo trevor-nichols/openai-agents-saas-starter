@@ -3,7 +3,7 @@ import type { FeatureFlags } from '@/types/features';
 
 export async function fetchFeatureFlags(): Promise<FeatureFlags> {
   try {
-    const response = await fetch('/api/health/features', { cache: 'no-store' });
+    const response = await fetch('/api/v1/features', { cache: 'no-store' });
     if (!response.ok) {
       return DEFAULT_FEATURE_FLAGS;
     }

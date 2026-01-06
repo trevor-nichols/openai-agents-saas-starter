@@ -72,17 +72,6 @@ class HealthResponse(BaseModel):
     )
 
 
-class HealthFeaturesResponse(BaseModel):
-    """Feature flag snapshot returned by health endpoints."""
-
-    billing_enabled: bool = Field(
-        description="Whether billing-related APIs and UI flows should be enabled.",
-    )
-    billing_stream_enabled: bool = Field(
-        description="Whether billing event streaming endpoints are enabled.",
-    )
-
-
 class PaginationParams(BaseModel):
     """Common pagination request parameters."""
 

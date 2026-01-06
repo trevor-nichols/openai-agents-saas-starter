@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 
-import { useBillingPlans } from '@/lib/queries/billingPlans';
+import { usePublicBillingPlans } from '@/lib/queries/billingPlans';
 import type { BillingPlan } from '@/types/billing';
 
 import type { FeatureComparisonRow, PlanCardSnapshot, PricingContentState, UsageHighlight } from '../types';
@@ -118,7 +118,7 @@ function buildUsageHighlights(plans: BillingPlan[]): UsageHighlight[] {
 }
 
 export function usePricingContent(): PricingContentState {
-  const { plans, isLoading } = useBillingPlans();
+  const { plans, isLoading } = usePublicBillingPlans();
 
   const planCards = useMemo(() => buildPlanCards(plans), [plans]);
   const comparisonRows = useMemo(() => buildComparisonRows(plans), [plans]);

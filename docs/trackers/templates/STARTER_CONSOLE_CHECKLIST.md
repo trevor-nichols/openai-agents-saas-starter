@@ -1,7 +1,7 @@
 # Starter Console Setup Checklist
 
-- Profile: `local`
-- Generated: 2025-11-18 23:48:23 UTC
+- Profile: `demo`
+- Generated: 2026-01-05 00:00:00 UTC
 - Loaded env files: _(none loaded via --env-file)_
 - Tracker reference: `docs/trackers/complete/MILESTONE_TRACKER.md`
 - Regenerate: `starter-console setup wizard --profile demo --report-only --output checklist --markdown-summary-path <path>`

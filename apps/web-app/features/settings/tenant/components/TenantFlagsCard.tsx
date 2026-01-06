@@ -7,6 +7,7 @@ import { GlassPanel, SectionHeader } from '@/components/ui/foundation';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
+import { RESERVED_TENANT_FLAG_PREFIX } from '@/types/tenantSettings';
 
 import { FLAG_PRESETS } from '../constants';
 
@@ -25,8 +26,17 @@ export function TenantFlagsCard({ flags, isSaving, onSubmit }: TenantFlagsCardPr
     setFlagState(flags);
   }, [flags]);
 
+  const filterReservedFlags = (source: Record<string, boolean>) =>
+    Object.fromEntries(
+      Object.entries(source).filter(
+        ([key]) => !key.startsWith(RESERVED_TENANT_FLAG_PREFIX),
+      ),
+    );
+
   const presetLookup = useMemo(() => new Set<string>(FLAG_PRESETS.map((preset) => preset.key)), []);
-  const customFlags = Object.keys(flagState).filter((key) => !presetLookup.has(key));
+  const visibleFlags = useMemo(() => filterReservedFlags(flags), [flags]);
+  const editableFlags = useMemo(() => filterReservedFlags(flagState), [flagState]);
+  const customFlags = Object.keys(editableFlags).filter((key) => !presetLookup.has(key));
 
   const toggleFlag = (key: string, value: boolean) => {
     setFlagState((prev) => ({ ...prev, [key]: value }));
@@ -42,7 +52,7 @@ export function TenantFlagsCard({ flags, isSaving, onSubmit }: TenantFlagsCardPr
 
   const handleSave = async () => {
     try {
-      await onSubmit(flagState);
+      await onSubmit(editableFlags);
       toast.success({
         title: 'Flags updated',
         description: 'Tenant feature toggles saved.',
@@ -61,6 +71,13 @@ export function TenantFlagsCard({ flags, isSaving, onSubmit }: TenantFlagsCardPr
       toast.error({ title: 'Flag key is required', description: 'Provide a unique identifier.' });
       return;
     }
+    if (trimmed.startsWith(RESERVED_TENANT_FLAG_PREFIX)) {
+      toast.error({
+        title: 'Reserved flag prefix',
+        description: `Flags starting with "${RESERVED_TENANT_FLAG_PREFIX}" are managed by operators.`,
+      });
+      return;
+    }
     if (Object.hasOwn(flagState, trimmed)) {
       toast.error({ title: 'Flag already exists', description: 'Use a new identifier.' });
       return;
@@ -70,8 +87,8 @@ export function TenantFlagsCard({ flags, isSaving, onSubmit }: TenantFlagsCardPr
   };
 
   const hasChanges = useMemo(() => {
-    return JSON.stringify(flagState) !== JSON.stringify(flags);
-  }, [flagState, flags]);
+    return JSON.stringify(editableFlags) !== JSON.stringify(visibleFlags);
+  }, [editableFlags, visibleFlags]);
 
   return (
     <GlassPanel className="space-y-6">
@@ -97,7 +114,7 @@ export function TenantFlagsCard({ flags, isSaving, onSubmit }: TenantFlagsCardPr
               <p className="text-sm text-foreground/60">{preset.description}</p>
             </div>
             <Switch
-              checked={Boolean(flagState[preset.key])}
+              checked={Boolean(editableFlags[preset.key])}
               onCheckedChange={(value) => toggleFlag(preset.key, value)}
             />
           </div>

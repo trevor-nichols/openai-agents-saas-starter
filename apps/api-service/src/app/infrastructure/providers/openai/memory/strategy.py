@@ -221,10 +221,6 @@ def _is_user(item: Mapping[str, Any]) -> bool:
     return message_type == "user"
 
 
-def _count_user_turns(items: Iterable[Mapping[str, Any]]) -> int:
-    return sum(1 for it in items if _is_user(it))
-
-
 def _group_by_turns(items: Sequence[Mapping[str, Any]]) -> list[list[int]]:
     """Return list of index lists, one per user-anchored turn."""
 

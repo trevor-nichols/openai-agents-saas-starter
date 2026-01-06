@@ -6,6 +6,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+from starter_contracts.profiles import load_profiles, resolve_profile
 from starter_console.core import CLIContext, CLIError
 from starter_console.ports.console import StdConsole
 from starter_console.presenters import build_headless_presenter
@@ -20,6 +21,9 @@ from starter_console.workflows.setup._wizard.sections import providers as provid
 from starter_console.workflows.setup.automation import AutomationPhase, AutomationStatus
 from starter_console.workflows.setup.models import CheckResult, SectionResult
 from starter_console.workflows.setup.validators import set_vault_probe_request
+from starter_console.core.profiles import load_profile_registry, select_profile, write_profile_manifest
+
+_PROFILE_DOC = load_profiles()
 
 
 @pytest.fixture()
@@ -77,9 +81,6 @@ def _local_headless_answers() -> dict[str, str]:
         "AWS_PROFILE": "prod-profile",
         "AWS_REGION": "us-east-1",
         "OPENAI_API_KEY": "sk-openai",
-        "CONFIGURE_ANTHROPIC_API_KEY": "false",
-        "CONFIGURE_GEMINI_API_KEY": "false",
-        "CONFIGURE_XAI_API_KEY": "false",
         "REDIS_URL": "redis://localhost:6379/0",
         "RATE_LIMIT_REDIS_URL": "",
         "AUTH_CACHE_REDIS_URL": "",
@@ -123,6 +124,8 @@ def _local_headless_answers() -> dict[str, str]:
 
 
 def _create_setup_wizard(**kwargs) -> SetupWizard:
+    profile_id = kwargs.get("profile", "demo")
+    kwargs.setdefault("profile_policy", resolve_profile(_PROFILE_DOC, profile_id))
     kwargs.setdefault("enable_tui", False)
     kwargs.setdefault(
         "automation_overrides", {phase: False for phase in AutomationPhase}
@@ -148,7 +151,61 @@ def test_wizard_headless_local_generates_env(temp_ctx: CLIContext) -> None:
     assert "LOGGING_SINKS=stdout" in env_body
     assert "SIGNUP_ACCESS_POLICY=public" in env_body
     assert "BILLING_RETRY_DEPLOYMENT_MODE=inline" in env_body
-    assert 'ANTHROPIC_API_KEY=""' in env_body
+    _cleanup_env(snapshot)
+
+
+def test_wizard_headless_manifest_records_locked_override(temp_ctx: CLIContext) -> None:
+    snapshot = dict(os.environ)
+    config_dir = temp_ctx.project_root / "config"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    (config_dir / "starter-console.profile.yaml").write_text(
+        """
+version: 1
+active_profile: custom
+profiles:
+  custom:
+    extends: demo
+    label: Custom Demo
+    description: Demo defaults with locked key backend
+    env:
+      defaults:
+        backend:
+          AUTH_KEY_STORAGE_BACKEND: secret-manager
+      locked:
+        backend: [AUTH_KEY_STORAGE_BACKEND]
+""".lstrip(),
+        encoding="utf-8",
+    )
+    backend_env = backend_env_path(temp_ctx)
+    backend_env.write_text("AUTH_KEY_STORAGE_BACKEND=file\n", encoding="utf-8")
+    temp_ctx.load_environment(verbose=False)
+
+    registry = load_profile_registry(project_root=temp_ctx.project_root)
+    selection = select_profile(registry, explicit="custom")
+    write_profile_manifest(selection, project_root=temp_ctx.project_root)
+
+    answers = _local_headless_answers() | {"AUTH_KEY_SECRET_NAME": "auth-key-prod"}
+    wizard = SetupWizard(
+        ctx=temp_ctx,
+        profile="custom",
+        profile_policy=selection.profile,
+        output_format="summary",
+        input_provider=HeadlessInputProvider(answers=answers),
+        enable_tui=False,
+        automation_overrides={phase: False for phase in AutomationPhase},
+    )
+    wizard.execute()
+
+    manifest_path = temp_ctx.project_root / "var/reports/profile-manifest.json"
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert payload["locked"]["overrides"] == [
+        {
+            "scope": "backend",
+            "key": "AUTH_KEY_STORAGE_BACKEND",
+            "expected": "secret-manager",
+            "actual": "file",
+        }
+    ]
     _cleanup_env(snapshot)
 
 
@@ -448,9 +505,6 @@ def test_wizard_writes_dedicated_worker_artifacts(temp_ctx: CLIContext) -> None:
         "AWS_PROFILE": "prod-profile",
         "AWS_REGION": "us-east-1",
         "OPENAI_API_KEY": "sk-openai",
-        "CONFIGURE_ANTHROPIC_API_KEY": "false",
-        "CONFIGURE_GEMINI_API_KEY": "false",
-        "CONFIGURE_XAI_API_KEY": "false",
         "REDIS_URL": "rediss://:secret@redis.example.com:6379/0",
         "RATE_LIMIT_REDIS_URL": "",
         "AUTH_CACHE_REDIS_URL": "",
@@ -526,9 +580,6 @@ def test_wizard_refreshes_cached_settings(temp_ctx: CLIContext) -> None:
         "ROTATE_SIGNING_KEYS": "false",
         "VAULT_VERIFY_ENABLED": "false",
         "OPENAI_API_KEY": "sk-openai",
-        "CONFIGURE_ANTHROPIC_API_KEY": "false",
-        "CONFIGURE_GEMINI_API_KEY": "false",
-        "CONFIGURE_XAI_API_KEY": "false",
         "REDIS_URL": "redis://localhost:6379/0",
         "RATE_LIMIT_REDIS_URL": "",
         "AUTH_CACHE_REDIS_URL": "",
@@ -570,78 +621,6 @@ def test_wizard_refreshes_cached_settings(temp_ctx: CLIContext) -> None:
     _cleanup_env(snapshot)
 
 
-def test_wizard_clears_optional_provider_keys(temp_ctx: CLIContext) -> None:
-    env_file = backend_env_path(temp_ctx)
-    env_file.write_text(
-        "\n".join(
-            [
-                "ANTHROPIC_API_KEY=sk-ant",
-                "GEMINI_API_KEY=sk-gem",
-                "XAI_API_KEY=sk-xai",
-            ]
-        ),
-        encoding="utf-8",
-    )
-
-    snapshot = dict(os.environ)
-    answers = {
-        "ENVIRONMENT": "development",
-        "DEBUG": "true",
-        "PORT": "8000",
-        "APP_PUBLIC_URL": "http://localhost:3000",
-        "ALLOWED_HOSTS": "localhost",
-        "ALLOWED_ORIGINS": "http://localhost:3000",
-        "AUTO_RUN_MIGRATIONS": "false",
-        "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@localhost:5432/saas_starter_db",
-        "API_BASE_URL": "http://127.0.0.1:8000",
-        "ROTATE_SIGNING_KEYS": "false",
-        "VAULT_VERIFY_ENABLED": "false",
-        "OPENAI_API_KEY": "sk-openai",
-        "CONFIGURE_ANTHROPIC_API_KEY": "false",
-        "CONFIGURE_GEMINI_API_KEY": "false",
-        "CONFIGURE_XAI_API_KEY": "false",
-        "REDIS_URL": "redis://localhost:6379/0",
-        "RATE_LIMIT_REDIS_URL": "",
-        "AUTH_CACHE_REDIS_URL": "",
-        "SECURITY_TOKEN_REDIS_URL": "",
-        "BILLING_EVENTS_REDIS_URL": "",
-        "ENABLE_BILLING": "false",
-        "ENABLE_BILLING_STREAM": "false",
-        "RESEND_EMAIL_ENABLED": "false",
-        "RESEND_BASE_URL": "https://api.resend.com",
-        "RUN_MIGRATIONS_NOW": "false",
-        "TENANT_DEFAULT_SLUG": "local",
-        "LOGGING_SINKS": "stdout",
-        "GEOIP_PROVIDER": "none",
-        "SIGNUP_ACCESS_POLICY": "public",
-        "ALLOW_SIGNUP_TRIAL_OVERRIDE": "false",
-        "SIGNUP_RATE_LIMIT_PER_HOUR": "15",
-        "SIGNUP_RATE_LIMIT_PER_IP_DAY": "90",
-        "SIGNUP_RATE_LIMIT_PER_EMAIL_DAY": "3",
-        "SIGNUP_RATE_LIMIT_PER_DOMAIN_DAY": "20",
-        "SIGNUP_CONCURRENT_REQUESTS_LIMIT": "2",
-        "SIGNUP_DEFAULT_PLAN_CODE": "starter",
-        "SIGNUP_DEFAULT_TRIAL_DAYS": "21",
-        "BILLING_RETRY_DEPLOYMENT_MODE": "inline",
-        "ENABLE_BILLING_RETRY_WORKER": "true",
-        "ENABLE_BILLING_STREAM_REPLAY": "false",
-    }
-
-    wizard = _create_setup_wizard(
-        ctx=temp_ctx,
-        profile="demo",
-        output_format="summary",
-        input_provider=HeadlessInputProvider(answers=answers),
-    )
-    wizard.execute()
-
-    env_body = env_file.read_text(encoding="utf-8")
-    assert 'ANTHROPIC_API_KEY=""' in env_body
-    assert 'GEMINI_API_KEY=""' in env_body
-    assert 'XAI_API_KEY=""' in env_body
-    _cleanup_env(snapshot)
-
-
 def test_wizard_does_not_leak_env_values(temp_ctx: CLIContext) -> None:
     baseline_snapshot = dict(os.environ)
 
@@ -658,9 +637,6 @@ def test_wizard_does_not_leak_env_values(temp_ctx: CLIContext) -> None:
         "ROTATE_SIGNING_KEYS": "false",
         "VAULT_VERIFY_ENABLED": "false",
         "OPENAI_API_KEY": "sk-openai",
-        "CONFIGURE_ANTHROPIC_API_KEY": "false",
-        "CONFIGURE_GEMINI_API_KEY": "false",
-        "CONFIGURE_XAI_API_KEY": "false",
         "REDIS_URL": "redis://localhost:6379/0",
         "RATE_LIMIT_REDIS_URL": "",
         "AUTH_CACHE_REDIS_URL": "",
@@ -731,9 +707,6 @@ def test_wizard_rotates_new_peppers(monkeypatch, temp_ctx: CLIContext) -> None:
         "ROTATE_SIGNING_KEYS": "false",
         "VAULT_VERIFY_ENABLED": "false",
         "OPENAI_API_KEY": "sk-openai",
-        "CONFIGURE_ANTHROPIC_API_KEY": "false",
-        "CONFIGURE_GEMINI_API_KEY": "false",
-        "CONFIGURE_XAI_API_KEY": "false",
         "REDIS_URL": "redis://localhost:6379/0",
         "RATE_LIMIT_REDIS_URL": "",
         "AUTH_CACHE_REDIS_URL": "",
@@ -801,9 +774,6 @@ def test_wizard_staging_verifies_vault(
         "AWS_PROFILE": "staging-profile",
         "AWS_REGION": "us-east-1",
         "OPENAI_API_KEY": "sk-openai",
-        "CONFIGURE_ANTHROPIC_API_KEY": "false",
-        "CONFIGURE_GEMINI_API_KEY": "false",
-        "CONFIGURE_XAI_API_KEY": "false",
         "REDIS_URL": "rediss://:secret@redis.example:6380/0",
         "RATE_LIMIT_REDIS_URL": "rediss://:secret@redis.example:6380/2",
         "AUTH_CACHE_REDIS_URL": "rediss://:secret@redis.example:6380/3",
@@ -1006,6 +976,7 @@ def test_interactive_wizard_runs_tui_alongside_shell(
     wizard = SetupWizard(
         ctx=temp_ctx,
         profile="demo",
+        profile_policy=resolve_profile(_PROFILE_DOC, "demo"),
         output_format="summary",
         input_provider=provider,
         enable_tui=True,

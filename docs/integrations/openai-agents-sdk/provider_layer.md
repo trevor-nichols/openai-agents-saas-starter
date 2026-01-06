@@ -39,15 +39,15 @@ FastAPI startup (`api-service/src/main.py`) now:
 2. Implement the relevant domain port(s) and keep translation logic local to that folder.
 3. Expose the surface via `provider.py` (e.g., attach a new runtime or factory) without changing `AgentService`.
 
-## Adding another provider (e.g., Anthropic)
+## Adding another provider (future)
 
-1. Create `app/infrastructure/providers/anthropic/` with analogous files (`provider.py`, `registry.py`, `runtime.py`, `session_store.py` or equivalent persistence).
+1. Create `app/infrastructure/providers/<provider>/` with analogous files (`provider.py`, `registry.py`, `runtime.py`, `session_store.py` or equivalent persistence).
 2. Register it in bootstrap (`main.py`) via `get_provider_registry().register(...)`; optionally set as default or hold for future tenant overrides.
 3. Ensure implementations only touch domain ports; no FastAPI/service imports inside infra.
 
 ## Configuration & env vars
 
-- No new env vars were introduced for this milestone. Existing AI settings (`agent_default_model`, `agent_triage_model`, `agent_code_model`, `agent_data_model`, provider API keys) continue to flow through `Settings`.
+- No new env vars were introduced for this milestone. Existing AI settings (`agent_default_model`, `agent_triage_model`, `agent_code_model`, `agent_data_model`, OpenAI API key) continue to flow through `Settings`.
 - Session tables remain `sdk_agent_sessions` / `sdk_agent_session_messages`; table names live in the OpenAI session store constants if customization is ever needed.
 
 ## Testing guidance

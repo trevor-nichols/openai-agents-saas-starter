@@ -133,9 +133,6 @@ import type {
   DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetData,
   DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetErrors,
   DownloadOpenaiFileApiV1OpenaiFilesFileIdDownloadGetResponses,
-  FeatureFlagsHealthFeaturesGetData,
-  FeatureFlagsHealthFeaturesGetErrors,
-  FeatureFlagsHealthFeaturesGetResponses,
   GetAgentStatusApiV1AgentsAgentNameStatusGetData,
   GetAgentStatusApiV1AgentsAgentNameStatusGetErrors,
   GetAgentStatusApiV1AgentsAgentNameStatusGetResponses,
@@ -172,6 +169,9 @@ import type {
   GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetData,
   GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetErrors,
   GetDownloadUrlApiV1StorageObjectsObjectIdDownloadUrlGetResponses,
+  GetFeatureSnapshotApiV1FeaturesGetData,
+  GetFeatureSnapshotApiV1FeaturesGetErrors,
+  GetFeatureSnapshotApiV1FeaturesGetResponses,
   GetFileApiV1VectorStoresVectorStoreIdFilesFileIdGetData,
   GetFileApiV1VectorStoresVectorStoreIdFilesFileIdGetErrors,
   GetFileApiV1VectorStoresVectorStoreIdFilesFileIdGetResponses,
@@ -202,6 +202,9 @@ import type {
   GetTenantApiV1PlatformTenantsTenantIdGetData,
   GetTenantApiV1PlatformTenantsTenantIdGetErrors,
   GetTenantApiV1PlatformTenantsTenantIdGetResponses,
+  GetTenantFeatureEntitlementsApiV1PlatformTenantsTenantIdFeaturesGetData,
+  GetTenantFeatureEntitlementsApiV1PlatformTenantsTenantIdFeaturesGetErrors,
+  GetTenantFeatureEntitlementsApiV1PlatformTenantsTenantIdFeaturesGetResponses,
   GetTenantSettingsApiV1TenantsSettingsGetData,
   GetTenantSettingsApiV1TenantsSettingsGetErrors,
   GetTenantSettingsApiV1TenantsSettingsGetResponses,
@@ -490,6 +493,9 @@ import type {
   UpdateTenantApiV1PlatformTenantsTenantIdPatchData,
   UpdateTenantApiV1PlatformTenantsTenantIdPatchErrors,
   UpdateTenantApiV1PlatformTenantsTenantIdPatchResponses,
+  UpdateTenantFeatureEntitlementsApiV1PlatformTenantsTenantIdFeaturesPutData,
+  UpdateTenantFeatureEntitlementsApiV1PlatformTenantsTenantIdFeaturesPutErrors,
+  UpdateTenantFeatureEntitlementsApiV1PlatformTenantsTenantIdFeaturesPutResponses,
   UpdateTenantSettingsApiV1TenantsSettingsPutData,
   UpdateTenantSettingsApiV1TenantsSettingsPutErrors,
   UpdateTenantSettingsApiV1TenantsSettingsPutResponses,
@@ -541,26 +547,6 @@ export const healthCheckHealthGet = <ThrowOnError extends boolean = false>(
     ThrowOnError
   >({
     url: "/health",
-    ...options,
-  });
-};
-
-/**
- * Feature Flags
- *
- * Expose backend feature flags for downstream clients.
- */
-export const featureFlagsHealthFeaturesGet = <
-  ThrowOnError extends boolean = false,
->(
-  options?: Options<FeatureFlagsHealthFeaturesGetData, ThrowOnError>,
-) => {
-  return (options?.client ?? client).get<
-    FeatureFlagsHealthFeaturesGetResponses,
-    FeatureFlagsHealthFeaturesGetErrors,
-    ThrowOnError
-  >({
-    url: "/health/features",
     ...options,
   });
 };
@@ -2509,6 +2495,30 @@ export const streamConversationLedgerEventsApiV1ConversationsConversationIdLedge
   };
 
 /**
+ * Get Feature Snapshot
+ */
+export const getFeatureSnapshotApiV1FeaturesGet = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<GetFeatureSnapshotApiV1FeaturesGetData, ThrowOnError>,
+) => {
+  return (options?.client ?? client).get<
+    GetFeatureSnapshotApiV1FeaturesGetResponses,
+    GetFeatureSnapshotApiV1FeaturesGetErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        scheme: "bearer",
+        type: "http",
+      },
+    ],
+    url: "/api/v1/features",
+    ...options,
+  });
+};
+
+/**
  * List Available Tools
  *
  * Return metadata about registered tools.
@@ -3552,6 +3562,62 @@ export const deprovisionTenantApiV1PlatformTenantsTenantIdDeprovisionPost = <
     },
   });
 };
+
+/**
+ * Get Tenant Feature Entitlements
+ */
+export const getTenantFeatureEntitlementsApiV1PlatformTenantsTenantIdFeaturesGet =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      GetTenantFeatureEntitlementsApiV1PlatformTenantsTenantIdFeaturesGetData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).get<
+      GetTenantFeatureEntitlementsApiV1PlatformTenantsTenantIdFeaturesGetResponses,
+      GetTenantFeatureEntitlementsApiV1PlatformTenantsTenantIdFeaturesGetErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/platform/tenants/{tenant_id}/features",
+      ...options,
+    });
+  };
+
+/**
+ * Update Tenant Feature Entitlements
+ */
+export const updateTenantFeatureEntitlementsApiV1PlatformTenantsTenantIdFeaturesPut =
+  <ThrowOnError extends boolean = false>(
+    options: Options<
+      UpdateTenantFeatureEntitlementsApiV1PlatformTenantsTenantIdFeaturesPutData,
+      ThrowOnError
+    >,
+  ) => {
+    return (options.client ?? client).put<
+      UpdateTenantFeatureEntitlementsApiV1PlatformTenantsTenantIdFeaturesPutResponses,
+      UpdateTenantFeatureEntitlementsApiV1PlatformTenantsTenantIdFeaturesPutErrors,
+      ThrowOnError
+    >({
+      security: [
+        {
+          scheme: "bearer",
+          type: "http",
+        },
+      ],
+      url: "/api/v1/platform/tenants/{tenant_id}/features",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    });
+  };
 
 /**
  * Submit Contact
