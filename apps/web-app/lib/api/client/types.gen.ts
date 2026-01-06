@@ -20404,11 +20404,8 @@ export type GetTenantSettingsApiV1TenantsSettingsGetResponse =
 
 export type UpdateTenantSettingsApiV1TenantsSettingsPutData = {
   body: TenantSettingsUpdateRequest;
-  headers?: {
-    /**
-     * If-Match
-     */
-    "If-Match"?: string | null;
+  headers: {
+    "If-Match": string;
     /**
      * X-Tenant-Id
      */
@@ -20460,6 +20457,10 @@ export type UpdateTenantSettingsApiV1TenantsSettingsPutErrors = {
    * Validation Error
    */
   422: ValidationErrorResponse;
+  /**
+   * Precondition Required
+   */
+  428: ErrorResponse;
   /**
    * Too Many Requests
    */

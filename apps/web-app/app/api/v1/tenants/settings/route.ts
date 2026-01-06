@@ -41,9 +41,13 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const payload = await request.json();
+    const ifMatch = request.headers.get('if-match');
+    if (!ifMatch) {
+      return NextResponse.json({ message: 'Missing If-Match header.' }, { status: 428 });
+    }
     const settings = await updateTenantSettingsInApi(payload, {
       tenantRole: resolveTenantRole(request),
-      ifMatch: request.headers.get('if-match'),
+      ifMatch,
     });
     return NextResponse.json(settings, { status: 200 });
   } catch (error) {

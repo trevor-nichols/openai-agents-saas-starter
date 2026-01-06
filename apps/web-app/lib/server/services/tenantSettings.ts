@@ -44,16 +44,31 @@ type SdkFieldsResult<T> =
       response: Response;
     };
 
-function resolveHeaders(options?: TenantSettingsOptions): Headers | undefined {
+function resolveHeaders(options?: TenantSettingsOptions): Record<string, string> | undefined {
   if (!options?.tenantRole && !options?.ifMatch) {
     return undefined;
   }
-  const headers = new Headers();
+  const headers: Record<string, string> = {};
   if (options?.tenantRole) {
-    headers.set('X-Tenant-Role', options.tenantRole);
+    headers['X-Tenant-Role'] = options.tenantRole;
   }
   if (options?.ifMatch) {
-    headers.set('If-Match', options.ifMatch);
+    headers['If-Match'] = options.ifMatch;
+  }
+  return headers;
+}
+
+function resolveRequiredIfMatchHeaders(
+  options?: TenantSettingsOptions,
+): { 'If-Match': string; 'X-Tenant-Role'?: string | null } {
+  if (!options?.ifMatch) {
+    throw new TenantSettingsApiError(428, 'Missing If-Match header.');
+  }
+  const headers: { 'If-Match': string; 'X-Tenant-Role'?: string | null } = {
+    'If-Match': options.ifMatch,
+  };
+  if (options?.tenantRole) {
+    headers['X-Tenant-Role'] = options.tenantRole;
   }
   return headers;
 }
@@ -90,7 +105,7 @@ export async function getTenantSettingsFromApi(
 
 export async function updateTenantSettingsInApi(
   body: TenantSettingsUpdateRequest,
-  options?: TenantSettingsOptions,
+  options: TenantSettingsOptions & { ifMatch: string },
 ): Promise<TenantSettingsResponse> {
   const { client, auth } = await getServerApiClient();
   const result = await updateTenantSettingsApiV1TenantsSettingsPut({
@@ -98,7 +113,7 @@ export async function updateTenantSettingsInApi(
     auth,
     responseStyle: 'fields',
     throwOnError: false,
-    headers: resolveHeaders(options),
+    headers: resolveRequiredIfMatchHeaders(options),
     body,
   });
 
