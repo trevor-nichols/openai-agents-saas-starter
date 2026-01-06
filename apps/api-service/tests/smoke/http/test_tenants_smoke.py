@@ -22,6 +22,7 @@ async def test_tenant_settings_roundtrip(
     assert current.status_code == 200
     body = current.json()
     assert body.get("tenant_id") == smoke_state.tenant_id
+    version = body.get("version", 0)
 
     payload = {
         "billing_contacts": body.get("billing_contacts", []),
@@ -32,7 +33,7 @@ async def test_tenant_settings_roundtrip(
     updated = await http_client.put(
         "/api/v1/tenants/settings",
         json=payload,
-        headers=headers,
+        headers={**headers, "If-Match": f'"{version}"'},
     )
     assert updated.status_code == 200, updated.text
     updated_body = updated.json()

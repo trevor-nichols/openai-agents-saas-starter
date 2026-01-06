@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Grid
 from textual.widgets import Button, Input, Static
 
 from starter_console.core import CLIContext
@@ -15,6 +15,8 @@ from starter_console.services.infra.run_with_env import RunWithEnvPlan, prepare_
 from starter_console.ui.action_runner import ActionResult, ActionRunner
 from starter_console.ui.panes.command_output import format_command_result
 
+from .footer_pane import FooterPane
+
 
 @dataclass(slots=True)
 class UtilRunResult:
@@ -22,9 +24,9 @@ class UtilRunResult:
     command_result: CommandResult
 
 
-class UtilRunWithEnvPane(Vertical):
+class UtilRunWithEnvPane(FooterPane):
     def __init__(self, ctx: CLIContext) -> None:
-        super().__init__(id="util-run-with-env", classes="section-pane")
+        super().__init__(pane_id="util-run-with-env")
         self.ctx = ctx
         self._runner: ActionRunner[UtilRunResult] = ActionRunner(
             ctx=self.ctx,
@@ -34,27 +36,28 @@ class UtilRunWithEnvPane(Vertical):
             on_state_change=self._set_action_state,
         )
 
-    def compose(self) -> ComposeResult:
+    def compose_body(self) -> ComposeResult:
         yield Static("Run With Env", classes="section-title")
         yield Static(
             "Merge env files and execute a command with the combined environment.",
             classes="section-description",
         )
-        with Horizontal(classes="ops-actions"):
+        with Grid(classes="form-grid"):
             yield Static("Env tokens", classes="wizard-control-label")
             yield Input(
                 id="util-env-tokens",
                 placeholder=".env .env.local KEY=VALUE",
             )
-        with Horizontal(classes="ops-actions"):
             yield Static("Command", classes="wizard-control-label")
             yield Input(id="util-command", placeholder="echo hello")
-        with Horizontal(classes="ops-actions"):
-            yield Button("Preview", id="util-preview", variant="primary")
-            yield Button("Run Command", id="util-run")
-            yield Button("Reset", id="util-reset")
-        yield Static("", id="util-status", classes="section-footnote")
         yield Static("", id="util-output", classes="ops-output")
+
+    def compose_footer(self) -> ComposeResult:
+        yield Button("Preview", id="util-preview", variant="primary")
+        yield Button("Run Command", id="util-run")
+        yield Button("Reset", id="util-reset")
+        yield self.footer_spacer()
+        yield Static("", id="util-status", classes="section-footnote")
 
     def on_mount(self) -> None:
         self.set_interval(0.4, self._runner.refresh_output)

@@ -15,6 +15,7 @@ from tests.utils.contract_env import TEST_TENANT_ID
 
 from app.api.dependencies.auth import require_current_user  # noqa: E402
 from app.api.v1.billing import router as billing_router  # noqa: E402
+from app.services.feature_flags import get_feature_flag_service  # noqa: E402
 from app.domain.billing import (  # noqa: E402
     BillingPlan,
     SubscriptionInvoiceRecord,
@@ -38,6 +39,11 @@ def _stub_owner_user() -> dict[str, Any]:
     return make_user_payload(roles=("owner",))
 
 
+class _StubFeatureFlagService:
+    async def is_enabled(self, tenant_id: str, feature: Any) -> bool:
+        return True
+
+
 @pytest.fixture(scope="function")
 def client() -> Generator[TestClient, None, None]:
     app = FastAPI()
@@ -46,6 +52,7 @@ def client() -> Generator[TestClient, None, None]:
         prefix="/api/v1",
     )
     app.dependency_overrides[require_current_user] = _stub_owner_user
+    app.dependency_overrides[get_feature_flag_service] = lambda: _StubFeatureFlagService()
     with TestClient(app) as test_client:
         yield test_client
 
@@ -74,6 +81,21 @@ def test_list_billing_plans_returns_catalog(
     payload = response.json()
     assert isinstance(payload, list)
     assert payload[0]["code"] == "starter"
+
+
+def test_list_billing_plans_is_public(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = FastAPI()
+    app.include_router(billing_router.router, prefix="/api/v1")
+    monkeypatch.setattr(
+        billing_router.billing_service,
+        "list_plans",
+        AsyncMock(return_value=[]),
+    )
+    with TestClient(app) as test_client:
+        response = test_client.get("/api/v1/billing/plans")
+
+    assert response.status_code == 200
+    assert response.json() == []
 
 
 def test_get_tenant_subscription_tenant_mismatch(client: TestClient) -> None:

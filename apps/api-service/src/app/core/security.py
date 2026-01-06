@@ -501,23 +501,3 @@ def _normalize_subject(subject: str) -> str:
     return sanitized
 
 
-async def get_current_active_user(
-    current_user: dict[str, Any] = Depends(get_current_user),
-) -> dict[str, Any]:
-    """
-    Get current active user.
-
-    This dependency ensures the user is both authenticated and active.
-
-    Args:
-        current_user: Current user from get_current_user dependency
-
-    Returns:
-        Dict[str, Any]: Current active user information
-
-    Raises:
-        HTTPException: If user is inactive
-    """
-    # Add your user status checking logic here
-    # For now, we'll just return the user
-    return current_user

@@ -11,7 +11,7 @@ from textual.widgets import ContentSwitcher, Footer, Header, Static, Tree
 from starter_console.core import CLIContext
 from starter_console.workflows.home.hub import HubService
 
-from .context_panel import ContextPanel, EnvReloaded
+from .context_state import EnvReloaded
 from .nav_tree import NavTree
 from .palette import CommandPaletteScreen, CommandSpec
 from .panes import build_panes
@@ -25,7 +25,6 @@ class StarterTUI(App[None]):
 
     TITLE = "Starter Console"
     SUB_TITLE = ""
-
     CSS: ClassVar[str] = """
     Screen {
         layout: vertical;
@@ -136,6 +135,11 @@ class StarterTUI(App[None]):
         color: $text-muted;
     }
 
+    .form-grid .wizard-control-hint {
+        color: $text-muted;
+        height: auto;
+    }
+
     .form-grid Input,
     .form-grid RadioSet {
         width: 1fr;
@@ -143,37 +147,6 @@ class StarterTUI(App[None]):
 
     .form-grid Switch {
         width: auto;
-    }
-
-    .context-panel {
-        border: tall $panel-darken-1;
-        background: $panel;
-        color: $text;
-        padding: 0 1;
-        margin-bottom: 1;
-        height: auto;
-        dock: top;
-    }
-
-    .context-title {
-        text-style: bold;
-        padding-right: 1;
-    }
-
-    .context-summary {
-        color: $text-muted;
-        height: auto;
-        padding-bottom: 1;
-    }
-
-    .context-bar {
-        height: auto;
-        padding: 0;
-    }
-
-    .context-row {
-        height: auto;
-        align: left middle;
     }
 
     .context-actions {
@@ -186,16 +159,61 @@ class StarterTUI(App[None]):
         color: $text-muted;
     }
 
-    .context-panel DataTable {
+    .context-table {
+        height: 6;
         background: $surface;
         color: $text;
     }
 
-    .home-actions {
-        height: auto;
+    .footer-pane {
+        overflow-y: hidden;
+    }
+
+    .footer-pane .pane-body {
+        height: 1fr;
+        overflow-y: auto;
         padding-bottom: 1;
+    }
+
+    .footer-pane .pane-footer {
+        height: auto;
+        padding-top: 1;
+        border-top: solid $panel-darken-1;
         align: left middle;
     }
+
+    .footer-pane .pane-footer-spacer {
+        width: 1fr;
+    }
+
+    .footer-pane .pane-footer Button {
+        margin-right: 1;
+    }
+
+    #infra-footer {
+        padding-top: 1;
+        border-top: solid $panel-darken-1;
+        height: auto;
+    }
+
+    .infra-actions-grid {
+        layout: grid;
+        grid-size: 4;
+        grid-columns: 1fr 1fr 1fr 1fr;
+        grid-gutter: 1 1;
+        height: auto;
+    }
+
+    .infra-actions-grid Button {
+        width: 1fr;
+    }
+
+    .infra-status-row {
+        height: auto;
+        align: left middle;
+        padding-top: 1;
+    }
+
 
     .home-summary-card {
         border: tall $panel-darken-1;
@@ -211,14 +229,18 @@ class StarterTUI(App[None]):
         margin-bottom: 1;
     }
 
-    .setup-actions {
+    #wizard-controls {
         height: auto;
         padding-bottom: 1;
     }
 
-    #wizard-controls {
+    #wizard-stepper {
         height: auto;
-        padding-bottom: 1;
+        padding: 1 1;
+        margin-bottom: 1;
+        border: tall $panel-darken-1;
+        background: $panel;
+        color: $text;
     }
 
     .wizard-options {
@@ -307,6 +329,43 @@ class StarterTUI(App[None]):
         height: auto;
         padding-top: 1;
     }
+
+    #wizard-editor-main {
+        height: 1fr;
+    }
+
+    #wizard-editor-sections {
+        width: 32;
+    }
+
+    #wizard-editor-fields-pane {
+        width: 1fr;
+    }
+
+    #wizard-editor-fields {
+        height: 1fr;
+    }
+
+    #wizard-editor-filter {
+        margin-bottom: 1;
+    }
+
+    #wizard-editor-output {
+        height: auto;
+        color: $text-muted;
+        padding-top: 1;
+    }
+
+    #wizard-editor-prompt {
+        margin-top: 1;
+        padding-top: 1;
+        border-top: solid $panel-darken-1;
+    }
+
+    #wizard-editor-prompt-actions {
+        height: auto;
+        padding-top: 1;
+    }
     """
 
     BINDINGS: ClassVar = [
@@ -348,7 +407,6 @@ class StarterTUI(App[None]):
                 yield NavTree(self._groups, id="nav-tree")
                 yield Static("Ctrl+P for commands", id="nav-hint")
             with Vertical(id="content"):
-                yield ContextPanel(self.ctx)
                 yield ContentSwitcher(
                     *self._panes,
                     id="content-switcher",

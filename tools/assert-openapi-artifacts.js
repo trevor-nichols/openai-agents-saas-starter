@@ -15,7 +15,7 @@ const fixturesPath = resolve(
   'apps/api-service/.artifacts/openapi-fixtures.json',
 );
 
-const requiredPaths = ['/health/features'];
+const requiredPaths = ['/api/v1/features'];
 
 const fixtureOnlyPaths = [
   '/api/v1/test-fixtures/apply',

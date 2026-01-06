@@ -2,7 +2,7 @@
 
 import { useAgents } from '@/lib/queries/agents';
 import { useTools } from '@/lib/queries/tools';
-import { useBillingPlans } from '@/lib/queries/billingPlans';
+import { usePublicBillingPlans } from '@/lib/queries/billingPlans';
 import { usePlatformStatusQuery } from '@/lib/queries/status';
 
 import { FEATURE_NAV, FEATURE_PILLARS, SHOWCASE_TABS, FEATURES_FAQ, FEATURES_TESTIMONIAL } from '../constants';
@@ -11,7 +11,7 @@ import type { FeaturesContentState, MetricsSummary } from '../types';
 export function useFeaturesContent(): FeaturesContentState {
   const { agents } = useAgents();
   const { tools } = useTools();
-  const { plans } = useBillingPlans();
+  const { plans } = usePublicBillingPlans();
   const { status } = usePlatformStatusQuery();
 
   const toolCount = Object.keys(tools ?? {}).length;

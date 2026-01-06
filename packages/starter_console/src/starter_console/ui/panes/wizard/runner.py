@@ -5,6 +5,12 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from starter_console.core import CLIContext
+from starter_console.core.profiles import (
+    load_frontend_env,
+    load_profile_registry,
+    select_profile,
+    write_profile_manifest,
+)
 from starter_console.workflows.setup import SetupWizard
 from starter_console.workflows.setup.automation import AutomationPhase
 from starter_console.workflows.setup.inputs import HeadlessInputProvider, ParsedAnswers
@@ -15,6 +21,7 @@ from .paths import ensure_summary_paths
 @dataclass(slots=True)
 class WizardHeadlessRun:
     profile: str
+    profiles_path: Path | None
     output_format: str
     summary_path: Path | None
     markdown_summary_path: Path | None
@@ -39,9 +46,21 @@ class WizardRunService:
             input_provider = None
             if run.non_interactive and not run.report_only:
                 input_provider = HeadlessInputProvider(run.answers)
+            registry = load_profile_registry(
+                project_root=ctx.project_root,
+                override_path=run.profiles_path,
+            )
+            selection = select_profile(registry, explicit=run.profile)
+            frontend_env = load_frontend_env(project_root=ctx.project_root)
+            write_profile_manifest(
+                selection,
+                project_root=ctx.project_root,
+                frontend_env=frontend_env,
+            )
             wizard = SetupWizard(
                 ctx=ctx,
-                profile=run.profile,
+                profile=selection.profile.profile_id,
+                profile_policy=selection.profile,
                 output_format=run.output_format,
                 input_provider=input_provider,
                 summary_path=run.summary_path,

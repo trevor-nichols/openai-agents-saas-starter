@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING, TypeAlias
 
 from starter_contracts.keys import KeyStorageError, load_keyset
 
-from starter_console.core import CLIContext, CLIError, build_context
+from starter_console.container import build_container
+from starter_console.core import CLIContext, CLIError
 from starter_console.core.context import should_skip_env_loading
 from starter_console.services.auth.security import (
     configure_key_storage_secret_manager,
@@ -177,7 +178,8 @@ def handle_jwks_print(_: argparse.Namespace, ctx: CLIContext) -> int:
 def _ensure_context(ctx: CLIContext | None) -> CLIContext:
     if ctx is not None:
         return ctx
-    new_ctx = build_context()
+    container = build_container()
+    new_ctx = container.create_context()
     if not should_skip_env_loading():
         new_ctx.load_environment(verbose=False)
     return new_ctx

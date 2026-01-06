@@ -85,15 +85,22 @@ def run_aws_sm(
                 required=False,
             )
 
-    verified = _probe_aws_secret(
-        region=region,
-        secret_arn=secret_arn,
-        profile=profile,
-        access_key_id=access_key_id,
-        secret_access_key=secret_access_key,
-        session_token=session_token,
-        console=ctx.console,
-    )
+    verified = False
+    if options.skip_verification:
+        ctx.console.info(
+            "Skipping AWS Secrets Manager verification (external calls disabled).",
+            topic="secrets",
+        )
+    else:
+        verified = _probe_aws_secret(
+            region=region,
+            secret_arn=secret_arn,
+            profile=profile,
+            access_key_id=access_key_id,
+            secret_access_key=secret_access_key,
+            session_token=session_token,
+            console=ctx.console,
+        )
 
     env_updates = {
         "SECRETS_PROVIDER": SecretsProviderLiteral.AWS_SM.value,
@@ -120,9 +127,14 @@ def run_aws_sm(
     if verified:
         steps.insert(0, "Validated Secrets Manager access by reading the signing secret.")
     else:
-        warnings.append(
-            "Failed to read the signing secret via Secrets Manager. Check IAM credentials or ARN."
-        )
+        if options.skip_verification:
+            message = "Secrets Manager verification skipped."
+        else:
+            message = (
+                "Failed to read the signing secret via Secrets Manager. "
+                "Check IAM credentials or ARN."
+            )
+        warnings.append(message)
 
     artifacts = [
         VerificationArtifact(

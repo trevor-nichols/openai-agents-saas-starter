@@ -73,6 +73,12 @@ def _configure_slack_status(
 
 
 def _send_test_message(context: WizardContext, *, token: str, channels_input: str) -> None:
+    if context.skip_external_calls:
+        context.console.info(
+            "Skipping Slack test message (external calls disabled).",
+            topic="wizard",
+        )
+        return
     channels = _parse_channels_input(channels_input)
     if not channels:
         context.console.warn("No Slack channels provided; skipping test message.", topic="wizard")

@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
-import { isBillingEnabled } from '@/lib/server/features';
+import { FeatureFlagsApiError, requireBillingFeature } from '@/lib/server/features';
 import { listTenantUsageTotals } from '@/lib/server/services/billing';
 import {
   mapBillingErrorToStatus,
@@ -11,10 +11,6 @@ import {
 } from '../../_utils';
 
 export async function GET(request: NextRequest, context: BillingTenantRouteContext) {
-  if (!(await isBillingEnabled())) {
-    return NextResponse.json({ success: false, error: 'Billing is disabled.' }, { status: 404 });
-  }
-
   const tenantId = await resolveTenantId(context);
   if (!tenantId) {
     return NextResponse.json({ message: 'Tenant id is required.' }, { status: 400 });
@@ -26,6 +22,7 @@ export async function GET(request: NextRequest, context: BillingTenantRouteConte
   const periodEnd = searchParams.get('period_end');
 
   try {
+    await requireBillingFeature();
     const totals = await listTenantUsageTotals(tenantId, {
       featureKeys: featureKeys.length ? featureKeys : undefined,
       periodStart: periodStart ?? undefined,
@@ -35,7 +32,10 @@ export async function GET(request: NextRequest, context: BillingTenantRouteConte
     return NextResponse.json(totals, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to load usage totals.';
-    const status = mapBillingErrorToStatus(message, { includeNotFound: true });
+    const status =
+      error instanceof FeatureFlagsApiError
+        ? error.status
+        : mapBillingErrorToStatus(message, { includeNotFound: true });
     return NextResponse.json({ message }, { status });
   }
 }
