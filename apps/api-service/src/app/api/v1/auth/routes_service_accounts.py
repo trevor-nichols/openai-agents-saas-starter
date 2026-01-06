@@ -434,10 +434,6 @@ def _parse_vault_payload(decoded: bytes) -> dict[str, Any]:
     return data
 
 
-def _decode_vault_payload(vault_payload: str) -> dict[str, Any]:
-    return _parse_vault_payload(_decode_vault_payload_bytes(vault_payload))
-
-
 def _digest_nonce(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()[:16]
 

@@ -35,6 +35,7 @@ function mapDto(dto: TenantSettingsResponse): TenantSettings {
     billingWebhookUrl: dto.billing_webhook_url ?? null,
     planMetadata: dto.plan_metadata ?? {},
     flags: dto.flags ?? {},
+    version: dto.version ?? 0,
     updatedAt: dto.updated_at ?? null,
   };
 }
@@ -97,11 +98,15 @@ export async function fetchTenantSettings(): Promise<TenantSettings> {
 
 export async function updateTenantSettings(
   payload: TenantSettingsUpdateInput,
+  options?: { expectedVersion?: number },
 ): Promise<TenantSettings> {
   const response = await fetch(apiV1Path('/tenants/settings'), {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
+      ...(options?.expectedVersion !== undefined
+        ? { 'If-Match': `"${options.expectedVersion}"` }
+        : {}),
     },
     body: JSON.stringify(buildUpdateDto(payload)),
   });

@@ -53,7 +53,7 @@ This section captures every prerequisite a new operator must satisfy today. Each
 | Env file | Copy `apps/api-service/.env.example` → `apps/api-service/.env.local`, fill every secret (peppers, keys, Vault vars). | ✅ Target | Wizard already collects values; automation ensures file creation plus diff logging. |
 | Secrets & peppers | Generate `SECRET_KEY`, `AUTH_*` peppers, session salts. | ✅ Target | Wizard milestone M1 covers; ensure outputs flagged in summary with “generated” markers. |
 | Persistence config | Supply `DATABASE_URL`, `REDIS_URL`, `BILLING_EVENTS_REDIS_URL`, `AUTO_RUN_MIGRATIONS`. | ✅ Target | Wizard M2 collects; automation should validate connectivity post-compose. |
-| Providers (AI/Email) | Populate `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `RESEND_*`, etc. | ⚠️ Assist | Wizard prompts; automation limited to validation (ping key endpoints when safe). |
+| Providers (AI/Email) | Populate `OPENAI_API_KEY`, `RESEND_*`, etc. | ⚠️ Assist | Wizard prompts; automation limited to validation (ping key endpoints when safe). |
 | Vault transit | Provide `VAULT_*` & optionally run `just vault-up` + verification script. | ✅ Target | Auto-start dev signer (with consent) + run transit probe; record evidence hash. |
 | Stripe + billing | Run `stripe setup`, seed plans, capture webhook secret, set `ENABLE_BILLING*`. | ✅ Target | Embed CLI `stripe setup`, ensure env update + summary capture. |
 | Migrations | `just migrate` after infra up. | ⚠️ Assist | Provide optional hook post-infra start to run migrations, but keep opt-in due to destructive nature. |

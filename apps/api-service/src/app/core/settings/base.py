@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import json
-import logging
 from pathlib import Path
 from types import MethodType
 from typing import Any, Literal, cast
@@ -19,8 +18,6 @@ VAULT_PROVIDER_KEYS = {
     SecretsProviderLiteral.VAULT_DEV,
     SecretsProviderLiteral.VAULT_HCP,
 }
-
-signup_policy_logger = logging.getLogger("app.core.settings.signup")
 
 
 class BaseAppSettings(BaseSettings):

@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime
-
 from starter_console.core.status_models import ProbeResult, ProbeState, ServiceStatus
 from starter_console.workflows.setup_menu.models import SetupItem
 
@@ -79,15 +77,8 @@ def setup_row(item: SetupItem) -> tuple[str, str, str, str, str]:
     return (status, item.label, detail, progress, last_run)
 
 
-def format_timestamp(value: datetime | None) -> str:
-    if value is None:
-        return "—"
-    return value.isoformat(timespec="seconds")
-
-
 __all__ = [
     "format_summary",
-    "format_timestamp",
     "probe_rows",
     "service_rows",
     "setup_row",

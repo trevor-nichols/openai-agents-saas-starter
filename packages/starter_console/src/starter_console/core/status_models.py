@@ -11,7 +11,7 @@ import from both interactive TUIs and headless/reporting code paths.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
 from time import time
@@ -60,33 +60,7 @@ class ServiceStatus:
         ]
 
 
-@dataclass(frozen=True, slots=True)
-class ActionShortcut:
-    key: str
-    label: str
-    description: str | None = None
-    callback: Callable[[], None] | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class LaunchStep:
-    label: str
-    command: Sequence[str]
-    env: Mapping[str, str] = field(default_factory=dict)
-    timeout_seconds: float | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class LaunchPlan:
-    name: str
-    steps: Sequence[LaunchStep]
-    post_checks: Iterable[Callable[[], ProbeResult]] = field(default_factory=tuple)
-
-
 __all__ = [
-    "ActionShortcut",
-    "LaunchPlan",
-    "LaunchStep",
     "ProbeResult",
     "ProbeState",
     "ServiceStatus",

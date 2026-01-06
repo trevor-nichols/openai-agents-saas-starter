@@ -9,7 +9,8 @@ from starter_console.workflows.setup.inputs import ParsedAnswers
 
 @dataclass(slots=True)
 class WizardLaunchConfig:
-    profile: str = "demo"
+    profile: str | None = None
+    profiles_path: Path | None = None
     output_format: str = "summary"
     answers: ParsedAnswers = field(default_factory=dict)
     summary_path: Path | None = None
@@ -19,4 +20,12 @@ class WizardLaunchConfig:
     auto_start: bool = False
 
 
-__all__ = ["WizardLaunchConfig"]
+@dataclass(slots=True)
+class ProfileOption:
+    profile_id: str
+    label: str
+    description: str | None
+    widget_id: str
+
+
+__all__ = ["ProfileOption", "WizardLaunchConfig"]

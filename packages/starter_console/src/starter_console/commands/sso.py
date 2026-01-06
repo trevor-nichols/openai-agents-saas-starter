@@ -139,9 +139,11 @@ def handle_sso_setup(args: argparse.Namespace, ctx: CLIContext) -> int:
         return 0
 
     env_values = load_env_values(ctx)
-    if ctx.presenter is None:  # pragma: no cover - defensive
-        raise CLIError("Presenter not initialized.")
-    prompt = ctx.presenter.prompt
+    prompt = None
+    if not args.non_interactive:
+        if ctx.presenter is None:  # pragma: no cover - defensive
+            raise CLIError("Presenter not initialized.")
+        prompt = ctx.presenter.prompt
     allow_existing = bool(args.from_env or not args.non_interactive)
 
     preset_key = args.preset
@@ -157,6 +159,8 @@ def handle_sso_setup(args: argparse.Namespace, ctx: CLIContext) -> int:
     elif args.non_interactive:
         raise CLIError("provider is required when using the custom preset.")
     else:
+        if prompt is None:  # pragma: no cover - defensive
+            raise CLIError("Presenter not initialized.")
         provider_key = normalize_provider_key(
             prompt.prompt_string(
                 key="SSO_PROVIDER_KEY",
@@ -186,12 +190,16 @@ def handle_sso_setup(args: argparse.Namespace, ctx: CLIContext) -> int:
                 raise CLIError(f"{label} is required for SSO setup.")
             return default
         if secret:
+            if prompt is None:  # pragma: no cover - defensive
+                raise CLIError("Presenter not initialized.")
             return prompt.prompt_secret(
                 key=key,
                 prompt=label,
                 existing=default or None,
                 required=required and not default,
             )
+        if prompt is None:  # pragma: no cover - defensive
+            raise CLIError("Presenter not initialized.")
         return prompt.prompt_string(
             key=key,
             prompt=label,

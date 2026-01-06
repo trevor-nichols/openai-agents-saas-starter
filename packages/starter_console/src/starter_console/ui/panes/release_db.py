@@ -5,12 +5,14 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from textual.app import ComposeResult
-from textual.containers import Grid, Horizontal, Vertical
+from textual.containers import Grid
 from textual.widgets import Button, DataTable, Input, Static, Switch
 
 from starter_console.core import CLIContext
 from starter_console.services.infra.release_db import DatabaseReleaseConfig, DatabaseReleaseWorkflow
 from starter_console.ui.action_runner import ActionResult, ActionRunner
+
+from .footer_pane import FooterPane
 
 
 @dataclass(slots=True)
@@ -19,9 +21,9 @@ class ReleaseRunResult:
     exit_code: int
 
 
-class ReleaseDbPane(Vertical):
+class ReleaseDbPane(FooterPane):
     def __init__(self, ctx: CLIContext) -> None:
-        super().__init__(id="release-db", classes="section-pane")
+        super().__init__(pane_id="release-db")
         self.ctx = ctx
         self._runner = ActionRunner(
             ctx=self.ctx,
@@ -31,7 +33,7 @@ class ReleaseDbPane(Vertical):
             on_state_change=self._set_action_state,
         )
 
-    def compose(self) -> ComposeResult:
+    def compose_body(self) -> ComposeResult:
         yield Static("Release DB", classes="section-title")
         yield Static(
             "Run migrations, Stripe seeding, and billing plan checks.",
@@ -48,12 +50,14 @@ class ReleaseDbPane(Vertical):
             yield Input(id="release-summary-path")
             yield Static("Plan overrides", classes="wizard-control-label")
             yield Input(id="release-plan-overrides", placeholder="starter=2500, pro=9900")
-        with Horizontal(classes="ops-actions"):
-            yield Button("Run Release", id="release-run", variant="primary")
         yield DataTable(id="release-steps", zebra_stripes=True)
         yield DataTable(id="release-plans", zebra_stripes=True)
-        yield Static("", id="release-status", classes="section-footnote")
         yield Static("", id="release-output", classes="ops-output")
+
+    def compose_footer(self) -> ComposeResult:
+        yield Button("Run Release", id="release-run", variant="primary")
+        yield self.footer_spacer()
+        yield Static("", id="release-status", classes="section-footnote")
 
     def on_mount(self) -> None:
         self.set_interval(0.4, self._runner.refresh_output)

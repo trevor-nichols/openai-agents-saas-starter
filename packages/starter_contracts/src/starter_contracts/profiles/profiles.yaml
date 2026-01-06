@@ -1,0 +1,205 @@
+version: 1
+profiles:
+  demo:
+    label: "Demo / Local"
+    description: "Local developer setup with permissive defaults."
+    detect:
+      priority: 30
+      any:
+        - env: { key: STARTER_PROFILE, equals: demo }
+        - env: { key: ENVIRONMENT, equals: development }
+        - env: { key: APP_PUBLIC_URL, contains: "localhost" }
+    wizard:
+      hosting_preset_default: local_docker
+      cloud_provider_default: aws
+      show_advanced_default: false
+      automation:
+        allow: [infra, secrets, stripe, sso, migrations, redis, geoip, dev_user, demo_token]
+        defaults:
+          infra: false
+          secrets: false
+          stripe: false
+          sso: false
+          migrations: true
+          redis: true
+          geoip: false
+          dev_user: true
+          demo_token: true
+    env:
+      defaults:
+        backend:
+          ENVIRONMENT: development
+          DEBUG: true
+          AUTO_RUN_MIGRATIONS: true
+          STARTER_LOCAL_DATABASE_MODE: compose
+          REDIS_URL: redis://localhost:6379/0
+          SECRETS_PROVIDER: vault_dev
+          STORAGE_PROVIDER: minio
+          ENABLE_BILLING: false
+          BILLING_RETRY_DEPLOYMENT_MODE: inline
+          AUTH_KEY_STORAGE_BACKEND: file
+          MINIO_ENDPOINT: http://localhost:9000
+          MINIO_ACCESS_KEY: minioadmin
+          MINIO_SECRET_KEY: minioadmin
+          MINIO_SECURE: false
+          ENABLE_OTEL_COLLECTOR: true
+          ENABLE_FRONTEND_LOG_INGEST: true
+          GEOIP_PROVIDER: none
+        frontend:
+          AGENT_FORCE_SECURE_COOKIES: false
+          AGENT_ALLOW_INSECURE_COOKIES: true
+      required:
+        backend: [OPENAI_API_KEY, REDIS_URL]
+    choices:
+      secrets_provider: [vault_dev, vault_hcp, infisical, aws_sm, azure_kv, gcp_sm]
+      storage_provider: [minio, s3, gcs, azure_blob]
+      key_storage_backend: [file, secret-manager]
+      billing_retry_mode: [inline, dedicated]
+      geoip_provider: [none, ipinfo, ip2location, ip2location_db, maxmind_db]
+    rules:
+      require_vault: false
+      require_database_url: false
+      redis_tls_required: false
+      stripe_webhook_auto_allowed: true
+      dev_user_allowed: true
+      geoip_required_mode: disabled
+      frontend_log_ingest_requires_confirmation: false
+      migrations_prompt_default: false
+
+  staging:
+    label: "Staging"
+    description: "Pre-production defaults with stricter security requirements."
+    detect:
+      priority: 20
+      any:
+        - env: { key: STARTER_PROFILE, equals: staging }
+        - env: { key: ENVIRONMENT, equals: staging }
+    wizard:
+      hosting_preset_default: cloud_managed
+      cloud_provider_default: aws
+      show_advanced_default: true
+      automation:
+        allow: [stripe, sso, migrations, redis, geoip]
+        defaults:
+          infra: false
+          secrets: false
+          stripe: false
+          sso: false
+          migrations: true
+          redis: true
+          geoip: false
+          dev_user: false
+          demo_token: false
+    env:
+      defaults:
+        backend:
+          ENVIRONMENT: staging
+          DEBUG: false
+          AUTO_RUN_MIGRATIONS: false
+          STARTER_LOCAL_DATABASE_MODE: external
+          SECRETS_PROVIDER: aws_sm
+          STORAGE_PROVIDER: s3
+          ENABLE_BILLING: true
+          BILLING_RETRY_DEPLOYMENT_MODE: dedicated
+          AUTH_KEY_STORAGE_BACKEND: secret-manager
+          AUTH_KEY_STORAGE_PROVIDER: aws_sm
+          ENABLE_OTEL_COLLECTOR: false
+          ENABLE_FRONTEND_LOG_INGEST: true
+          GEOIP_PROVIDER: none
+        frontend:
+          AGENT_FORCE_SECURE_COOKIES: true
+          AGENT_ALLOW_INSECURE_COOKIES: false
+      required:
+        backend:
+          - OPENAI_API_KEY
+          - DATABASE_URL
+          - REDIS_URL
+          - VAULT_ADDR
+          - VAULT_TOKEN
+          - VAULT_TRANSIT_KEY
+      locked:
+        backend: [AUTH_KEY_STORAGE_BACKEND]
+    choices:
+      secrets_provider: [vault_hcp, infisical, aws_sm, azure_kv, gcp_sm]
+      storage_provider: [s3, gcs, azure_blob]
+      key_storage_backend: [secret-manager]
+      billing_retry_mode: [inline, dedicated]
+      geoip_provider: [none, ipinfo, ip2location, ip2location_db, maxmind_db]
+    rules:
+      require_vault: true
+      require_database_url: true
+      redis_tls_required: true
+      stripe_webhook_auto_allowed: false
+      dev_user_allowed: false
+      geoip_required_mode: warn
+      frontend_log_ingest_requires_confirmation: false
+      migrations_prompt_default: true
+
+  production:
+    label: "Production"
+    description: "Production-ready policy with strict security defaults."
+    detect:
+      priority: 10
+      any:
+        - env: { key: STARTER_PROFILE, equals: production }
+        - env: { key: ENVIRONMENT, equals: production }
+    wizard:
+      hosting_preset_default: cloud_managed
+      cloud_provider_default: aws
+      show_advanced_default: true
+      automation:
+        allow: [stripe, sso, migrations, redis, geoip]
+        defaults:
+          infra: false
+          secrets: false
+          stripe: false
+          sso: false
+          migrations: true
+          redis: true
+          geoip: false
+          dev_user: false
+          demo_token: false
+    env:
+      defaults:
+        backend:
+          ENVIRONMENT: production
+          DEBUG: false
+          AUTO_RUN_MIGRATIONS: false
+          STARTER_LOCAL_DATABASE_MODE: external
+          SECRETS_PROVIDER: aws_sm
+          STORAGE_PROVIDER: s3
+          ENABLE_BILLING: true
+          BILLING_RETRY_DEPLOYMENT_MODE: dedicated
+          AUTH_KEY_STORAGE_BACKEND: secret-manager
+          AUTH_KEY_STORAGE_PROVIDER: aws_sm
+          ENABLE_OTEL_COLLECTOR: false
+          ENABLE_FRONTEND_LOG_INGEST: false
+          GEOIP_PROVIDER: none
+        frontend:
+          AGENT_FORCE_SECURE_COOKIES: true
+          AGENT_ALLOW_INSECURE_COOKIES: false
+      required:
+        backend:
+          - OPENAI_API_KEY
+          - DATABASE_URL
+          - REDIS_URL
+          - VAULT_ADDR
+          - VAULT_TOKEN
+          - VAULT_TRANSIT_KEY
+      locked:
+        backend: [AUTH_KEY_STORAGE_BACKEND]
+    choices:
+      secrets_provider: [vault_hcp, infisical, aws_sm, azure_kv, gcp_sm]
+      storage_provider: [s3, gcs, azure_blob]
+      key_storage_backend: [secret-manager]
+      billing_retry_mode: [inline, dedicated]
+      geoip_provider: [none, ipinfo, ip2location, ip2location_db, maxmind_db]
+    rules:
+      require_vault: true
+      require_database_url: true
+      redis_tls_required: true
+      stripe_webhook_auto_allowed: false
+      dev_user_allowed: false
+      geoip_required_mode: warn
+      frontend_log_ingest_requires_confirmation: true
+      migrations_prompt_default: true

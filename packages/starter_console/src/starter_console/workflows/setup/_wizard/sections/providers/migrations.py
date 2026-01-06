@@ -13,7 +13,7 @@ def request_migrations(context: WizardContext, provider: InputProvider) -> None:
     run_now = provider.prompt_bool(
         key="RUN_MIGRATIONS_NOW",
         prompt="Run `just migrate` now?",
-        default=context.profile != "demo",
+        default=context.policy_rule_bool("migrations_prompt_default", fallback=False),
     )
     if run_now:
         context.provider_automation_plan.run_migrations = True

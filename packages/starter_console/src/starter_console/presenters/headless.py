@@ -34,15 +34,21 @@ class ConsolePromptAdapter(PromptPort):
         default: str | None = None,
     ) -> str:
         choice_list = list(choices)
+        self._render_choice_list(choice_list, default)
         while True:
             value = self.console.ask_text(
                 key=key,
-                prompt=f"{prompt} [{'/'.join(choice_list)}]",
+                prompt=prompt,
                 default=default,
                 required=True,
             )
-            if value in choice_list:
-                return value
+            normalized = value.strip()
+            if normalized.isdigit():
+                index = int(normalized)
+                if 1 <= index <= len(choice_list):
+                    return choice_list[index - 1]
+            if normalized in choice_list:
+                return normalized
             self.console.warn(
                 f"Invalid choice '{value}'. Valid options: {', '.join(choice_list)}.",
                 topic="prompt",
@@ -66,6 +72,13 @@ class ConsolePromptAdapter(PromptPort):
             required=required and not existing,
             secret=True,
         )
+
+    def _render_choice_list(self, choices: list[str], default: str | None) -> None:
+        for idx, choice in enumerate(choices, start=1):
+            label = f"{idx}) {choice}"
+            if choice == default:
+                label += " (default)"
+            self.console.print(label)
 
 
 def build_headless_presenter(console: ConsolePort) -> Presenter:

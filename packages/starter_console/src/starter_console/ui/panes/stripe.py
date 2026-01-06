@@ -36,10 +36,12 @@ from starter_console.workflows.stripe import (
     run_webhook_secret,
 )
 
+from .footer_pane import FooterPane
 
-class StripePane(Vertical):
+
+class StripePane(FooterPane):
     def __init__(self, ctx: CLIContext, hub: HubService) -> None:
-        super().__init__(id="stripe", classes="section-pane")
+        super().__init__(pane_id="stripe")
         self.ctx = ctx
         self.hub = hub
         self._env_values: dict[str, str | None] = {}
@@ -54,14 +56,9 @@ class StripePane(Vertical):
         )
         self._refresh_task: asyncio.Task[None] | None = None
 
-    def compose(self) -> ComposeResult:
+    def compose_body(self) -> ComposeResult:
         yield Static("Stripe", classes="section-title")
         yield Static("Stripe billing configuration overview.", classes="section-description")
-        with Horizontal(classes="ops-actions stripe-actions"):
-            yield Button("Refresh", id="stripe-refresh", variant="primary")
-            yield Button("Run Stripe Setup", id="stripe-run-setup", variant="primary")
-            yield Button("Capture Webhook Secret", id="stripe-run-webhook")
-            yield Button("Reset defaults", id="stripe-reset-defaults", classes="stripe-reset")
         with Collapsible(
             title="Stripe setup options",
             id="stripe-options-collapsible",
@@ -152,6 +149,13 @@ class StripePane(Vertical):
                 yield Button("Submit", id="stripe-submit", variant="primary")
                 yield Button("Clear", id="stripe-clear")
             yield Static("", id="stripe-prompt-status", classes="section-footnote")
+
+    def compose_footer(self) -> ComposeResult:
+        yield Button("Refresh", id="stripe-refresh", variant="primary")
+        yield Button("Run Stripe Setup", id="stripe-run-setup", variant="primary")
+        yield Button("Capture Webhook Secret", id="stripe-run-webhook")
+        yield Button("Reset defaults", id="stripe-reset-defaults", classes="stripe-reset")
+        yield self.footer_spacer()
         yield Static("", id="stripe-status", classes="section-footnote")
 
     async def on_mount(self) -> None:

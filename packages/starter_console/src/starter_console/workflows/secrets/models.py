@@ -37,6 +37,7 @@ class SecretsWorkflowOptions:
     """Optional knobs that workflows may consult (e.g., skip local automation)."""
 
     skip_automation: bool = False
+    skip_verification: bool = False
 
 
 class SecretsWorkflow(Protocol):
