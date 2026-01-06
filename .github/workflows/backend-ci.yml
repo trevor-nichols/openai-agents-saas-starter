@@ -35,7 +35,7 @@ jobs:
           sudo apt-get install -y just
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -86,7 +86,7 @@ jobs:
           sudo apt-get install -y just
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -130,7 +130,7 @@ jobs:
           sudo apt-get install -y just
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -227,7 +227,7 @@ jobs:
           sudo apt-get install -y just
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -289,7 +289,7 @@ jobs:
           sudo apt-get install -y just curl
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -325,7 +325,7 @@ jobs:
           sudo apt-get install -y just
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -360,7 +360,7 @@ jobs:
           sudo apt-get install -y just
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
