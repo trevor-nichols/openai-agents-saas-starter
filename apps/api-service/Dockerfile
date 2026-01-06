@@ -31,6 +31,8 @@ FROM python:3.11-slim AS runtime
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
+RUN python -m pip install --upgrade pip
+
 RUN useradd --create-home --uid 10001 appuser
 
 WORKDIR /app
