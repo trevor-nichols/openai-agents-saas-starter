@@ -1,12 +1,8 @@
 import { NextResponse } from 'next/server';
 
-import { isBillingEnabled } from '@/lib/server/features';
 import { listBillingPlans } from '@/lib/server/services/billing';
 
 export async function GET() {
-  if (!(await isBillingEnabled())) {
-    return NextResponse.json({ success: false, error: 'Billing is disabled.' }, { status: 404 });
-  }
   try {
     const plans = await listBillingPlans();
     return NextResponse.json({
@@ -16,7 +12,10 @@ export async function GET() {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Failed to load billing plans.';
-    const status = message.toLowerCase().includes('missing access token') ? 401 : 500;
+    const status =
+      typeof error === 'object' && error !== null && 'status' in error
+        ? (error as { status?: number }).status ?? 500
+        : 500;
     return NextResponse.json(
       {
         success: false,

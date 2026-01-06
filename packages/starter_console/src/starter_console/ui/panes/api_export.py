@@ -1,17 +1,19 @@
 from __future__ import annotations
 
 from textual.app import ComposeResult
-from textual.containers import Grid, Horizontal, Vertical
+from textual.containers import Grid
 from textual.widgets import Button, Input, Static, Switch
 
 from starter_console.core import CLIContext
 from starter_console.services.api.export import OpenApiExportConfig, OpenAPIExporter
 from starter_console.ui.action_runner import ActionRunner
 
+from .footer_pane import FooterPane
 
-class ApiExportPane(Vertical):
+
+class ApiExportPane(FooterPane):
     def __init__(self, ctx: CLIContext) -> None:
-        super().__init__(id="api-export", classes="section-pane")
+        super().__init__(pane_id="api-export")
         self.ctx = ctx
         self._runner: ActionRunner[int] = ActionRunner(
             ctx=self.ctx,
@@ -20,7 +22,7 @@ class ApiExportPane(Vertical):
             on_state_change=self._set_action_state,
         )
 
-    def compose(self) -> ComposeResult:
+    def compose_body(self) -> ComposeResult:
         yield Static("API Export", classes="section-title")
         yield Static("Export OpenAPI schema artifacts.", classes="section-description")
         with Grid(classes="form-grid"):
@@ -34,10 +36,12 @@ class ApiExportPane(Vertical):
             yield Input(id="api-title")
             yield Static("Version", classes="wizard-control-label")
             yield Input(id="api-version")
-        with Horizontal(classes="ops-actions"):
-            yield Button("Export", id="api-export", variant="primary")
-        yield Static("", id="api-status", classes="section-footnote")
         yield Static("", id="api-output-log", classes="ops-output")
+
+    def compose_footer(self) -> ComposeResult:
+        yield Button("Export", id="api-export", variant="primary")
+        yield self.footer_spacer()
+        yield Static("", id="api-status", classes="section-footnote")
 
     def on_mount(self) -> None:
         self.set_interval(0.4, self._runner.refresh_output)

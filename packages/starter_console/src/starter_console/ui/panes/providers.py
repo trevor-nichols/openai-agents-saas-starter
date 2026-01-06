@@ -3,25 +3,25 @@ from __future__ import annotations
 import asyncio
 
 from textual.app import ComposeResult
-from textual.containers import Grid, Vertical
+from textual.containers import Grid
 from textual.widgets import Button, DataTable, RadioButton, RadioSet, Static
 
 from starter_console.core import CLIContext
 from starter_console.workflows.home.hub import HubService
 
+from .footer_pane import FooterPane
 
-class ProvidersPane(Vertical):
+
+class ProvidersPane(FooterPane):
     def __init__(self, ctx: CLIContext, hub: HubService) -> None:
-        super().__init__(id="providers", classes="section-pane")
+        super().__init__(pane_id="providers")
         self.ctx = ctx
         self.hub = hub
 
-    def compose(self) -> ComposeResult:
+    def compose_body(self) -> ComposeResult:
         yield Static("Providers", classes="section-title")
         yield Static("Validate provider configuration status.", classes="section-description")
         with Grid(classes="form-grid"):
-            yield Static("", classes="wizard-control-label")
-            yield Button("Refresh", id="providers-refresh", variant="primary")
             yield Static("Strict mode", classes="wizard-control-label")
             yield RadioSet(
                 RadioButton("Auto", id="providers-strict-auto"),
@@ -30,6 +30,10 @@ class ProvidersPane(Vertical):
                 id="providers-strict",
             )
         yield DataTable(id="providers-table", zebra_stripes=True)
+
+    def compose_footer(self) -> ComposeResult:
+        yield Button("Refresh", id="providers-refresh", variant="primary")
+        yield self.footer_spacer()
         yield Static("", id="providers-status", classes="section-footnote")
 
     async def on_mount(self) -> None:

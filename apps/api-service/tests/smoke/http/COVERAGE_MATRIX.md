@@ -18,6 +18,7 @@ Keep it in sync with `apps/api-service/src/app/api/v1/router.py` and the smoke s
 | `/api/v1/conversations/ledger` | `test_conversations_smoke.py` | Ledger events list + stream yield `public_sse_v1` | `SMOKE_ENABLE_AI=1` (requires streaming chat to seed ledger). |
 | `/api/v1/tools` | `test_tools_smoke.py` | Tool catalog returns lists/maps | Requires `tools:read` scope on token. |
 | `/api/v1/activity` | `test_activity_smoke.py` | List + receipts (read/dismiss/mark-all); stream handshake | Requires `activity:read` scope; stream gated by `SMOKE_ENABLE_ACTIVITY_STREAM`. |
+| `/api/v1/features` | `test_features_smoke.py` | Feature snapshot returns `billing_enabled` + `billing_stream_enabled` | Requires tenant context. |
 | `/api/v1/containers` | `test_containers_smoke.py` | Create/list/detail/delete + agent bind/unbind | `SMOKE_ENABLE_CONTAINERS=1` + OpenAI containers enabled. |
 | `/api/v1/vector-stores` | `test_vector_stores_smoke.py` | Create/list/detail/search/delete | `SMOKE_ENABLE_VECTOR=1` + OpenAI vector stores enabled. |
 | `/api/v1/storage` | `test_storage_smoke.py` | Upload-url + list + download-url + delete (idempotent) | Storage provider configured. |
@@ -25,7 +26,7 @@ Keep it in sync with `apps/api-service/src/app/api/v1/router.py` and the smoke s
 | `/api/v1/openai` (files) | `test_openai_files_smoke.py` | Proxy download returns bytes | `SMOKE_ENABLE_OPENAI_FILES=1` + `SMOKE_OPENAI_FILE_ID` seeded. |
 | `/api/v1/contact` | `test_contact_smoke.py` | Contact submission returns 202 + response payload | `SMOKE_ENABLE_CONTACT=1`. |
 | `/api/v1/status` | `test_status_smoke.py` | Snapshot contains `overview` + `incidents`; RSS returns XML | Subscriptions gated separately by `SMOKE_ENABLE_STATUS_SUBSCRIPTIONS`; Workstream E5 (subscriptions pending). |
-| `/api/v1/platform` | `test_platform_smoke.py` | Operator tenant list + detail lookups | Requires `platform:operator` token (fixture seeds a platform operator user). |
+| `/api/v1/platform` | `test_platform_smoke.py` | Operator tenant list + detail lookups + feature entitlements | Requires `platform:operator` token (fixture seeds a platform operator user). |
 | `/api/v1/tenants` | `test_tenants_smoke.py` | Settings GET/PUT roundtrip; account GET/PATCH roundtrip; invite policy fetch; members list; invites issue/list/revoke | Requires owner token. |
 | `/api/v1/users` | `test_users_smoke.py` | Profile read/update + consents + notification prefs | Requires authenticated user with tenant context. |
 | `/api/v1/usage` | `test_usage_smoke.py` | List returns array (may be empty) | Requires tenant context. |

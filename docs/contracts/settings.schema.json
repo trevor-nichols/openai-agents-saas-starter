@@ -1677,19 +1677,6 @@
       "title": "Allowed Origins",
       "type": "string"
     },
-    "anthropic_api_key": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "description": "Anthropic API key",
-      "title": "Anthropic Api Key"
-    },
     "app_description": {
       "default": "api-service FastAPI microservice",
       "description": "Application description",
@@ -1911,19 +1898,6 @@
       "description": "Assume uniform bucket-level access (UBLA) is enabled.",
       "title": "Gcs Uniform Access",
       "type": "boolean"
-    },
-    "gemini_api_key": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "description": "Google Gemini API key",
-      "title": "Gemini Api Key"
     },
     "image_allowed_formats": {
       "description": "Whitelisted output formats accepted from the image tool.",
@@ -2242,19 +2216,6 @@
       "minimum": 5.0,
       "title": "Vector Store Sync Poll Seconds",
       "type": "number"
-    },
-    "xai_api_key": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "description": "xAI API key",
-      "title": "Xai Api Key"
     }
   },
   "title": "Settings",

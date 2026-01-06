@@ -4,7 +4,7 @@ import argparse
 import asyncio
 
 from textual.app import ComposeResult
-from textual.containers import Grid, Horizontal, Vertical
+from textual.containers import Grid
 from textual.widgets import Button, Collapsible, DataTable, Input, Static, Switch
 
 from starter_console.core import CLIContext
@@ -18,10 +18,12 @@ from starter_console.services.usage.usage_ops import (
 from starter_console.ui.action_runner import ActionResult, ActionRunner
 from starter_console.workflows.home.hub import HubService
 
+from .footer_pane import FooterPane
 
-class UsagePane(Vertical):
+
+class UsagePane(FooterPane):
     def __init__(self, ctx: CLIContext, hub: HubService) -> None:
-        super().__init__(id="usage", classes="section-pane")
+        super().__init__(pane_id="usage")
         self.ctx = ctx
         self.hub = hub
         self._runner = ActionRunner(
@@ -33,13 +35,9 @@ class UsagePane(Vertical):
         )
         self._refresh_task: asyncio.Task[None] | None = None
 
-    def compose(self) -> ComposeResult:
+    def compose_body(self) -> ComposeResult:
         yield Static("Usage", classes="section-title")
         yield Static("Usage reports and entitlement artifacts.", classes="section-description")
-        with Horizontal(classes="ops-actions"):
-            yield Button("Refresh", id="usage-refresh", variant="primary")
-            yield Button("Export Report", id="usage-export")
-            yield Button("Sync Entitlements", id="usage-sync")
         with Collapsible(title="Export report options", id="usage-export-options", collapsed=True):
             with Grid(classes="form-grid"):
                 yield Static("Period start", classes="wizard-control-label")
@@ -85,8 +83,14 @@ class UsagePane(Vertical):
                 yield Switch(value=False, id="usage-allow-disabled")
         yield DataTable(id="usage-summary", zebra_stripes=True)
         yield DataTable(id="usage-warnings", zebra_stripes=True)
-        yield Static("", id="usage-status", classes="section-footnote")
         yield Static("", id="usage-output", classes="ops-output")
+
+    def compose_footer(self) -> ComposeResult:
+        yield Button("Refresh", id="usage-refresh", variant="primary")
+        yield Button("Export Report", id="usage-export")
+        yield Button("Sync Entitlements", id="usage-sync")
+        yield self.footer_spacer()
+        yield Static("", id="usage-status", classes="section-footnote")
 
     async def on_mount(self) -> None:
         self.set_interval(0.4, self._runner.refresh_output)

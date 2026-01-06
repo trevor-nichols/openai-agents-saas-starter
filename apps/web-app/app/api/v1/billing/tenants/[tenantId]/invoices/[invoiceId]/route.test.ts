@@ -4,13 +4,24 @@ import type { SubscriptionInvoiceResponse } from '@/lib/api/client/types.gen';
 import type { NextRequest } from 'next/server';
 
 const getTenantInvoice = vi.hoisted(() => vi.fn());
-const isBillingEnabled = vi.hoisted(() => vi.fn());
+const requireBillingFeature = vi.hoisted(() => vi.fn());
+
+class FeatureFlagsApiError extends Error {
+  constructor(
+    public readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'FeatureFlagsApiError';
+  }
+}
 
 vi.mock('@/lib/server/services/billing', () => ({
   getTenantInvoice,
 }));
 vi.mock('@/lib/server/features', () => ({
-  isBillingEnabled,
+  FeatureFlagsApiError,
+  requireBillingFeature,
 }));
 
 async function loadHandler() {
@@ -32,12 +43,14 @@ const context = (tenantId?: string, invoiceId?: string): Parameters<
 
 beforeEach(() => {
   getTenantInvoice.mockReset();
-  isBillingEnabled.mockReset();
+  requireBillingFeature.mockReset();
 });
 
 describe('GET /api/v1/billing/tenants/[tenantId]/invoices/[invoiceId]', () => {
-  it('returns 404 when billing is disabled', async () => {
-    isBillingEnabled.mockResolvedValueOnce(false);
+  it('returns 403 when billing is disabled', async () => {
+    requireBillingFeature.mockRejectedValueOnce(
+      new FeatureFlagsApiError(403, 'Billing is disabled.'),
+    );
     const { GET } = await loadHandler();
 
     const response = await GET(
@@ -45,11 +58,11 @@ describe('GET /api/v1/billing/tenants/[tenantId]/invoices/[invoiceId]', () => {
       context('t1', 'in_123'),
     );
 
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(403);
   });
 
   it('returns invoice payload', async () => {
-    isBillingEnabled.mockResolvedValueOnce(true);
+    requireBillingFeature.mockResolvedValueOnce(undefined);
     const { GET } = await loadHandler();
 
     const invoice: SubscriptionInvoiceResponse = {

@@ -54,18 +54,13 @@ class InfraSession:
         record = self.context.automation.get(AutomationPhase.SECRETS)
         if not record.enabled:
             return
+        if record.status is AutomationStatus.BLOCKED:
+            return
         if not enabled:
             self.context.automation.update(
                 AutomationPhase.SECRETS,
                 AutomationStatus.SKIPPED,
                 "Vault automation skipped (verification disabled).",
-            )
-            return
-        if self.context.profile != "demo":
-            self.context.automation.update(
-                AutomationPhase.SECRETS,
-                AutomationStatus.BLOCKED,
-                "Vault automation only supported for demo profile.",
             )
             return
         if record.status not in {AutomationStatus.PENDING, AutomationStatus.RUNNING}:

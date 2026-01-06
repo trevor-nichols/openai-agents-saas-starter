@@ -26,6 +26,7 @@ def test_imports_do_not_pull_app_or_console_modules(monkeypatch) -> None:
     importlib.reload(importlib.import_module("starter_contracts.provider_validation"))
     importlib.reload(importlib.import_module("starter_contracts.vault_kv"))
     importlib.reload(importlib.import_module("starter_contracts.secrets.models"))
+    importlib.reload(importlib.import_module("starter_contracts.profiles.schema"))
 
     after = set(sys.modules)
     new_modules = after - before

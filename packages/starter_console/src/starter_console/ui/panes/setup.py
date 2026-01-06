@@ -6,7 +6,6 @@ from datetime import timedelta
 from typing import Protocol, runtime_checkable
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
 from textual.widgets import Button, DataTable, Static
 
 from starter_console.core import CLIContext
@@ -16,11 +15,12 @@ from starter_console.workflows.setup_menu.actions import run_setup_action
 from starter_console.workflows.setup_menu.models import SetupAction, SetupItem
 
 from ..view_models import setup_row
+from .footer_pane import FooterPane
 
 
-class SetupPane(Vertical):
+class SetupPane(FooterPane):
     def __init__(self, ctx: CLIContext, hub: HubService, *, stale_days: int) -> None:
-        super().__init__(id="setup", classes="section-pane")
+        super().__init__(pane_id="setup")
         self.ctx = ctx
         self.hub = hub
         self._items: list[SetupItem] = []
@@ -34,19 +34,21 @@ class SetupPane(Vertical):
         )
         self._refresh_task: asyncio.Task[None] | None = None
 
-    def compose(self) -> ComposeResult:
+    def compose_body(self) -> ComposeResult:
         yield Static("Setup Hub", classes="section-title")
         yield Static(
             "Guided setup actions for secrets, infra, and providers.",
             classes="section-description",
         )
-        with Horizontal(classes="setup-actions"):
-            yield Button("Refresh", id="setup-refresh", variant="primary")
-            yield Button("Run Selected", id="setup-run")
-            yield Button("Export JSON", id="setup-export-json")
         yield DataTable(id="setup-table", zebra_stripes=True)
-        yield Static("", id="setup-status", classes="section-footnote")
         yield Static("", id="setup-output", classes="ops-output")
+
+    def compose_footer(self) -> ComposeResult:
+        yield Button("Refresh", id="setup-refresh", variant="primary")
+        yield Button("Run Selected", id="setup-run")
+        yield Button("Export JSON", id="setup-export-json")
+        yield self.footer_spacer()
+        yield Static("", id="setup-status", classes="section-footnote")
 
     async def on_mount(self) -> None:
         self.set_interval(0.4, self._action_runner.refresh_output)

@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
-import { isBillingEnabled } from '@/lib/server/features';
+import { FeatureFlagsApiError, requireBillingFeature } from '@/lib/server/features';
 import {
   getTenantSubscription,
   startTenantSubscription,
@@ -15,15 +15,13 @@ import {
 } from '../../_utils';
 
 export async function GET(request: NextRequest, context: BillingTenantRouteContext) {
-  if (!(await isBillingEnabled())) {
-    return NextResponse.json({ success: false, error: 'Billing is disabled.' }, { status: 404 });
-  }
   const tenantId = await resolveTenantId(context);
   if (!tenantId) {
     return NextResponse.json({ message: 'Tenant id is required.' }, { status: 400 });
   }
 
   try {
+    await requireBillingFeature();
     const subscription = await getTenantSubscription(tenantId, {
       tenantRole: resolveTenantRole(request),
     });
@@ -31,21 +29,22 @@ export async function GET(request: NextRequest, context: BillingTenantRouteConte
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Failed to load subscription.';
-    const status = mapBillingErrorToStatus(message, { includeNotFound: true });
+    const status =
+      error instanceof FeatureFlagsApiError
+        ? error.status
+        : mapBillingErrorToStatus(message, { includeNotFound: true });
     return NextResponse.json({ message }, { status });
   }
 }
 
 export async function POST(request: NextRequest, context: BillingTenantRouteContext) {
-  if (!(await isBillingEnabled())) {
-    return NextResponse.json({ success: false, error: 'Billing is disabled.' }, { status: 404 });
-  }
   const tenantId = await resolveTenantId(context);
   if (!tenantId) {
     return NextResponse.json({ message: 'Tenant id is required.' }, { status: 400 });
   }
 
   try {
+    await requireBillingFeature();
     const payload = await request.json();
     const subscription = await startTenantSubscription(tenantId, payload, {
       tenantRole: resolveTenantRole(request),
@@ -54,21 +53,22 @@ export async function POST(request: NextRequest, context: BillingTenantRouteCont
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Failed to start subscription.';
-    const status = mapBillingErrorToStatus(message, { includeNotFound: true });
+    const status =
+      error instanceof FeatureFlagsApiError
+        ? error.status
+        : mapBillingErrorToStatus(message, { includeNotFound: true });
     return NextResponse.json({ message }, { status });
   }
 }
 
 export async function PATCH(request: NextRequest, context: BillingTenantRouteContext) {
-  if (!(await isBillingEnabled())) {
-    return NextResponse.json({ success: false, error: 'Billing is disabled.' }, { status: 404 });
-  }
   const tenantId = await resolveTenantId(context);
   if (!tenantId) {
     return NextResponse.json({ message: 'Tenant id is required.' }, { status: 400 });
   }
 
   try {
+    await requireBillingFeature();
     const payload = await request.json();
     const subscription = await updateTenantSubscription(tenantId, payload, {
       tenantRole: resolveTenantRole(request),
@@ -77,7 +77,10 @@ export async function PATCH(request: NextRequest, context: BillingTenantRouteCon
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Failed to update subscription.';
-    const status = mapBillingErrorToStatus(message, { includeNotFound: true });
+    const status =
+      error instanceof FeatureFlagsApiError
+        ? error.status
+        : mapBillingErrorToStatus(message, { includeNotFound: true });
     return NextResponse.json({ message }, { status });
   }
 }

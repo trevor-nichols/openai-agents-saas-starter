@@ -29,11 +29,3 @@ def test_readiness_check():
     assert "timestamp" in data
     assert "version" in data
 
-
-def test_health_features():
-    """Test feature flag health endpoint."""
-    response = client.get("/health/features")
-    assert response.status_code == 200
-    data = response.json()
-    assert "billing_enabled" in data
-    assert "billing_stream_enabled" in data
