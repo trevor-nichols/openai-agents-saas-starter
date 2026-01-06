@@ -9,6 +9,7 @@ from typing import cast
 from .adapters.io.console import console as shared_console
 from .core import CLIContext, CLIError, build_context, iter_env_files
 from .ports.console import ConsolePort
+from .presenters.headless import build_headless_presenter
 
 
 class ApplicationContainer:
@@ -24,9 +25,11 @@ class ApplicationContainer:
         skip_env: bool = False,
         quiet_env: bool = False,
     ) -> CLIContext:
+        presenter = build_headless_presenter(cast(ConsolePort, self.console))
         return build_context(
             env_files=env_files,
             console=cast(ConsolePort, self.console),
+            presenter=presenter,
             skip_env=skip_env,
             quiet_env=quiet_env,
         )

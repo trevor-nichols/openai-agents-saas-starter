@@ -2,54 +2,37 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DEFAULT_FEATURE_FLAGS } from '@/lib/features/constants';
 
-const getRequestOrigin = vi.hoisted(() => vi.fn());
+import * as features from '../features';
 
-vi.mock('@/lib/server/requestOrigin', () => ({
-  getRequestOrigin,
-}));
-
-import { getFeatureFlags } from '../features';
-
-let warnSpy: ReturnType<typeof vi.spyOn> | null = null;
+let warnSpy: ReturnType<typeof vi.spyOn>;
+let backendSpy: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
-  getRequestOrigin.mockReset();
   warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  backendSpy = vi.spyOn(features, 'getBackendFeatureFlags');
 });
 
 afterEach(() => {
-  if (warnSpy) {
-    warnSpy.mockRestore();
-    warnSpy = null;
-  }
+  warnSpy.mockRestore();
+  backendSpy.mockRestore();
   vi.unstubAllGlobals();
 });
 
 describe('getFeatureFlags', () => {
-  it('returns BFF feature flags when available', async () => {
+  it('returns backend feature flags when available', async () => {
     const payload = { billingEnabled: true, billingStreamEnabled: false };
-    getRequestOrigin.mockResolvedValue('https://app.example.com');
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify(payload), { status: 200 }),
-    );
-    vi.stubGlobal('fetch', fetchMock);
+    backendSpy.mockResolvedValueOnce(payload);
 
-    const result = await getFeatureFlags();
+    const result = await features.getFeatureFlags();
 
-    expect(getRequestOrigin).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledWith(
-      'https://app.example.com/api/health/features',
-      { cache: 'no-store' },
-    );
+    expect(backendSpy).toHaveBeenCalledTimes(1);
     expect(result).toEqual(payload);
   });
 
-  it('falls back to defaults when the BFF responds with an error', async () => {
-    getRequestOrigin.mockResolvedValue('https://app.example.com');
-    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 502 }));
-    vi.stubGlobal('fetch', fetchMock);
+  it('falls back to defaults when the backend fetch fails', async () => {
+    backendSpy.mockRejectedValueOnce(new Error('boom'));
 
-    const result = await getFeatureFlags();
+    const result = await features.getFeatureFlags();
 
     expect(result).toEqual(DEFAULT_FEATURE_FLAGS);
     expect(warnSpy).toHaveBeenCalled();

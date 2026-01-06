@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 
-import { useBillingPlans } from '@/lib/queries/billingPlans';
+import { usePublicBillingPlans } from '@/lib/queries/billingPlans';
 import { usePlatformStatusQuery } from '@/lib/queries/status';
 import type { BillingPlan } from '@/types/billing';
 
@@ -60,7 +60,7 @@ function computeBillingSummary(plans: BillingPlan[]): MetricDatum | null {
 }
 
 export function useLandingContent(): LandingContentState {
-  const { plans } = useBillingPlans();
+  const { plans } = usePublicBillingPlans();
   const { status, isLoading: isStatusLoading } = usePlatformStatusQuery();
 
   const statusMetrics: MetricDatum[] = useMemo(() => {

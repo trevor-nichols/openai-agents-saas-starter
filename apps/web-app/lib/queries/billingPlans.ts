@@ -12,19 +12,17 @@ interface UseBillingPlansResult {
   refetch: () => Promise<void>;
 }
 
-export function useBillingPlans(): UseBillingPlansResult {
-  const { flags } = useFeatureFlags();
-  const billingEnabled = Boolean(flags?.billingEnabled);
+function useBillingPlansQuery(enabled: boolean, key: readonly unknown[]): UseBillingPlansResult {
   const {
     data = [],
     isLoading,
     error,
     refetch,
   } = useQuery({
-    queryKey: queryKeys.billing.plans(),
+    queryKey: key,
     queryFn: fetchBillingPlans,
     staleTime: 5 * 60 * 1000,
-    enabled: billingEnabled,
+    enabled,
   });
 
   return {
@@ -33,4 +31,14 @@ export function useBillingPlans(): UseBillingPlansResult {
     error: error?.message ?? null,
     refetch: () => refetch().then(() => undefined),
   };
+}
+
+export function useBillingPlans(): UseBillingPlansResult {
+  const { flags } = useFeatureFlags();
+  const billingEnabled = Boolean(flags?.billingEnabled);
+  return useBillingPlansQuery(billingEnabled, queryKeys.billing.plans());
+}
+
+export function usePublicBillingPlans(): UseBillingPlansResult {
+  return useBillingPlansQuery(true, queryKeys.billing.publicPlans());
 }

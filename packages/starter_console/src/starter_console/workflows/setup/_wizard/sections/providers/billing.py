@@ -16,14 +16,14 @@ def collect_billing(context: WizardContext, provider: InputProvider) -> None:
     enable_billing = provider.prompt_bool(
         key="ENABLE_BILLING",
         prompt="Enable billing endpoints now?",
-        default=context.current_bool("ENABLE_BILLING", False),
+        default=context.policy_env_default_bool("ENABLE_BILLING", fallback=False),
     )
     context.set_backend_bool("ENABLE_BILLING", enable_billing)
 
     enable_stream = provider.prompt_bool(
         key="ENABLE_BILLING_STREAM",
         prompt="Enable billing stream (Redis SSE)?",
-        default=context.current_bool("ENABLE_BILLING_STREAM", False),
+        default=context.policy_env_default_bool("ENABLE_BILLING_STREAM", fallback=False),
     )
     context.set_backend_bool("ENABLE_BILLING_STREAM", enable_stream)
 
@@ -71,7 +71,10 @@ def _maybe_generate_webhook_secret(
     *,
     webhook_capture: StripeWebhookCapturePort | None = None,
 ) -> str | None:
-    allow_auto = context.profile == "demo" and not context.is_headless
+    if context.skip_external_calls:
+        return None
+    allow_auto = context.policy_rule_bool("stripe_webhook_auto_allowed", fallback=False)
+    allow_auto = allow_auto and not context.is_headless
     if not allow_auto:
         return None
 

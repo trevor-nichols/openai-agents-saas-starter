@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Grid, Horizontal, Vertical
 from textual.widgets import Button, DataTable, Input, RadioButton, RadioSet, Static
 
 from starter_console.core import CLIContext
@@ -50,19 +50,21 @@ class StatusOpsPane(Vertical):
             "Manage status subscriptions and resend incident notifications.",
             classes="section-description",
         )
-        with Horizontal(classes="ops-actions"):
+        with Grid(classes="form-grid"):
             yield Static("Limit", classes="wizard-control-label")
             yield Input(id="status-limit", value="50")
             yield Static("Cursor", classes="wizard-control-label")
             yield Input(id="status-cursor")
             yield Static("Tenant", classes="wizard-control-label")
             yield Input(id="status-tenant")
-            yield Button("List Subscriptions", id="status-list", variant="primary")
         with Horizontal(classes="ops-actions"):
+            yield Button("List Subscriptions", id="status-list", variant="primary")
+        with Grid(classes="form-grid"):
             yield Static("Subscription ID", classes="wizard-control-label")
             yield Input(id="status-subscription-id")
-            yield Button("Revoke Subscription", id="status-revoke")
         with Horizontal(classes="ops-actions"):
+            yield Button("Revoke Subscription", id="status-revoke")
+        with Grid(classes="form-grid"):
             yield Static("Incident ID", classes="wizard-control-label")
             yield Input(id="status-incident-id")
             yield Static("Severity", classes="wizard-control-label")
@@ -74,6 +76,7 @@ class StatusOpsPane(Vertical):
             )
             yield Static("Tenant", classes="wizard-control-label")
             yield Input(id="status-incident-tenant")
+        with Horizontal(classes="ops-actions"):
             yield Button("Resend Incident", id="status-resend")
         yield DataTable(id="status-table", zebra_stripes=True)
         yield Static("", id="status-status", classes="section-footnote")

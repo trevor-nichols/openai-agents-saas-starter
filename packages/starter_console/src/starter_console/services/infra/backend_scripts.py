@@ -4,7 +4,6 @@ import json
 import os
 import subprocess
 from collections.abc import Iterable
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -12,14 +11,6 @@ from dotenv import dotenv_values
 
 from starter_console.core import CLIContext, CLIError
 from starter_console.core.constants import DEFAULT_ENV_FILES
-
-
-@dataclass(frozen=True, slots=True)
-class BackendScriptResult:
-    payload: dict[str, Any]
-    stdout: str
-    stderr: str
-    returncode: int
 
 
 def resolve_backend_env_files(
@@ -144,7 +135,6 @@ def extract_json_payload(
 
 
 __all__ = [
-    "BackendScriptResult",
     "extract_json_payload",
     "merge_env_files",
     "resolve_backend_env_files",
