@@ -113,6 +113,7 @@ OPENAPI_INPUT=../api-service/.artifacts/openapi-fixtures.json pnpm generate:fixt
 - `cd packages/starter_console && hatch run test`
 
 ## Related docs
+- `docs/ops/starter-console-cli.md`
 - `docs/ops/setup-wizard-presets.md`
 - `docs/observability/README.md`
 - `docs/security/secrets-providers.md`

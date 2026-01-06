@@ -333,7 +333,7 @@ start-frontend: _check_env
 
 setup-demo-lite:
     cd packages/starter_console && hatch run python -m starter_console.app infra deps
-    cd packages/starter_console && hatch run python -m starter_console.app setup wizard \
+    cd packages/starter_console && hatch run python -m starter_console.app setup wizard --cli \
         --profile demo \
         --auto-infra \
         --auto-secrets \
@@ -346,7 +346,7 @@ setup-demo-lite:
 
 setup-demo-full:
     cd packages/starter_console && hatch run python -m starter_console.app infra deps
-    cd packages/starter_console && hatch run python -m starter_console.app setup wizard \
+    cd packages/starter_console && hatch run python -m starter_console.app setup wizard --cli \
         --profile demo \
         --auto-infra \
         --auto-secrets \
