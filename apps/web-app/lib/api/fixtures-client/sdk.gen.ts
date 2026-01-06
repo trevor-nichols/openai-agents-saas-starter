@@ -4496,12 +4496,6 @@ export const listBillingPlansApiV1BillingPlansGet = <
     ListBillingPlansApiV1BillingPlansGetErrors,
     ThrowOnError
   >({
-    security: [
-      {
-        scheme: "bearer",
-        type: "http",
-      },
-    ],
     url: "/api/v1/billing/plans",
     ...options,
   });

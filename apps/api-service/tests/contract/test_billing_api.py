@@ -44,11 +44,6 @@ class _StubFeatureFlagService:
         return True
 
 
-class _StubDisabledFeatureFlagService:
-    async def is_enabled(self, tenant_id: str, feature: Any) -> bool:
-        return False
-
-
 @pytest.fixture(scope="function")
 def client() -> Generator[TestClient, None, None]:
     app = FastAPI()
@@ -60,20 +55,6 @@ def client() -> Generator[TestClient, None, None]:
     app.dependency_overrides[get_feature_flag_service] = lambda: _StubFeatureFlagService()
     with TestClient(app) as test_client:
         yield test_client
-
-
-def test_billing_plans_blocked_when_feature_disabled() -> None:
-    app = FastAPI()
-    app.include_router(billing_router.router, prefix="/api/v1")
-    app.dependency_overrides[require_current_user] = _stub_owner_user
-    app.dependency_overrides[get_feature_flag_service] = (
-        lambda: _StubDisabledFeatureFlagService()
-    )
-    with TestClient(app) as test_client:
-        response = test_client.get("/api/v1/billing/plans")
-
-    assert response.status_code == 403
-    assert response.json()["detail"] == "billing feature is disabled for this tenant."
 
 
 def test_list_billing_plans_returns_catalog(
@@ -100,6 +81,21 @@ def test_list_billing_plans_returns_catalog(
     payload = response.json()
     assert isinstance(payload, list)
     assert payload[0]["code"] == "starter"
+
+
+def test_list_billing_plans_is_public(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = FastAPI()
+    app.include_router(billing_router.router, prefix="/api/v1")
+    monkeypatch.setattr(
+        billing_router.billing_service,
+        "list_plans",
+        AsyncMock(return_value=[]),
+    )
+    with TestClient(app) as test_client:
+        response = test_client.get("/api/v1/billing/plans")
+
+    assert response.status_code == 200
+    assert response.json() == []
 
 
 def test_get_tenant_subscription_tenant_mismatch(client: TestClient) -> None:

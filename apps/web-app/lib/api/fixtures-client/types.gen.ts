@@ -21612,24 +21612,6 @@ export type ListUsageApiV1UsageGetResponse =
 
 export type ListBillingPlansApiV1BillingPlansGetData = {
   body?: never;
-  headers?: {
-    /**
-     * X-Tenant-Id
-     */
-    "X-Tenant-Id"?: string | null;
-    /**
-     * X-Tenant-Role
-     */
-    "X-Tenant-Role"?: string | null;
-    /**
-     * X-Operator-Override
-     */
-    "X-Operator-Override"?: string | null;
-    /**
-     * X-Operator-Reason
-     */
-    "X-Operator-Reason"?: string | null;
-  };
   path?: never;
   query?: never;
   url: "/api/v1/billing/plans";
@@ -21660,10 +21642,6 @@ export type ListBillingPlansApiV1BillingPlansGetErrors = {
    * Request Entity Too Large
    */
   413: ErrorResponse;
-  /**
-   * Validation Error
-   */
-  422: ValidationErrorResponse;
   /**
    * Too Many Requests
    */

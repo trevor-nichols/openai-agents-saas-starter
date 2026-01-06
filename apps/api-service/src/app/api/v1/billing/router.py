@@ -11,10 +11,7 @@ from fastapi.responses import StreamingResponse
 
 from app.api.dependencies import raise_rate_limit_http_error
 from app.api.dependencies.features import require_feature, require_feature_for_role
-from app.api.dependencies.tenant import (
-    TenantContext,
-    TenantRole,
-)
+from app.api.dependencies.tenant import TenantContext, TenantRole
 from app.api.models.common import SuccessNoDataResponse
 from app.api.v1.billing.schemas import (
     BillingEventHistoryResponse,
@@ -71,17 +68,7 @@ def _assert_same_tenant(context: TenantContext, tenant_id: str) -> None:
 
 
 @router.get("/plans", response_model=list[BillingPlanResponse])
-async def list_billing_plans(
-    _: TenantContext = Depends(
-        require_feature_for_role(
-            FeatureKey.BILLING,
-            TenantRole.VIEWER,
-            TenantRole.MEMBER,
-            TenantRole.ADMIN,
-            TenantRole.OWNER,
-        )
-    ),
-) -> list[BillingPlanResponse]:
+async def list_billing_plans() -> list[BillingPlanResponse]:
     """Return the catalog of available billing plans."""
 
     plans = await billing_service.list_plans()
