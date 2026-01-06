@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
-import { isBillingEnabled } from '@/lib/server/features';
+import { FeatureFlagsApiError, requireBillingFeature } from '@/lib/server/features';
 import { listTenantInvoices } from '@/lib/server/services/billing';
 import { parseOptionalLimit } from '@/app/api/v1/_utils/pagination';
 import {
@@ -23,10 +23,6 @@ function parseOptionalOffset(raw: string | null): number | undefined | { error: 
 }
 
 export async function GET(request: NextRequest, context: BillingTenantRouteContext) {
-  if (!(await isBillingEnabled())) {
-    return NextResponse.json({ success: false, error: 'Billing is disabled.' }, { status: 404 });
-  }
-
   const tenantId = await resolveTenantId(context);
   if (!tenantId) {
     return NextResponse.json({ message: 'Tenant id is required.' }, { status: 400 });
@@ -43,6 +39,7 @@ export async function GET(request: NextRequest, context: BillingTenantRouteConte
   }
 
   try {
+    await requireBillingFeature();
     const invoices = await listTenantInvoices(tenantId, {
       limit: parsedLimit.value,
       offset,
@@ -51,7 +48,10 @@ export async function GET(request: NextRequest, context: BillingTenantRouteConte
     return NextResponse.json(invoices, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to load invoices.';
-    const status = mapBillingErrorToStatus(message, { includeNotFound: true });
+    const status =
+      error instanceof FeatureFlagsApiError
+        ? error.status
+        : mapBillingErrorToStatus(message, { includeNotFound: true });
     return NextResponse.json({ message }, { status });
   }
 }

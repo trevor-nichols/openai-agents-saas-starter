@@ -13,10 +13,12 @@ from starter_console.ui.workflow_runner import WorkflowResult, WorkflowRunner
 from starter_console.workflows.secrets import registry
 from starter_console.workflows.secrets.models import OnboardResult
 
+from .footer_pane import FooterPane
 
-class SecretsOnboardPane(Vertical):
+
+class SecretsOnboardPane(FooterPane):
     def __init__(self, ctx: CLIContext) -> None:
-        super().__init__(id="secrets", classes="section-pane")
+        super().__init__(pane_id="secrets")
         self.ctx = ctx
         self._options = list(registry.provider_options())
         self._prompt_controller = PromptController(self, prefix="secrets")
@@ -29,7 +31,7 @@ class SecretsOnboardPane(Vertical):
             on_state_change=self._set_action_state,
         )
 
-    def compose(self) -> ComposeResult:
+    def compose_body(self) -> ComposeResult:
         yield Static("Secrets Onboarding", classes="section-title")
         yield Static(
             "Configure secrets/signing providers and export env updates.",
@@ -60,8 +62,6 @@ class SecretsOnboardPane(Vertical):
                 id="secrets-var-overrides",
                 placeholder="KEY=VALUE, NEXT_KEY=VALUE",
             )
-        with Horizontal(classes="ops-actions"):
-            yield Button("Run Onboarding", id="secrets-run", variant="primary")
         yield Static("", id="secrets-summary", classes="section-summary")
         yield Static("", id="secrets-output", classes="ops-output")
         with Vertical(id="secrets-prompt"):
@@ -73,6 +73,10 @@ class SecretsOnboardPane(Vertical):
                 yield Button("Submit", id="secrets-submit", variant="primary")
                 yield Button("Clear", id="secrets-clear")
             yield Static("", id="secrets-prompt-status", classes="section-footnote")
+
+    def compose_footer(self) -> ComposeResult:
+        yield Button("Run Onboarding", id="secrets-run", variant="primary")
+        yield self.footer_spacer()
         yield Static("", id="secrets-status", classes="section-footnote")
 
     def on_mount(self) -> None:

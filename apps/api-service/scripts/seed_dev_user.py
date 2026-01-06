@@ -22,7 +22,7 @@ from app.infrastructure.persistence.auth.models import (
     UserProfile,
     UserStatus,
 )
-from app.infrastructure.persistence.conversations.models import TenantAccount
+from app.infrastructure.persistence.tenants.models import TenantAccount
 
 # Import related models to ensure SQLAlchemy relationship registration.
 from app.infrastructure.persistence.billing import models as _billing_models  # noqa: F401

@@ -4,7 +4,8 @@ import argparse
 from pathlib import Path
 
 from starter_console.core import CLIContext
-from starter_console.workflows.home.doctor import DoctorRunner, detect_profile
+from starter_console.core.profiles import load_profile_registry, select_profile
+from starter_console.workflows.home.doctor import DoctorRunner
 
 
 def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -15,7 +16,12 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     parser.add_argument(
         "--profile",
         default=None,
-        help="Deployment profile (defaults to ENVIRONMENT or 'demo').",
+        help="Deployment profile (defaults to auto-detect).",
+    )
+    parser.add_argument(
+        "--profiles-path",
+        metavar="PATH",
+        help="Optional profile config file path (defaults to config/starter-console.profile.yaml).",
     )
     parser.add_argument(
         "--json",
@@ -38,8 +44,14 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
 
 
 def _handle_doctor(args: argparse.Namespace, ctx: CLIContext) -> int:
-    profile = args.profile or detect_profile()
-    runner = DoctorRunner(ctx, profile=profile, strict=args.strict)
+    registry = load_profile_registry(
+        project_root=ctx.project_root,
+        override_path=Path(args.profiles_path).expanduser()
+        if args.profiles_path
+        else None,
+    )
+    selection = select_profile(registry, explicit=args.profile)
+    runner = DoctorRunner(ctx, profile=selection.profile.profile_id, strict=args.strict)
     return runner.run(json_path=args.json, markdown_path=args.markdown)
 
 

@@ -35,6 +35,7 @@ def build_openapi_schema(app: FastAPI) -> dict[str, Any]:
     _patch_binary_downloads(schema)
     _patch_rss(schema)
     _patch_raw_body_endpoints(schema)
+    _patch_tenant_settings_if_match(schema)
 
     app.openapi_schema = schema
     return schema
@@ -231,6 +232,50 @@ def _patch_streaming_endpoints(schema: dict[str, Any]) -> None:
             ),
             payload_schema_ref="#/components/schemas/BillingEventResponse",
         )
+
+
+def _patch_tenant_settings_if_match(schema: dict[str, Any]) -> None:
+    """Require If-Match header for tenant settings updates in the public contract."""
+
+    path_item = _paths(schema).get("/api/v1/tenants/settings")
+    if not isinstance(path_item, dict):
+        return
+    operation = path_item.get("put")
+    if not isinstance(operation, dict):
+        return
+
+    params = operation.setdefault("parameters", [])
+    if not isinstance(params, list):
+        return
+
+    for param in params:
+        if (
+            isinstance(param, dict)
+            and param.get("in") == "header"
+            and param.get("name") == "If-Match"
+        ):
+            param["required"] = True
+            param["schema"] = {"type": "string"}
+            break
+    else:
+        params.append(
+            {
+                "name": "If-Match",
+                "in": "header",
+                "required": True,
+                "description": "Expected tenant settings version (e.g. \"3\").",
+                "schema": {"type": "string"},
+            }
+        )
+
+    responses = operation.setdefault("responses", {})
+    if isinstance(responses, dict) and "428" not in responses:
+        responses["428"] = {
+            "description": "Precondition Required",
+            "content": {
+                "application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}
+            },
+        }
 
 
 def _set_sse_response(

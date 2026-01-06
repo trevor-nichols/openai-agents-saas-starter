@@ -16,8 +16,8 @@ def run(context: WizardContext, provider: InputProvider) -> None:
         "auto-generate a strong one; it will be shown once and never written to disk.",
     )
 
-    if context.profile != "demo":
-        console.info("Dev user seeding only runs for demo profile; skipping.", topic="dev-user")
+    if not context.policy_rule_bool("dev_user_allowed", fallback=False):
+        console.info("Dev user seeding disabled by profile policy; skipping.", topic="dev-user")
         context.dev_user_config = None
         return
 
@@ -89,7 +89,7 @@ def run(context: WizardContext, provider: InputProvider) -> None:
     )
     _scrub_recorded_answer(provider, "DEV_USER_PASSWORD")
     if context.state_store:
-        context.state_store.data.get("answers", {}).pop("DEV_USER_PASSWORD", None)
+        context.state_store.forget_answer("DEV_USER_PASSWORD")
 
 
 def _scrub_recorded_answer(provider: InputProvider, key: str) -> None:

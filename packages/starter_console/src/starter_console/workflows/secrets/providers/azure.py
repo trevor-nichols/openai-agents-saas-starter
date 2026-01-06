@@ -74,15 +74,22 @@ def run_azure_kv(
         required=False,
     )
 
-    verified = _probe_azure_secret(
-        vault_url=vault_url,
-        secret_name=secret_name,
-        tenant_id=tenant_id or None,
-        client_id=client_id or None,
-        client_secret=client_secret or None,
-        managed_identity_client_id=managed_identity_client_id or None,
-        console=ctx.console,
-    )
+    verified = False
+    if options.skip_verification:
+        ctx.console.info(
+            "Skipping Azure Key Vault verification (external calls disabled).",
+            topic="secrets",
+        )
+    else:
+        verified = _probe_azure_secret(
+            vault_url=vault_url,
+            secret_name=secret_name,
+            tenant_id=tenant_id or None,
+            client_id=client_id or None,
+            client_secret=client_secret or None,
+            managed_identity_client_id=managed_identity_client_id or None,
+            console=ctx.console,
+        )
 
     env_updates = {
         "SECRETS_PROVIDER": SecretsProviderLiteral.AZURE_KV.value,
@@ -111,10 +118,14 @@ def run_azure_kv(
     if verified:
         steps.insert(0, "Validated Key Vault access by reading the signing secret.")
     else:
-        warnings.append(
-            "Azure Key Vault validation failed. Check tenant/app credentials "
-            "or managed identity permissions."
-        )
+        if options.skip_verification:
+            message = "Azure Key Vault verification skipped."
+        else:
+            message = (
+                "Azure Key Vault validation failed. Check tenant/app credentials "
+                "or managed identity permissions."
+            )
+        warnings.append(message)
 
     artifacts = [
         VerificationArtifact(
