@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from typing import Protocol, runtime_checkable
 
 from textual.app import ComposeResult
-from textual.containers import Vertical
-from textual.widgets import Button, Input, OptionList, ProgressBar, RadioSet, Static
+from textual.containers import Horizontal, Vertical
+from textual.widgets import Button, DataTable, Input, OptionList, RadioSet, Static, Switch
 
 from starter_console.core import CLIContext, CLIError
 from starter_console.core.profiles import load_profile_registry, select_profile
@@ -21,6 +22,7 @@ from .renderer import (
     render_automation,
     render_conditional,
     render_sections,
+    render_stepper,
 )
 from .runner import WizardHeadlessRun, WizardRunService
 from .session import WizardSession
@@ -66,6 +68,7 @@ class WizardPane(Vertical):
         state = self._session.state.snapshot() if self._session else empty_state()
         configure_tables(self, state)
         self._controls.configure_options()
+        self._set_run_visibility(mode=None)
         self._prompt_controller.set_visibility(False)
         self.set_interval(0.5, self._refresh_view)
         self.set_interval(0.2, self._poll_prompt)
@@ -76,6 +79,8 @@ class WizardPane(Vertical):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "wizard-start":
             self._start_wizard()
+        elif event.button.id == "wizard-open-editor":
+            self._navigate("wizard-editor")
         elif event.button.id == "wizard-submit":
             self._prompt_controller.submit_current()
         elif event.button.id == "wizard-clear":
@@ -102,6 +107,17 @@ class WizardPane(Vertical):
             if not self._session:
                 self._controls.update_profile_context()
                 self._controls.update_summary_preview()
+            if event.radio_set.id == "wizard-profile":
+                self._controls.sync_mode_controls()
+            return
+        if event.radio_set.id == "wizard-mode":
+            self._controls.sync_mode_controls()
+
+    def on_switch_changed(self, event: Switch.Changed) -> None:
+        if event.switch.id == "wizard-show-automation":
+            self._controls.sync_automation_visibility()
+        if event.switch.id == "wizard-strict":
+            self._controls.sync_mode_controls()
 
     # ------------------------------------------------------------------
     # Wizard lifecycle
@@ -120,6 +136,7 @@ class WizardPane(Vertical):
             return
 
         if mode == "interactive" and not strict:
+            self._set_run_visibility(mode="interactive")
             config = replace(self._config, profile=self._controls.selected_profile())
             config.output_format = self._controls.selected_output_format()
             config.summary_path = self._controls.path_value("wizard-summary-path")
@@ -136,6 +153,7 @@ class WizardPane(Vertical):
             self._prompt_controller.set_status("Wizard running. Awaiting prompts...")
             return
 
+        self._set_run_visibility(mode=mode)
         self._start_headless(strict=strict, mode=mode)
 
     # ------------------------------------------------------------------
@@ -153,8 +171,7 @@ class WizardPane(Vertical):
             summary += f" | {elapsed}"
         summary += self._controls.build_setup_summary()
         self.query_one("#wizard-summary", Static).update(summary)
-        progress = self.query_one("#wizard-progress", ProgressBar)
-        progress.update(total=state.total_sections, progress=state.completed_sections)
+        render_stepper(self, state)
         render_sections(self, state.sections)
         render_automation(self, state.automation)
         render_conditional(self, state)
@@ -213,10 +230,36 @@ class WizardPane(Vertical):
 
     def _set_headless_state(self, running: bool) -> None:
         self.query_one("#wizard-start", Button).disabled = running
+        if not running and not self._session:
+            self._set_run_visibility(mode=None)
+
+    def _set_run_visibility(self, *, mode: str | None) -> None:
+        interactive = mode == "interactive"
+        headless = mode in {"headless", "report-only"}
+        self.query_one("#wizard-stepper", Static).display = interactive
+        self.query_one("#wizard-main", Horizontal).display = interactive
+        self.query_one("#wizard-conditional", DataTable).display = interactive
+        self.query_one("#wizard-activity", Static).display = interactive
+        self.query_one("#wizard-prompt", Vertical).display = interactive
+        self.query_one("#wizard-output", Static).display = headless
+        if not interactive and not headless:
+            self.query_one("#wizard-status", Static).update(
+                "Ready. Configure options above and start the wizard."
+            )
 
     def _handle_headless_complete(self, result: ActionResult[str]) -> None:
         if result.error is None and result.value:
             self._set_headless_output(result.value)
+
+    def _navigate(self, route: str) -> None:
+        app = self.app
+        if isinstance(app, _Navigator):
+            app.action_go(route)
+
+
+@runtime_checkable
+class _Navigator(Protocol):
+    def action_go(self, section_key: str) -> None: ...
 
 
 __all__ = ["WizardLaunchConfig", "WizardPane"]

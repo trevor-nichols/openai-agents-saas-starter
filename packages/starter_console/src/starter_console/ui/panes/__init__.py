@@ -20,6 +20,7 @@ from .status_ops import StatusOpsPane
 from .stripe import StripePane
 from .usage import UsagePane
 from .util_run_with_env import UtilRunWithEnvPane
+from .wizard_editor import WizardEditorPane
 
 __all__ = [
     "ApiExportPane",
@@ -41,5 +42,6 @@ __all__ = [
     "StripePane",
     "UsagePane",
     "UtilRunWithEnvPane",
+    "WizardEditorPane",
     "build_panes",
 ]

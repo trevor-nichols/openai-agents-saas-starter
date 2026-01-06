@@ -289,11 +289,12 @@ def handle_setup_wizard(args: argparse.Namespace, ctx: CLIContext) -> int:
         project_root=ctx.project_root,
         frontend_env=frontend_env,
     )
+    cli_mode = bool(getattr(args, "cli", False))
     if args.export_answers and args.report_only:
         raise CLIError("--export-answers cannot be combined with --report-only.")
-    if args.cli and args.non_interactive:
+    if cli_mode and args.non_interactive:
         raise CLIError("--cli cannot be combined with --non-interactive.")
-    if args.cli and args.report_only:
+    if cli_mode and args.report_only:
         raise CLIError("--cli cannot be combined with --report-only.")
 
     answers: dict[str, str] = {}
@@ -307,7 +308,7 @@ def handle_setup_wizard(args: argparse.Namespace, ctx: CLIContext) -> int:
         ctx.console.info("Report-only mode selected; skipping wizard prompts.", topic="wizard")
     elif args.non_interactive:
         provider = HeadlessInputProvider(answers=answers)
-    elif args.no_tui and not args.cli:
+    elif args.no_tui and not cli_mode:
         raise CLIError(
             "--no-tui is only supported with --non-interactive, --report-only, or --cli."
         )
@@ -330,7 +331,7 @@ def handle_setup_wizard(args: argparse.Namespace, ctx: CLIContext) -> int:
 
     interactive_run = not args.non_interactive and not args.report_only
     if interactive_run:
-        if args.cli:
+        if cli_mode:
             from starter_console.ui.panes.wizard.paths import ensure_summary_paths
             from starter_console.workflows.setup.editor import run_editor
 

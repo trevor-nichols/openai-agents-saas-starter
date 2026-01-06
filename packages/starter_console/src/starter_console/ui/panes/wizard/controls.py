@@ -6,7 +6,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Protocol
 
-from textual.widgets import Input, RadioButton, RadioSet, Static, Switch
+from textual.widgets import Collapsible, Input, RadioButton, RadioSet, Static, Switch
 
 from starter_console.adapters.env import EnvFile
 from starter_console.core import CLIContext, CLIError
@@ -125,6 +125,7 @@ class WizardControls:
         )
         self._pane.query_one(f"#{output_id}", RadioButton).value = True
         self._pane.query_one("#wizard-strict", Switch).value = False
+        self._pane.query_one("#wizard-show-automation", Switch).value = False
         if self._config.summary_path:
             self._pane.query_one("#wizard-summary-path", Input).value = str(
                 self._config.summary_path
@@ -139,6 +140,42 @@ class WizardControls:
             )
         for phase in ALL_AUTOMATION_PHASES:
             self._pane.query_one(f"#wizard-auto-{phase.value}", RadioButton).value = True
+        self.sync_advanced_controls()
+
+    def sync_advanced_controls(self) -> None:
+        self.sync_mode_controls()
+        self.sync_automation_visibility()
+
+    def sync_mode_controls(self) -> None:
+        strict_switch = self._pane.query_one("#wizard-strict", Switch)
+        is_production = self.selected_profile() == "production"
+        if not is_production and strict_switch.value:
+            strict_switch.value = False
+        strict_switch.disabled = not is_production
+
+        mode = self.selected_mode()
+        if strict_switch.value:
+            self._pane.query_one("#wizard-mode-headless", RadioButton).value = True
+            self._pane.query_one("#wizard-mode-interactive", RadioButton).disabled = True
+            self._pane.query_one("#wizard-mode-report", RadioButton).disabled = True
+            mode = "headless"
+        else:
+            self._pane.query_one("#wizard-mode-interactive", RadioButton).disabled = False
+            self._pane.query_one("#wizard-mode-report", RadioButton).disabled = False
+
+        headless_inputs = self._pane.query_one("#wizard-headless-inputs", Collapsible)
+        headless_inputs.display = mode == "headless"
+        if headless_inputs.display:
+            headless_inputs.collapsed = False
+        else:
+            headless_inputs.collapsed = True
+
+    def sync_automation_visibility(self) -> None:
+        show_automation = self._pane.query_one("#wizard-show-automation", Switch).value
+        overrides = self._pane.query_one("#wizard-automation-overrides", Collapsible)
+        overrides.display = show_automation
+        if not show_automation:
+            overrides.collapsed = True
 
     def selected_profile(self) -> str:
         fallback = self._resolve_profile_id()

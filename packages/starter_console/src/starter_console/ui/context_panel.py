@@ -314,7 +314,6 @@ class ContextPanel(Vertical):
             ContextManageScreen(self._state, on_update=self._update_summary)
         )
 
-
 __all__ = [
     "ContextManageScreen",
     "ContextPanel",

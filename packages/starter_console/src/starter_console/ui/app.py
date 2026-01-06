@@ -25,7 +25,6 @@ class StarterTUI(App[None]):
 
     TITLE = "Starter Console"
     SUB_TITLE = ""
-
     CSS: ClassVar[str] = """
     Screen {
         layout: vertical;
@@ -226,6 +225,15 @@ class StarterTUI(App[None]):
         padding-bottom: 1;
     }
 
+    #wizard-stepper {
+        height: auto;
+        padding: 1 1;
+        margin-bottom: 1;
+        border: tall $panel-darken-1;
+        background: $panel;
+        color: $text;
+    }
+
     .wizard-options {
         height: auto;
         padding-bottom: 1;
@@ -309,6 +317,43 @@ class StarterTUI(App[None]):
     }
 
     #wizard-prompt-actions {
+        height: auto;
+        padding-top: 1;
+    }
+
+    #wizard-editor-main {
+        height: 1fr;
+    }
+
+    #wizard-editor-sections {
+        width: 32;
+    }
+
+    #wizard-editor-fields-pane {
+        width: 1fr;
+    }
+
+    #wizard-editor-fields {
+        height: 1fr;
+    }
+
+    #wizard-editor-filter {
+        margin-bottom: 1;
+    }
+
+    #wizard-editor-output {
+        height: auto;
+        color: $text-muted;
+        padding-top: 1;
+    }
+
+    #wizard-editor-prompt {
+        margin-top: 1;
+        padding-top: 1;
+        border-top: solid $panel-darken-1;
+    }
+
+    #wizard-editor-prompt-actions {
         height: auto;
         padding-top: 1;
     }

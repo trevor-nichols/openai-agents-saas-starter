@@ -64,6 +64,13 @@ NAV_GROUPS: Final[tuple[NavGroupSpec, ...]] = (
                 shortcut="W",
             ),
             SectionSpec(
+                key="wizard-editor",
+                label="Wizard Editor",
+                description="Two-column setup editor.",
+                detail="Browse sections and edit fields side-by-side.",
+                shortcut="M",
+            ),
+            SectionSpec(
                 key="secrets",
                 label="Secrets Onboarding",
                 description="Configure signing and secrets providers.",

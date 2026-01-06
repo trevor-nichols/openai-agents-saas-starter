@@ -29,6 +29,7 @@ from .stripe import StripePane
 from .usage import UsagePane
 from .util_run_with_env import UtilRunWithEnvPane
 from .wizard import WizardLaunchConfig, WizardPane
+from .wizard_editor import WizardEditorPane
 
 PaneFactory = Callable[[CLIContext, HubService, WizardLaunchConfig | None, SectionSpec], Vertical]
 
@@ -41,6 +42,16 @@ def _wizard_factory(
 ) -> Vertical:
     del hub, section
     return WizardPane(ctx, config=config)
+
+
+def _wizard_editor_factory(
+    ctx: CLIContext,
+    hub: HubService,
+    config: WizardLaunchConfig | None,
+    section: SectionSpec,
+) -> Vertical:
+    del hub, section
+    return WizardEditorPane(ctx, config=config)
 
 
 def _placeholder_factory(
@@ -61,6 +72,7 @@ PANE_FACTORIES: dict[str, PaneFactory] = {
         stale_days=STALE_AFTER_DAYS,
     ),
     "wizard": _wizard_factory,
+    "wizard-editor": _wizard_editor_factory,
     "doctor": lambda ctx, hub, config, section: DoctorPane(ctx),
     "start-stop": lambda ctx, hub, config, section: StartStopPane(ctx),
     "logs": lambda ctx, hub, config, section: LogsPane(ctx, hub),
