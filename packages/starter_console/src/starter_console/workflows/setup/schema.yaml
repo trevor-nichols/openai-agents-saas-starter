@@ -9,9 +9,6 @@ prompts:
     when:
       - key: SETUP_HOSTING_PRESET
         equals: cloud_managed
-  SETUP_SHOW_ADVANCED:
-    section: core
-    label: Advanced prompts toggle
   SECRETS_PROVIDER:
     section: secrets
     label: Secrets provider
@@ -290,254 +287,104 @@ prompts:
         truthy: true
   DATABASE_ECHO:
     section: core
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   DATABASE_POOL_SIZE:
     section: core
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   DATABASE_MAX_OVERFLOW:
     section: core
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   DATABASE_POOL_RECYCLE:
     section: core
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   DATABASE_POOL_TIMEOUT:
     section: core
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   DATABASE_HEALTH_TIMEOUT:
     section: core
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   ALLOWED_METHODS:
     section: core
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   ALLOWED_HEADERS:
     section: core
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   AUTH_IP_LOCKOUT_THRESHOLD:
     section: security
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   AUTH_IP_LOCKOUT_WINDOW_MINUTES:
     section: security
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   AUTH_IP_LOCKOUT_DURATION_MINUTES:
     section: security
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   AUTH_LOCKOUT_THRESHOLD:
     section: security
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   AUTH_LOCKOUT_WINDOW_MINUTES:
     section: security
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   AUTH_LOCKOUT_DURATION_MINUTES:
     section: security
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   AUTH_PASSWORD_HISTORY_COUNT:
     section: security
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   AUTH_REFRESH_TOKEN_TTL_MINUTES:
     section: security
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   ACCESS_TOKEN_EXPIRE_MINUTES:
     section: security
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   AUTH_JWKS_CACHE_SECONDS:
     section: security
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   AUTH_JWKS_MAX_AGE_SECONDS:
     section: security
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   AUTH_JWKS_ETAG_SALT:
     section: security
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   EMAIL_VERIFICATION_TOKEN_TTL_MINUTES:
     section: security
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   EMAIL_VERIFICATION_EMAIL_RATE_LIMIT_PER_HOUR:
     section: security
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   EMAIL_VERIFICATION_IP_RATE_LIMIT_PER_HOUR:
     section: security
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   PASSWORD_RESET_EMAIL_RATE_LIMIT_PER_HOUR:
     section: security
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   PASSWORD_RESET_IP_RATE_LIMIT_PER_HOUR:
     section: security
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   PASSWORD_RESET_TOKEN_TTL_MINUTES:
     section: security
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   STATUS_SUBSCRIPTION_EMAIL_RATE_LIMIT_PER_HOUR:
     section: security
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   STATUS_SUBSCRIPTION_IP_RATE_LIMIT_PER_HOUR:
     section: security
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   STATUS_SUBSCRIPTION_TOKEN_TTL_MINUTES:
     section: security
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   STATUS_SUBSCRIPTION_WEBHOOK_TIMEOUT_SECONDS:
     section: security
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   CHAT_RATE_LIMIT_PER_MINUTE:
     section: security
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   CHAT_STREAM_RATE_LIMIT_PER_MINUTE:
     section: security
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   CHAT_STREAM_CONCURRENT_LIMIT:
     section: security
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   BILLING_STREAM_RATE_LIMIT_PER_MINUTE:
     section: security
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   BILLING_STREAM_CONCURRENT_LIMIT:
     section: security
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   RATE_LIMIT_KEY_PREFIX:
     section: security
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   RATE_LIMIT_REDIS_URL:
     section: providers
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   AUTH_CACHE_REDIS_URL:
     section: providers
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   SECURITY_TOKEN_REDIS_URL:
     section: providers
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   BILLING_EVENTS_REDIS_URL:
     section: providers
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   IMAGE_DEFAULT_SIZE:
     section: storage
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   IMAGE_DEFAULT_QUALITY:
     section: storage
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   IMAGE_DEFAULT_FORMAT:
     section: storage
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   IMAGE_DEFAULT_BACKGROUND:
     section: storage
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   IMAGE_DEFAULT_COMPRESSION:
     section: storage
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   IMAGE_OUTPUT_MAX_MB:
     section: storage
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   IMAGE_MAX_PARTIAL_IMAGES:
     section: storage
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   GEOIP_CACHE_TTL_SECONDS:
     section: observability
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   GEOIP_CACHE_MAX_ENTRIES:
     section: observability
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   GEOIP_HTTP_TIMEOUT_SECONDS:
     section: observability
-    when:
-      - key: SETUP_SHOW_ADVANCED
-        truthy: true
   USAGE_GUARDRAIL_CACHE_TTL_SECONDS:
     section: usage
     when:

@@ -26,6 +26,7 @@ from app.services.contact_service import ContactService
 from app.services.containers import ContainerService
 from app.services.conversation_service import ConversationService
 from app.services.conversations.title_service import TitleService
+from app.services.feature_flags import FeatureEntitlementService, FeatureFlagService
 from app.services.geoip_service import GeoIPService, NullGeoIPService, shutdown_geoip_service
 from app.services.integrations.slack_notifier import SlackNotifier
 from app.services.notification_preferences import NotificationPreferenceService
@@ -105,6 +106,10 @@ class ApplicationContainer:
     status_alert_dispatcher: StatusAlertDispatcher | None = None
     tenant_settings_service: TenantSettingsService = field(
         default_factory=TenantSettingsService
+    )
+    feature_flag_service: FeatureFlagService = field(default_factory=FeatureFlagService)
+    feature_entitlement_service: FeatureEntitlementService = field(
+        default_factory=FeatureEntitlementService
     )
     tenant_account_service: TenantAccountService = field(
         default_factory=TenantAccountService

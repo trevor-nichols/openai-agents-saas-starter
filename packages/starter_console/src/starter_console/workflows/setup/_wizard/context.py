@@ -3,11 +3,13 @@ from __future__ import annotations
 import os
 import secrets
 import subprocess
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from starter_contracts.config import get_settings
+from starter_contracts.profiles import ProfilePolicy
 
 from starter_console.adapters.env import EnvFile
 from starter_console.core import CLIContext, CLIError
@@ -24,7 +26,7 @@ from ..demo_token import DemoTokenConfig
 from ..inputs import InputProvider
 from ..provider_automation_plan import ProviderAutomationPlan
 from ..schema import WizardSchema
-from ..state import WizardStateStore
+from ..state import WizardStateStorePort
 from ..ui import WizardUIView, automation_status_to_state
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -41,14 +43,16 @@ class WizardContext:
 
     cli_ctx: CLIContext
     profile: str
+    profile_policy: ProfilePolicy
     backend_env: EnvFile
     frontend_env: EnvFile | None
     frontend_path: Path | None
     hosting_preset: str | None = None
     cloud_provider: str | None = None
-    show_advanced_prompts: bool = False
     api_base_url: str = "http://127.0.0.1:8000"
     is_headless: bool = False
+    dry_run: bool = False
+    skip_external_calls: bool = False
     summary_path: Path | None = None
     markdown_summary_path: Path | None = None
     dependency_statuses: list[DependencyStatus] = field(default_factory=list)
@@ -56,7 +60,7 @@ class WizardContext:
     provider_automation_plan: ProviderAutomationPlan = field(default_factory=ProviderAutomationPlan)
     infra_session: InfraSession | None = None
     schema: WizardSchema | None = None
-    state_store: WizardStateStore | None = None
+    state_store: WizardStateStorePort | None = None
     ui: WizardUIView | None = None
     verification_artifacts: list[VerificationArtifact] = field(default_factory=list)
     verification_log_path: Path = field(init=False)
@@ -148,6 +152,123 @@ class WizardContext:
     def set_frontend_bool(self, key: str, value: bool) -> None:
         self.set_frontend(key, "true" if value else "false")
 
+    # ------------------------------------------------------------------
+    # Profile policy helpers
+    # ------------------------------------------------------------------
+    def policy_env_default(
+        self,
+        key: str,
+        *,
+        scope: str = "backend",
+        fallback: str | None = None,
+    ) -> str | None:
+        if scope == "frontend":
+            if self.frontend_env:
+                current = self.frontend_env.get(key)
+                if current is not None:
+                    return current
+            value = self.profile_policy.env.frontend.defaults.get(key)
+            return value or fallback
+        current = self.current(key)
+        if current is not None:
+            return current
+        value = self.profile_policy.env.backend.defaults.get(key)
+        return value or fallback
+
+    def policy_env_default_bool(
+        self,
+        key: str,
+        *,
+        scope: str = "backend",
+        fallback: bool = False,
+    ) -> bool:
+        raw = self.policy_env_default(key, scope=scope)
+        if raw is None or raw == "":
+            return fallback
+        return _parse_bool(raw, fallback)
+
+    def policy_required(self, key: str, *, scope: str = "backend", default: bool) -> bool:
+        key_norm = key.strip().upper()
+        if scope == "frontend":
+            required = self.profile_policy.env.frontend.required
+            optional = self.profile_policy.env.frontend.optional
+        else:
+            required = self.profile_policy.env.backend.required
+            optional = self.profile_policy.env.backend.optional
+        if key_norm in required:
+            return True
+        if key_norm in optional:
+            return False
+        return default
+
+    def policy_hidden(self, key: str, *, scope: str = "backend") -> bool:
+        key_norm = key.strip().upper()
+        if scope == "frontend":
+            return key_norm in self.profile_policy.env.frontend.hidden
+        return key_norm in self.profile_policy.env.backend.hidden
+
+    def policy_scope_for_key(self, key: str) -> str:
+        key_norm = key.strip().upper()
+        frontend = self.profile_policy.env.frontend
+        if (
+            key_norm in frontend.defaults
+            or key_norm in frontend.required
+            or key_norm in frontend.optional
+            or key_norm in frontend.hidden
+            or key_norm in frontend.locked
+        ):
+            return "frontend"
+        return "backend"
+
+    def policy_locked(self, key: str, *, scope: str = "backend") -> bool:
+        key_norm = key.strip().upper()
+        if scope == "frontend":
+            return key_norm in self.profile_policy.env.frontend.locked
+        return key_norm in self.profile_policy.env.backend.locked
+
+    def policy_locked_value(self, key: str, *, scope: str = "backend") -> str | None:
+        if not self.policy_locked(key, scope=scope):
+            return None
+        current = self.current(key) if scope == "backend" else None
+        if scope == "frontend" and self.frontend_env:
+            current = self.frontend_env.get(key)
+        if current:
+            return current
+        value = self.policy_env_default(key, scope=scope)
+        if not value:
+            raise CLIError(f"Profile locks {key} but no default is configured.")
+        return value
+
+    def policy_choice(self, choice_key: str, *, fallback: Iterable[str]) -> tuple[str, ...]:
+        values = self.profile_policy.choices.get(choice_key)
+        if values:
+            return tuple(values)
+        return tuple(fallback)
+
+    def policy_rule_bool(self, name: str, *, fallback: bool) -> bool:
+        value = getattr(self.profile_policy.rules, name, None)
+        if value is None:
+            return fallback
+        return bool(value)
+
+    def policy_rule_str(self, name: str, *, fallback: str) -> str:
+        value = getattr(self.profile_policy.rules, name, None)
+        if value is None or value == "":
+            return fallback
+        return str(value)
+
+    def policy_automation_allowed(self, phase: AutomationPhase) -> bool:
+        allowed = self.profile_policy.wizard.automation.allow
+        if allowed is None:
+            return True
+        return phase.value in allowed
+
+    def policy_automation_default(self, phase: AutomationPhase, *, fallback: bool) -> bool:
+        defaults = self.profile_policy.wizard.automation.defaults
+        if phase.value in defaults:
+            return bool(defaults[phase.value])
+        return fallback
+
     def ensure_secret(
         self,
         provider: InputProvider,
@@ -176,6 +297,12 @@ class WizardContext:
             required=False,
         )
         if not value:
+            if self.dry_run:
+                self.console.info(
+                    f"{key} left unset in dry-run mode; will be generated on save.",
+                    topic="wizard",
+                )
+                return
             value = secrets.token_urlsafe(length)
             self.console.info(f"Generated random value for {key}", topic="wizard")
         self.set_backend(key, value, mask=True)
@@ -274,6 +401,17 @@ def build_env_files(cli_ctx: CLIContext) -> tuple[EnvFile, EnvFile | None, Path 
         frontend_env = None
 
     return backend_env, frontend_env, frontend_path
+
+
+def _parse_bool(value: str | bool, fallback: bool) -> bool:
+    if isinstance(value, bool):
+        return value
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "yes", "y"}:
+        return True
+    if normalized in {"0", "false", "no", "n"}:
+        return False
+    return fallback
 
 
 __all__ = ["WizardContext", "build_env_files", "FRONTEND_ENV_RELATIVE"]

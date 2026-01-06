@@ -4,13 +4,24 @@ import type { SubscriptionInvoiceListResponse } from '@/lib/api/client/types.gen
 import type { NextRequest } from 'next/server';
 
 const listTenantInvoices = vi.hoisted(() => vi.fn());
-const isBillingEnabled = vi.hoisted(() => vi.fn());
+const requireBillingFeature = vi.hoisted(() => vi.fn());
+
+class FeatureFlagsApiError extends Error {
+  constructor(
+    public readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'FeatureFlagsApiError';
+  }
+}
 
 vi.mock('@/lib/server/services/billing', () => ({
   listTenantInvoices,
 }));
 vi.mock('@/lib/server/features', () => ({
-  isBillingEnabled,
+  FeatureFlagsApiError,
+  requireBillingFeature,
 }));
 
 async function loadHandler() {
@@ -32,12 +43,14 @@ const context = (tenantId?: string): Parameters<
 
 beforeEach(() => {
   listTenantInvoices.mockReset();
-  isBillingEnabled.mockReset();
+  requireBillingFeature.mockReset();
 });
 
 describe('GET /api/v1/billing/tenants/[tenantId]/invoices', () => {
-  it('returns 404 when billing is disabled', async () => {
-    isBillingEnabled.mockResolvedValueOnce(false);
+  it('returns 403 when billing is disabled', async () => {
+    requireBillingFeature.mockRejectedValueOnce(
+      new FeatureFlagsApiError(403, 'Billing is disabled.'),
+    );
     const { GET } = await loadHandler();
 
     const response = await GET(
@@ -45,11 +58,11 @@ describe('GET /api/v1/billing/tenants/[tenantId]/invoices', () => {
       context('t1'),
     );
 
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(403);
   });
 
   it('rejects invalid offset', async () => {
-    isBillingEnabled.mockResolvedValueOnce(true);
+    requireBillingFeature.mockResolvedValueOnce(undefined);
     const { GET } = await loadHandler();
 
     const response = await GET(
@@ -61,7 +74,7 @@ describe('GET /api/v1/billing/tenants/[tenantId]/invoices', () => {
   });
 
   it('returns invoice list payload', async () => {
-    isBillingEnabled.mockResolvedValueOnce(true);
+    requireBillingFeature.mockResolvedValueOnce(undefined);
     const { GET } = await loadHandler();
 
     const payload: SubscriptionInvoiceListResponse = {

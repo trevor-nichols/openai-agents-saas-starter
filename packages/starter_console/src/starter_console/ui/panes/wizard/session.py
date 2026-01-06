@@ -3,6 +3,12 @@ from __future__ import annotations
 import threading
 
 from starter_console.core import CLIContext
+from starter_console.core.profiles import (
+    load_frontend_env,
+    load_profile_registry,
+    select_profile,
+    write_profile_manifest,
+)
 from starter_console.presenters import PresenterConsoleAdapter, build_textual_presenter
 from starter_console.ui.context import derive_presenter_context
 from starter_console.ui.prompting import PromptChannel, TextualPromptPort
@@ -71,9 +77,21 @@ class WizardSession:
                 self._config.summary_path,
                 self._config.markdown_summary_path,
             )
+            registry = load_profile_registry(
+                project_root=self._ctx.project_root,
+                override_path=self._config.profiles_path,
+            )
+            selection = select_profile(registry, explicit=self._config.profile)
+            frontend_env = load_frontend_env(project_root=self._ctx.project_root)
+            write_profile_manifest(
+                selection,
+                project_root=self._ctx.project_root,
+                frontend_env=frontend_env,
+            )
             wizard = SetupWizard(
                 ctx=wizard_ctx,
-                profile=self._config.profile,
+                profile=selection.profile.profile_id,
+                profile_policy=selection.profile,
                 output_format=self._config.output_format,
                 input_provider=input_provider,
                 summary_path=summary_path,

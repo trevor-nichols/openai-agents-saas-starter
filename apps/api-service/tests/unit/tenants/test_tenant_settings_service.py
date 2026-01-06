@@ -49,6 +49,7 @@ async def test_update_settings_validates_email() -> None:
 @pytest.mark.anyio
 async def test_update_settings_persists_normalized_payload() -> None:
     repository = AsyncMock()
+    repository.fetch = AsyncMock(return_value=None)
     repository.upsert = AsyncMock(
         return_value=TenantSettingsSnapshot(
             tenant_id="tenant-5",

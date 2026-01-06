@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
-import { isBillingEnabled } from '@/lib/server/features';
+import { FeatureFlagsApiError, requireBillingFeature } from '@/lib/server/features';
 import { setTenantDefaultPaymentMethod } from '@/lib/server/services/billing';
 import {
   mapBillingErrorToStatus,
@@ -23,9 +23,6 @@ async function resolvePaymentMethodId(context: RouteContext): Promise<string | n
 }
 
 export async function POST(request: NextRequest, context: RouteContext) {
-  if (!(await isBillingEnabled())) {
-    return NextResponse.json({ success: false, error: 'Billing is disabled.' }, { status: 404 });
-  }
   const tenantId = await resolveTenantId(context);
   const paymentMethodId = await resolvePaymentMethodId(context);
   if (!tenantId) {
@@ -36,6 +33,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
   }
 
   try {
+    await requireBillingFeature();
     const response = await setTenantDefaultPaymentMethod(tenantId, paymentMethodId, {
       tenantRole: resolveTenantRole(request),
     });
@@ -43,7 +41,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Failed to set default payment method.';
-    const status = mapBillingErrorToStatus(message, { includeNotFound: true });
+    const status =
+      error instanceof FeatureFlagsApiError
+        ? error.status
+        : mapBillingErrorToStatus(message, { includeNotFound: true });
     return NextResponse.json({ message }, { status });
   }
 }

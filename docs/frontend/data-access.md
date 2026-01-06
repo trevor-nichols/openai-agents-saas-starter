@@ -109,7 +109,7 @@ Do not hand-edit `apps/web-app/lib/api/client/*`. Generated files must come from
   - Keep the domain service for server-side orchestration.
   - Add a lightweight API route + fetch helper for browser access.  
 - Example: billing subscription flows now share `lib/api/billingSubscriptions.ts`, and `lib/queries/billingSubscriptions.ts` exclusively calls those helpers. Server components that need the same data can still import `lib/server/services/billing.ts`.  
-- Billing visibility: the frontend derives billing flags from `/api/health/features`, which proxies the backend `ENABLE_BILLING` and `ENABLE_BILLING_STREAM` settings. Navigation, pages, API routes, and query `enabled` flags should all read from this endpoint instead of a frontend env var.
+- Billing visibility: the frontend derives billing flags from `/api/v1/features` (BFF), which proxies the backend `ENABLE_BILLING` and `ENABLE_BILLING_STREAM` settings. Navigation, pages, API routes, and query `enabled` flags should all read from this endpoint instead of a frontend env var.
 - If a hook only ever runs in a server component, prefer a server action instead of creating a redundant `/api` route.
 
 ## Streaming Guidance

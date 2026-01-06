@@ -7,7 +7,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
 from starter_console.core import CLIError
-from starter_console.ports.presentation import Presenter, PromptPort
+from starter_console.ports.presentation import NotifyPort, Presenter, PromptPort
+
+from .choice_help import CHOICE_HELP
 
 if TYPE_CHECKING:
     from .ui.commands import WizardUICommandHandler
@@ -95,6 +97,7 @@ class InteractiveInputProvider(InputProvider):
         default: str | None = None,
     ) -> str:
         normalized = _normalize_key(key)
+        _render_choice_help(self.presenter.notify, key=normalized, choices=choices, default=default)
         if (value := self.prefill.pop(normalized, None)) is not None:
             if value not in choices:
                 raise CLIError(f"Invalid choice for {key}: {value} (expected one of {choices})")
@@ -232,3 +235,23 @@ def _coerce_bool(value: str, key: str) -> bool:
 
 def is_headless_provider(provider: InputProvider) -> bool:
     return hasattr(provider, "answers")
+
+
+def _render_choice_help(
+    notify: NotifyPort,
+    *,
+    key: str,
+    choices: Sequence[str],
+    default: str | None,
+) -> None:
+    help_map = CHOICE_HELP.get(key, {})
+    if not help_map:
+        return
+    for idx, choice in enumerate(choices, start=1):
+        label = f"{idx}) {choice}"
+        if choice == default:
+            label += " (default)"
+        detail = help_map.get(choice)
+        if detail:
+            label += f" - {detail}"
+        notify.print(label)
