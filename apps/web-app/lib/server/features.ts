@@ -1,4 +1,4 @@
-'use server';
+import 'server-only';
 
 import { getFeatureSnapshotApiV1FeaturesGet } from '@/lib/api/client/sdk.gen';
 import { DEFAULT_FEATURE_FLAGS } from '@/lib/features/constants';
