@@ -2,7 +2,11 @@
 
 Starter kit for building AI Agent SaaS products. The repo bundles a FastAPI backend (OpenAI Agents SDK v0.6.4) and a Next.js 16 frontend, plus an operator-focused Starter Console that wires secrets, infrastructure, and env files in one flow.
 
-<img src="docs/assets/media/web-app.png" alt="OpenAI Agent Starter screenshots" width="1200" />
+<img
+  src="https://storage.googleapis.com/agenai-static-assets/github/agent-console-demo.gif"
+  alt="OpenAI Agent Starter demo"
+  style="max-width: 100%;"
+/>
 
 ## Quick Start (choose one)
 
@@ -49,8 +53,6 @@ Alternate startup: `starter-console start dev --detached` (or `just start-dev`) 
 ### 3) Just browse the repo
 If you only want to read the code/docs, clone and explore:
 `README.md`, `SNAPSHOT.md`, and `packages/starter_console/README.md`.
-
-<img src="docs/assets/media/chat.png" alt="OpenAI Agent Chat and Memory screenshots" width="1200" />
 
 ## Architecture At A Glance
 - **Backend** (`apps/api-service/`): FastAPI, async SQLAlchemy, Postgres + Redis (refresh-token cache, rate limits, billing streams), Ed25519 JWT auth, Alembic migrations, OpenAI Agents SDK integrations, Stripe billing services.
