@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=69", "wheel"]
+requires = ["setuptools>=69", "setuptools_scm>=8", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "starter-contracts"
-version = "0.1.1"
+dynamic = ["version"]
 description = "Shared contracts and validation helpers for the OpenAI Agents SaaS starter."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -37,6 +37,10 @@ dev = [
 [tool.setuptools]
 package-dir = {"" = "src"}
 include-package-data = true
+
+[tool.setuptools_scm]
+tag_regex = "^v(?P<version>\\d+\\.\\d+\\.\\d+)$"
+version_scheme = "no-guess-dev"
 
 [tool.setuptools.packages.find]
 where = ["src"]
