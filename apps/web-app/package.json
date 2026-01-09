@@ -52,7 +52,7 @@
     "@shikijs/transformers": "^3.15.0",
     "@stripe/react-stripe-js": "^3.0.0",
     "@stripe/stripe-js": "^7.0.0",
-    "@tanstack/react-query": "^5.90.7",
+    "@tanstack/react-query": "^5.90.16",
     "@tanstack/react-table": "^8.21.3",
     "@xyflow/react": "12.10.0",
     "ai": "^6.0.6",
