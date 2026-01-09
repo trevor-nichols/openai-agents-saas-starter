@@ -89,7 +89,7 @@
   },
   "devDependencies": {
     "@ast-grep/cli": "^0.40.3",
-    "@hey-api/openapi-ts": "0.87.0",
+    "@hey-api/openapi-ts": "0.90.2",
     "@playwright/test": "^1.48.2",
     "@storybook/nextjs": "10.1.11",
     "@storybook/react": "10.1.11",
