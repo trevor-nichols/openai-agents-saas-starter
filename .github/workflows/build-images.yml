@@ -175,7 +175,7 @@ jobs:
 
       - name: Trivy scan (SARIF)
         if: env.PUSH_IMAGES == 'true' || github.event_name == 'pull_request'
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@0.34.1
         with:
           image-ref: ${{ env.IMAGE_REF }}
           format: sarif
@@ -188,7 +188,7 @@ jobs:
       - name: Trivy scan (summary)
         if: github.event_name == 'pull_request' || failure()
         continue-on-error: true
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@0.34.1
         with:
           image-ref: ${{ env.IMAGE_REF }}
           format: table
